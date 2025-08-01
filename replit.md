@@ -17,6 +17,10 @@ This is a comprehensive 3PL (Third-Party Logistics) management SaaS platform bui
 - ✅ Dedicated mobile interface at /mobile route with native app-like experience
 - ✅ Automatic mobile device detection and redirection system
 - ✅ Touch-optimized UI with tab navigation and swipe gestures
+- ✅ Brand-specific data isolation implemented - brands only see their own data
+- ✅ 3PL consolidated dashboard with brand filtering capabilities across orders, tickets, inventory
+- ✅ "Resend invite" functionality added to both desktop and mobile interfaces
+- ✅ Fixed brand invitation runtime errors and improved error handling
 
 # User Preferences
 

@@ -30,7 +30,9 @@ import {
   User,
   Settings as SettingsIcon,
   Menu,
-  X
+  X,
+  Copy,
+  Mail
 } from "lucide-react";
 
 export default function MobileApp() {
@@ -88,6 +90,7 @@ export default function MobileApp() {
         queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] }),
         queryClient.invalidateQueries({ queryKey: ['/api/orders'] }),
         queryClient.invalidateQueries({ queryKey: ['/api/tickets'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/brands'] }),
       ]);
     },
     onSuccess: () => {
@@ -115,6 +118,63 @@ export default function MobileApp() {
       });
     },
   });
+
+  const resendInviteMutation = useMutation({
+    mutationFn: async (brandId: string) => {
+      const response = await apiRequest('POST', `/api/brands/${brandId}/resend-invite`, {});
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
+      
+      toast({
+        title: "Invitation Resent",
+        description: data.emailFailed 
+          ? "Invitation updated, but email failed. Please share the link manually." 
+          : "Brand invitation has been resent successfully!",
+        variant: data.emailFailed ? "destructive" : "default",
+      });
+      
+      // Copy new invitation link to clipboard if available
+      if (data.invitationLink) {
+        navigator.clipboard.writeText(data.invitationLink);
+      }
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to resend brand invitation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleResendInvite = (brandId: string) => {
+    resendInviteMutation.mutate(brandId);
+  };
+
+  const handleCopyInviteLink = (brand: any) => {
+    const invitationLink = `${window.location.origin}/brand-invite/${brand.invitationToken}`;
+    navigator.clipboard.writeText(invitationLink);
+    toast({
+      title: "Invitation Link Copied",
+      description: "The invitation link has been copied to your clipboard.",
+    });
+  };
 
   if (isLoading || statsLoading) {
     return (
@@ -507,6 +567,31 @@ export default function MobileApp() {
                             <span>{new Date(brand.createdAt).toLocaleDateString()}</span>
                           </div>
                         </div>
+
+                        {/* Invitation Actions for Pending Brands */}
+                        {!brand.isActive && brand.invitationToken && (
+                          <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full text-xs"
+                              onClick={() => handleCopyInviteLink(brand)}
+                            >
+                              <Copy className="h-3 w-3 mr-2" />
+                              Copy Invitation Link
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full text-xs"
+                              onClick={() => handleResendInvite(brand.id)}
+                              disabled={resendInviteMutation.isPending}
+                            >
+                              <Mail className={`h-3 w-3 mr-2 ${resendInviteMutation.isPending ? 'animate-pulse' : ''}`} />
+                              {resendInviteMutation.isPending ? "Resending..." : "Resend Invite"}
+                            </Button>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))
