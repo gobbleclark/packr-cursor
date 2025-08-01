@@ -1,15 +1,11 @@
 export class TrackstarService {
   private baseUrl = 'https://production.trackstarhq.com';
-
-  constructor(private apiKey?: string) {}
+  private apiKey = '269fcaf8b50a4fb4b384724f3e5d76db'; // Universal API key for all brands
 
   /**
    * Get a link token for connecting a brand to Trackstar
    */
   async getLinkToken(): Promise<string> {
-    if (!this.apiKey) {
-      throw new Error('Trackstar API key not configured');
-    }
 
     const response = await fetch(`${this.baseUrl}/link/token`, {
       method: 'POST',
@@ -36,9 +32,6 @@ export class TrackstarService {
     integration_name: string;
     available_endpoints: string[];
   }> {
-    if (!this.apiKey) {
-      throw new Error('Trackstar API key not configured');
-    }
 
     const response = await fetch(`${this.baseUrl}/link/exchange`, {
       method: 'POST',
@@ -62,7 +55,7 @@ export class TrackstarService {
   async getInventory(accessToken: string, connectionId: string): Promise<any[]> {
     const response = await fetch(`${this.baseUrl}/inventory`, {
       headers: {
-        'x-trackstar-api-key': this.apiKey!,
+        'x-trackstar-api-key': this.apiKey,
         'x-trackstar-access-token': accessToken,
       },
     });
@@ -80,7 +73,7 @@ export class TrackstarService {
   async getOrders(accessToken: string, connectionId: string): Promise<any[]> {
     const response = await fetch(`${this.baseUrl}/orders`, {
       headers: {
-        'x-trackstar-api-key': this.apiKey!,
+        'x-trackstar-api-key': this.apiKey,
         'x-trackstar-access-token': accessToken,
       },
     });
@@ -98,7 +91,7 @@ export class TrackstarService {
   async getProducts(accessToken: string, connectionId: string): Promise<any[]> {
     const response = await fetch(`${this.baseUrl}/products`, {
       headers: {
-        'x-trackstar-api-key': this.apiKey!,
+        'x-trackstar-api-key': this.apiKey,
         'x-trackstar-access-token': accessToken,
       },
     });
@@ -116,7 +109,7 @@ export class TrackstarService {
   async getShipments(accessToken: string, connectionId: string): Promise<any[]> {
     const response = await fetch(`${this.baseUrl}/shipments`, {
       headers: {
-        'x-trackstar-api-key': this.apiKey!,
+        'x-trackstar-api-key': this.apiKey,
         'x-trackstar-access-token': accessToken,
       },
     });

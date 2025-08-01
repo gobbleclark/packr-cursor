@@ -4,11 +4,12 @@ This is a comprehensive 3PL (Third-Party Logistics) management SaaS platform bui
 
 ## Recent Updates (August 2025)
 - ✅ Brand creation and invitation system with automated SendGrid email notifications
-- ✅ Trackstar API integration for universal WMS platform connectivity
+- ✅ Trackstar API integration with universal API key for simplified WMS platform connectivity
 - ✅ Enhanced multi-tenant architecture with brand invitation workflow
 - ✅ Database schema updated with brand invitations and Trackstar integration tables
 - ✅ Brand management dashboard for 3PL users with invitation tracking
 - ✅ Comprehensive integrations page supporting both ShipHero and Trackstar
+- ✅ Simplified Trackstar setup using universal API key (269fcaf8b50a4fb4b384724f3e5d76db)
 
 # User Preferences
 

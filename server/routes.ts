@@ -240,44 +240,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 3PL Trackstar API key management
-  app.put('/api/three-pls/:id/trackstar-key', isAuthenticated, async (req: AuthenticatedRequest, res) => {
-    try {
-      const userId = req.user?.claims?.sub;
-      const user = await storage.getUser(userId);
-      
-      if (user?.role !== 'threePL' && user?.role !== 'admin') {
-        return res.status(403).json({ message: "Only 3PL managers can update Trackstar API keys" });
-      }
 
-      const { id } = req.params;
-      const { apiKey } = req.body;
-      
-      const threePL = await storage.updateThreePlTrackstarApiKey(id, apiKey);
-      res.json(threePL);
-    } catch (error) {
-      console.error("Error updating Trackstar API key:", error);
-      res.status(500).json({ message: "Failed to update Trackstar API key" });
-    }
-  });
 
   // Trackstar integration routes
   app.post('/api/trackstar/link-token', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.claims?.sub;
-      const user = await storage.getUser(userId);
-      
-      if (!user?.threePlId) {
-        return res.status(403).json({ message: "Trackstar integration requires 3PL association" });
-      }
-
-      const threePL = await storage.getThreePL(user.threePlId);
-      if (!threePL?.trackstarApiKey) {
-        return res.status(400).json({ message: "Trackstar API key not configured for this 3PL" });
-      }
-
-      const trackstarServiceWithKey = new TrackstarService(threePL.trackstarApiKey);
-      const linkToken = await trackstarServiceWithKey.getLinkToken();
+      const trackstarService = new TrackstarService();
+      const linkToken = await trackstarService.getLinkToken();
       
       res.json({ linkToken });
     } catch (error) {
@@ -288,21 +257,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/trackstar/exchange', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user?.claims?.sub;
-      const user = await storage.getUser(userId);
       const { authCode, brandId } = req.body;
       
-      if (!user?.threePlId) {
-        return res.status(403).json({ message: "Trackstar integration requires 3PL association" });
-      }
-
-      const threePL = await storage.getThreePL(user.threePlId);
-      if (!threePL?.trackstarApiKey) {
-        return res.status(400).json({ message: "Trackstar API key not configured for this 3PL" });
-      }
-
-      const trackstarServiceWithKey = new TrackstarService(threePL.trackstarApiKey);
-      const tokenData = await trackstarServiceWithKey.exchangeAuthCode(authCode);
+      const trackstarService = new TrackstarService();
+      const tokenData = await trackstarService.exchangeAuthCode(authCode);
       
       // Update brand with Trackstar credentials
       await storage.updateBrandTrackstarCredentials(
@@ -332,21 +290,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Trackstar not configured for this brand" });
       }
 
-      const threePL = await storage.getThreePL(brand.threePlId);
-      if (!threePL?.trackstarApiKey) {
-        return res.status(400).json({ message: "Trackstar API key not configured" });
-      }
+      // Using universal Trackstar API key - no need to check 3PL specific key
 
-      const trackstarServiceWithKey = new TrackstarService(threePL.trackstarApiKey);
+      const trackstarService = new TrackstarService();
       
       let result;
       if (syncType === 'inventory') {
-        result = await trackstarServiceWithKey.syncInventoryForBrand(
+        result = await trackstarService.syncInventoryForBrand(
           brand.trackstarAccessToken,
           brand.trackstarConnectionId
         );
       } else if (syncType === 'orders') {
-        result = await trackstarServiceWithKey.syncOrdersForBrand(
+        result = await trackstarService.syncOrdersForBrand(
           brand.trackstarAccessToken,
           brand.trackstarConnectionId
         );

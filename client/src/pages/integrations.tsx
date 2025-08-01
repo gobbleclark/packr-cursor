@@ -34,8 +34,6 @@ export default function Integrations() {
   const [apiKey, setApiKey] = useState('');
   const [userId, setUserId] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  const [trackstarApiKey, setTrackstarApiKey] = useState('');
-  const [isTrackstarEditing, setIsTrackstarEditing] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -54,11 +52,6 @@ export default function Integrations() {
   const { data: brands = [], isLoading: brandsLoading } = useQuery<any[]>({
     queryKey: ['/api/brands'],
     enabled: isAuthenticated,
-  });
-
-  const { data: threePL, isLoading: threePlLoading } = useQuery<any>({
-    queryKey: ['/api/three-pls', user?.threePlId],
-    enabled: isAuthenticated && !!user?.threePlId,
   });
 
   const updateApiCredentialsMutation = useMutation({
@@ -130,41 +123,7 @@ export default function Integrations() {
     },
   });
 
-  const updateTrackstarKeyMutation = useMutation({
-    mutationFn: async (apiKey: string) => {
-      const response = await apiRequest('PUT', `/api/three-pls/${user?.threePlId}/trackstar-key`, {
-        apiKey,
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/three-pls', user?.threePlId] });
-      setTrackstarApiKey('');
-      setIsTrackstarEditing(false);
-      toast({
-        title: "Success",
-        description: "Trackstar API key updated successfully",
-      });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to update Trackstar API key",
-        variant: "destructive",
-      });
-    },
-  });
+
 
   const connectTrackstarMutation = useMutation({
     mutationFn: async (brandId: string) => {
@@ -209,7 +168,7 @@ export default function Integrations() {
     },
   });
 
-  if (isLoading || brandsLoading || threePlLoading) {
+  if (isLoading || brandsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
@@ -298,91 +257,7 @@ export default function Integrations() {
             </div>
           </div>
 
-          {/* Trackstar Configuration - Only for 3PL users */}
-          {user?.role === 'threePL' && (
-            <div className="bg-white shadow-sm border-b border-gray-200">
-              <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Globe className="h-5 w-5" />
-                      Trackstar Universal WMS Integration
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600 mb-2">
-                            Configure your Trackstar API key to enable universal WMS integrations for all your brands.
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">Status:</span>
-                            {threePL?.trackstarApiKey ? (
-                              <Badge variant="default" className="bg-green-50 text-green-600">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Configured
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-yellow-600 border-yellow-300">
-                                <Clock className="h-3 w-3 mr-1" />
-                                Not Configured
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => setIsTrackstarEditing(!isTrackstarEditing)}
-                        >
-                          <Settings className="h-4 w-4 mr-2" />
-                          {threePL?.trackstarApiKey ? "Update API Key" : "Configure API Key"}
-                        </Button>
-                      </div>
 
-                      {isTrackstarEditing && (
-                        <div className="border-t pt-4 space-y-4">
-                          <div className="grid gap-4">
-                            <div>
-                              <Label htmlFor="trackstar-key">Trackstar Organization API Key</Label>
-                              <Input
-                                id="trackstar-key"
-                                type="password"
-                                value={trackstarApiKey}
-                                onChange={(e) => setTrackstarApiKey(e.target.value)}
-                                placeholder="Enter your Trackstar API key"
-                              />
-                              <p className="text-xs text-gray-500 mt-1">
-                                Contact support@trackstarhq.com to get your organization API key
-                              </p>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                onClick={() => updateTrackstarKeyMutation.mutate(trackstarApiKey)}
-                                disabled={updateTrackstarKeyMutation.isPending || !trackstarApiKey.trim()}
-                              >
-                                <Save className="h-4 w-4 mr-2" />
-                                {updateTrackstarKeyMutation.isPending ? "Saving..." : "Save API Key"}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                onClick={() => {
-                                  setIsTrackstarEditing(false);
-                                  setTrackstarApiKey('');
-                                }}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          )}
 
           {/* Integrations Content */}
           <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -531,8 +406,7 @@ export default function Integrations() {
               </Card>
 
               {/* Trackstar Integration - Brand Level */}
-              {threePL?.trackstarApiKey && (
-                <Card>
+              <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -636,7 +510,6 @@ export default function Integrations() {
                     )}
                   </CardContent>
                 </Card>
-              )}
 
               {/* Sync Schedule */}
               <Card>
