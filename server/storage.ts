@@ -597,15 +597,50 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Get sync status for a brand
-  async getSyncStatus(brandId: string): Promise<any> {
-    // In production, this would query sync status tables
-    // For now, return empty structure for the UI
-    return {
-      orders: null,
-      products: null,
-      shipments: null,
-      initialSync: null
-    };
+  async getSyncStatus(brandId: string): Promise<any[]> {
+    return await db
+      .select()
+      .from(syncStatus)
+      .where(eq(syncStatus.brandId, brandId))
+      .orderBy(desc(syncStatus.updatedAt));
+  }
+
+  async updateSyncStatus(brandId: string, syncType: string, status: string, recordsProcessed: number, errorMessage?: string): Promise<void> {
+    const now = new Date();
+    
+    // Check if sync status record exists
+    const [existingStatus] = await db
+      .select()
+      .from(syncStatus)
+      .where(and(eq(syncStatus.brandId, brandId), eq(syncStatus.syncType, syncType)));
+
+    if (existingStatus) {
+      // Update existing record
+      await db
+        .update(syncStatus)
+        .set({
+          lastSyncAt: now,
+          lastSyncStatus: status,
+          recordsProcessed,
+          errorCount: status === 'error' ? (existingStatus.errorCount || 0) + 1 : 0,
+          errorDetails: errorMessage ? { message: errorMessage, timestamp: now } : null,
+          updatedAt: now,
+        })
+        .where(eq(syncStatus.id, existingStatus.id));
+    } else {
+      // Create new record
+      await db.insert(syncStatus).values({
+        brandId,
+        syncType,
+        lastSyncAt: now,
+        lastSyncStatus: status,
+        recordsProcessed,
+        errorCount: status === 'error' ? 1 : 0,
+        errorDetails: errorMessage ? { message: errorMessage, timestamp: now } : null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
   }
 
   async getAttachmentsByTicket(ticketId: string): Promise<Attachment[]> {

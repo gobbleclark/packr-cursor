@@ -1043,26 +1043,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Brand not found" });
       }
 
-      // Get sync status for all sync types
+      // Get sync status for all sync types from database
       const syncStatuses = await storage.getSyncStatus(brandId);
       
-      // Mock sync status - in production, get from database
-      const mockSyncStatus = {
+      // Convert array to structured object
+      const statusMap = {
         orders: {
-          status: 'success',
-          lastSync: new Date(),
+          status: 'pending',
+          lastSync: null,
           recordCount: 0,
           errors: 0
         },
         products: {
-          status: 'success',
-          lastSync: new Date(),
+          status: 'pending', 
+          lastSync: null,
           recordCount: 0,
           errors: 0
         },
         shipments: {
-          status: 'success',
-          lastSync: new Date(),
+          status: 'pending',
+          lastSync: null,
           recordCount: 0,
           errors: 0
         },
@@ -1073,7 +1073,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      res.json(mockSyncStatus);
+      // Update with actual database values
+      syncStatuses.forEach((sync: any) => {
+        if (sync.syncType === 'orders') {
+          statusMap.orders = {
+            status: sync.lastSyncStatus || 'pending',
+            lastSync: sync.lastSyncAt,
+            recordCount: sync.recordsProcessed || 0,
+            errors: sync.errorCount || 0
+          };
+        } else if (sync.syncType === 'products') {
+          statusMap.products = {
+            status: sync.lastSyncStatus || 'pending',
+            lastSync: sync.lastSyncAt,
+            recordCount: sync.recordsProcessed || 0,
+            errors: sync.errorCount || 0
+          };
+        } else if (sync.syncType === 'shipments') {
+          statusMap.shipments = {
+            status: sync.lastSyncStatus || 'pending',
+            lastSync: sync.lastSyncAt,
+            recordCount: sync.recordsProcessed || 0,
+            errors: sync.errorCount || 0
+          };
+        } else if (sync.syncType === 'initial') {
+          statusMap.initialSync = {
+            status: sync.lastSyncStatus || 'pending',
+            lastRun: sync.lastSyncAt,
+            recordCount: sync.recordsProcessed || 0
+          };
+        }
+      });
+
+      res.json(statusMap);
     } catch (error) {
       console.error("Error getting sync status:", error);
       res.status(500).json({ message: "Failed to get sync status" });
@@ -1090,25 +1122,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Brand not found" });
       }
 
-      console.log(`🎯 Starting initial sync for brand ${brand.name} - pulling 1 week of historical data`);
-      
-      // Simulate initial sync with 1 week of data
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      const results = {
-        orders: 5,
-        products: 12,
-        shipments: 3,
-        timeRange: '1 week historical data'
-      };
+      if (!brand.shipHeroApiKey || !brand.shipHeroPassword) {
+        return res.status(400).json({ message: "ShipHero credentials required for initial sync" });
+      }
 
-      console.log(`✅ Initial sync completed for ${brand.name}:`, results);
+      console.log(`🎯 Starting initial sync for brand ${brand.name} - pulling 7 days of historical data`);
+      
+      // Update sync status to "running" at start
+      await storage.updateSyncStatus(brandId, 'initial', 'running', 0);
+      
+      try {
+        // Calculate 7 days ago for historical data
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        
+        const syncService = new ShipHeroSyncService(brand);
+        
+        // Perform comprehensive 7-day historical sync
+        const syncResult = await syncService.syncAllData(brandId, sevenDaysAgo);
+        
+        const totalRecords = syncResult.orders.created + syncResult.orders.updated + 
+                            syncResult.products.created + syncResult.products.updated +
+                            syncResult.shipments.created + syncResult.shipments.updated;
+        
+        // Update sync status to "success"
+        await storage.updateSyncStatus(brandId, 'initial', 'success', totalRecords);
+        
+        // Also update individual sync types
+        await storage.updateSyncStatus(brandId, 'orders', 'success', syncResult.orders.created + syncResult.orders.updated);
+        await storage.updateSyncStatus(brandId, 'products', 'success', syncResult.products.created + syncResult.products.updated);
+        await storage.updateSyncStatus(brandId, 'shipments', 'success', syncResult.shipments.created + syncResult.shipments.updated);
+        
+        const results = {
+          orders: syncResult.orders.created + syncResult.orders.updated,
+          products: syncResult.products.created + syncResult.products.updated,
+          shipments: syncResult.shipments.created + syncResult.shipments.updated,
+          timeRange: '7 days historical data',
+          duplicatesSkipped: syncResult.orders.duplicatesSkipped || 0
+        };
 
-      res.json({
-        message: "Initial sync completed",
-        results,
-        note: "This was a one-time historical data pull"
-      });
+        console.log(`✅ Initial sync completed for ${brand.name}:`, results);
+
+        res.json({
+          message: "Initial sync completed successfully",
+          results,
+          note: "Historical data has been pulled and stored with duplicate prevention"
+        });
+        
+      } catch (syncError) {
+        console.error(`❌ Initial sync failed for ${brand.name}:`, syncError);
+        
+        // Update sync status to "error"
+        await storage.updateSyncStatus(brandId, 'initial', 'error', 0, syncError.message);
+        
+        throw syncError;
+      }
+      
     } catch (error) {
       console.error("Error during initial sync:", error);
       res.status(500).json({ message: "Failed to complete initial sync" });

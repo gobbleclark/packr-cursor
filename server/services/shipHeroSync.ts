@@ -164,8 +164,8 @@ export class ShipHeroSyncService {
 
   private async processOrder(brandId: string, orderData: any, result: SyncResult): Promise<void> {
     try {
-      // Check if order already exists
-      const existingOrder = await storage.getOrderByShipHeroId(orderData.id);
+      // DUPLICATE PREVENTION: Check if order already exists using ShipHero's unique order ID
+      const existingOrder = await storage.getOrderByShipHeroId(orderData.id.toString());
       
       const orderPayload = {
         orderNumber: orderData.order_number,
@@ -178,22 +178,41 @@ export class ShipHeroSyncService {
         totalAmount: parseFloat(orderData.subtotal || '0'),
         shippingMethod: orderData.shipping_method?.name,
         trackingNumber: orderData.tracking_number,
-        shipHeroOrderId: orderData.id,
+        shipHeroOrderId: orderData.id.toString(), // Ensure string format for consistency
         orderItems: orderData.line_items || [],
         createdAt: new Date(orderData.created_at),
         updatedAt: new Date(orderData.updated_at || orderData.created_at)
       };
 
       if (existingOrder) {
-        await storage.updateOrder(existingOrder.id, orderPayload);
-        result.orders.updated++;
+        // Update existing order only if data has changed
+        const needsUpdate = this.hasOrderChanged(existingOrder, orderPayload);
+        if (needsUpdate) {
+          await storage.updateOrder(existingOrder.id, orderPayload);
+          result.orders.updated++;
+        } else {
+          // Track duplicates skipped for reporting
+          if (!result.orders.duplicatesSkipped) result.orders.duplicatesSkipped = 0;
+          result.orders.duplicatesSkipped++;
+        }
       } else {
+        // Create new order  
         await storage.createOrder(orderPayload);
         result.orders.created++;
       }
     } catch (error) {
       result.errors.push(`Failed to process order ${orderData.order_number}: ${error.message}`);
     }
+  }
+
+  private hasOrderChanged(existingOrder: any, newOrderData: any): boolean {
+    // Compare key fields to determine if update is needed
+    return (
+      existingOrder.status !== newOrderData.status ||
+      existingOrder.trackingNumber !== newOrderData.trackingNumber ||
+      existingOrder.totalAmount !== newOrderData.totalAmount ||
+      new Date(existingOrder.updatedAt).getTime() < new Date(newOrderData.updatedAt).getTime()
+    );
   }
 
   private async syncShipments(brandId: string, since: string, result: SyncResult): Promise<void> {
