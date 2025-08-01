@@ -57,6 +57,8 @@ export default function BrandManagementClean() {
   const [shipHeroPassword, setShipHeroPassword] = useState('');
   const [syncStatusDialogOpen, setSyncStatusDialogOpen] = useState(false);
   const [selectedBrandForSync, setSelectedBrandForSync] = useState<any>(null);
+  const [isUserManagementDialogOpen, setIsUserManagementDialogOpen] = useState(false);
+  const [selectedBrandForUsers, setSelectedBrandForUsers] = useState<any>(null);
 
   const { data: brands = [], isLoading: brandsLoading } = useQuery<any[]>({
     queryKey: ['/api/brands'],
@@ -397,6 +399,18 @@ export default function BrandManagementClean() {
                               <TrendingUp className="h-4 w-4" />
                               <span className="hidden sm:inline">Sync Status</span>
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedBrandForUsers(brand);
+                                setIsUserManagementDialogOpen(true);
+                              }}
+                              className="flex items-center gap-2"
+                            >
+                              <Users className="h-4 w-4" />
+                              <span className="hidden sm:inline">Manage Users</span>
+                            </Button>
                           </>
                         )}
                       </div>
@@ -513,6 +527,22 @@ export default function BrandManagementClean() {
             </DialogContent>
           </Dialog>
 
+          {/* User Management Dialog */}
+          <Dialog open={isUserManagementDialogOpen} onOpenChange={setIsUserManagementDialogOpen}>
+            <DialogContent className="sm:max-w-[700px]">
+              <DialogHeader>
+                <DialogTitle>Manage Users for {selectedBrandForUsers?.name}</DialogTitle>
+                <DialogDescription>
+                  View and manage brand users. Brand users can access their brand's dashboard and create support tickets.
+                </DialogDescription>
+              </DialogHeader>
+              <UserManagement 
+                brandId={selectedBrandForUsers?.id} 
+                isOpen={isUserManagementDialogOpen}
+              />
+            </DialogContent>
+          </Dialog>
+
           {/* Sync Status Modal */}
           {selectedBrandForSync && (
             <SyncStatusModal
@@ -527,6 +557,227 @@ export default function BrandManagementClean() {
           )}
         </div>
       </main>
+    </div>
+  );
+}
+
+// User Management Component - Fixed hooks order
+function UserManagement({ brandId, isOpen }: { brandId: string; isOpen: boolean }) {
+  // All hooks MUST be called at the top level, every render
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserFirstName, setNewUserFirstName] = useState('');
+  const [newUserLastName, setNewUserLastName] = useState('');
+
+  // Query hook MUST be called every render, not conditionally
+  const { data: brandUsers = [], isLoading } = useQuery<any[]>({
+    queryKey: ['/api/brands', brandId, 'users'],
+    enabled: isOpen && !!brandId,
+  });
+
+  const addUserMutation = useMutation({
+    mutationFn: async (userData: { email: string; firstName: string; lastName: string }) => {
+      const response = await apiRequest('POST', `/api/brands/${brandId}/users`, userData);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/brands', brandId, 'users'] });
+      setIsAddUserDialogOpen(false);
+      setNewUserEmail('');
+      setNewUserFirstName('');
+      setNewUserLastName('');
+      toast({
+        title: "User Added",
+        description: "Brand user has been created successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to create user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await apiRequest('DELETE', `/api/brands/${brandId}/users/${userId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/brands', brandId, 'users'] });
+      toast({
+        title: "User Deleted",
+        description: "Brand user has been deleted successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddUser = () => {
+    if (!newUserEmail || !newUserFirstName || !newUserLastName) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addUserMutation.mutate({
+      email: newUserEmail,
+      firstName: newUserFirstName,
+      lastName: newUserLastName,
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <RefreshCw className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h4 className="text-sm font-medium">Brand Users ({brandUsers.length})</h4>
+        <Button
+          size="sm"
+          onClick={() => setIsAddUserDialogOpen(true)}
+          className="flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Add User
+        </Button>
+      </div>
+
+      {brandUsers.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <Users className="mx-auto h-12 w-12 text-gray-400" />
+          <p className="mt-2">No users found for this brand</p>
+          <p className="text-sm">Add users to give them access to the brand dashboard</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {brandUsers.map((user: any) => (
+            <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
+              <div>
+                <p className="font-medium">{user.firstName} {user.lastName}</p>
+                <p className="text-sm text-gray-500">{user.email}</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => deleteUserMutation.mutate(user.id)}
+                disabled={deleteUserMutation.isPending}
+                className="text-red-600 hover:text-red-700"
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add User Dialog */}
+      <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Add Brand User</DialogTitle>
+            <DialogDescription>
+              Create a new user account for this brand.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="user-email">Email</Label>
+              <Input
+                id="user-email"
+                type="email"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+                placeholder="Enter user email"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="user-first-name">First Name</Label>
+              <Input
+                id="user-first-name"
+                value={newUserFirstName}
+                onChange={(e) => setNewUserFirstName(e.target.value)}
+                placeholder="Enter first name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="user-last-name">Last Name</Label>
+              <Input
+                id="user-last-name"
+                value={newUserLastName}
+                onChange={(e) => setNewUserLastName(e.target.value)}
+                placeholder="Enter last name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddUserDialogOpen(false);
+                setNewUserEmail('');
+                setNewUserFirstName('');
+                setNewUserLastName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleAddUser} disabled={addUserMutation.isPending}>
+              {addUserMutation.isPending && (
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Add User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
