@@ -347,9 +347,11 @@ export default function BrandManagement() {
     },
     onSuccess: (data) => {
       toast({
-        title: "Sync Completed",
-        description: `Synced ${data.results.orders} orders and ${data.results.products} products`,
+        title: "Sync Completed Successfully",
+        description: `Orders: ${data.results.orders}, Products: ${data.results.products}, Shipments: ${data.results.shipments}`,
       });
+      // Refresh the page data to show any new orders/products
+      queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -610,10 +612,17 @@ export default function BrandManagement() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleSyncBrand(brand.id)}
+                                disabled={syncBrandMutation.isPending}
                                 className="flex items-center gap-2"
                               >
-                                <RefreshCw className="h-4 w-4" />
-                                <span className="hidden sm:inline">Sync Data</span>
+                                {syncBrandMutation.isPending ? (
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-4 w-4" />
+                                )}
+                                <span className="hidden sm:inline">
+                                  {syncBrandMutation.isPending ? 'Syncing...' : 'Sync Data'}
+                                </span>
                               </Button>
                             )}
                           </>

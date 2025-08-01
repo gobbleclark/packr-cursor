@@ -23,9 +23,12 @@ import {
   type InsertTicketComment,
   type Attachment,
   type InsertAttachment,
+  shipments,
+  warehouses,
+  syncStatus,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, like, count } from "drizzle-orm";
+import { eq, desc, and, or, like, count, isNull, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -90,6 +93,21 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Sync methods for ShipHero integration
+  async getOrderByShipHeroId(shipHeroOrderId: string): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.shipHeroOrderId, shipHeroOrderId));
+    return order;
+  }
+
+  async getBrandsWithShipHeroCredentials(): Promise<Brand[]> {
+    return await db.select().from(brands).where(
+      and(
+        isNotNull(brands.shipHeroApiKey),
+        isNotNull(brands.shipHeroPassword),
+        eq(brands.isActive, true)
+      )
+    );
+  }
   // User operations
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db

@@ -90,8 +90,38 @@ export const orders = pgTable("orders", {
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }),
   shippingMethod: varchar("shipping_method"),
   trackingNumber: varchar("tracking_number"),
-  shipHeroOrderId: varchar("ship_hero_order_id"),
+  shipHeroOrderId: varchar("ship_hero_order_id").unique(),
   orderItems: jsonb("order_items"),
+  lastSyncAt: timestamp("last_sync_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Shipments
+export const shipments = pgTable("shipments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").notNull().references(() => orders.id),
+  brandId: varchar("brand_id").notNull().references(() => brands.id),
+  shipHeroShipmentId: varchar("ship_hero_shipment_id").unique(),
+  trackingNumber: varchar("tracking_number"),
+  carrier: varchar("carrier"),
+  service: varchar("service"),
+  status: varchar("status").default('pending'),
+  shippedAt: timestamp("shipped_at"),
+  estimatedDelivery: timestamp("estimated_delivery"),
+  actualDelivery: timestamp("actual_delivery"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Warehouses
+export const warehouses = pgTable("warehouses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  address: jsonb("address"),
+  brandId: varchar("brand_id").notNull().references(() => brands.id),
+  shipHeroWarehouseId: varchar("ship_hero_warehouse_id").unique(),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -104,8 +134,31 @@ export const products = pgTable("products", {
   description: text("description"),
   brandId: varchar("brand_id").notNull().references(() => brands.id),
   price: decimal("price", { precision: 10, scale: 2 }),
-  inventoryCount: integer("inventory_count").default(0),
-  shipHeroProductId: varchar("ship_hero_product_id"),
+  weight: decimal("weight", { precision: 8, scale: 3 }),
+  dimensions: jsonb("dimensions"),
+  quantity: integer("quantity").default(0),
+  reservedQuantity: integer("reserved_quantity").default(0),
+  lowStockThreshold: integer("low_stock_threshold").default(10),
+  shipHeroProductId: varchar("ship_hero_product_id").unique(),
+  barcode: varchar("barcode"),
+  hsCode: varchar("hs_code"),
+  countryOfOrigin: varchar("country_of_origin"),
+  lastSyncAt: timestamp("last_sync_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Sync Status Tracking
+export const syncStatus = pgTable("sync_status", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  brandId: varchar("brand_id").notNull().references(() => brands.id),
+  syncType: varchar("sync_type").notNull(), // 'orders', 'products', 'shipments', 'inventory'
+  lastSyncAt: timestamp("last_sync_at").notNull(),
+  lastSyncStatus: varchar("last_sync_status").notNull(), // 'success', 'error', 'partial'
+  recordsProcessed: integer("records_processed").default(0),
+  errorCount: integer("error_count").default(0),
+  errorDetails: jsonb("error_details"),
+  nextScheduledSync: timestamp("next_scheduled_sync"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
