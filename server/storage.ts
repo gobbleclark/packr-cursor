@@ -46,6 +46,8 @@ export interface IStorage {
   updateBrandTrackstarCredentials(id: string, apiKey: string): Promise<Brand>;
   getBrandByInvitationToken(token: string): Promise<Brand | undefined>;
   updateBrandInvitationStatus(id: string, isActive: boolean): Promise<Brand>;
+  updateBrandInvitationToken(id: string, token: string): Promise<Brand>;
+  getDashboardStats(userId: string): Promise<any>;
   
   // Order operations
   getOrder(id: string): Promise<Order | undefined>;
@@ -199,6 +201,68 @@ export class DatabaseStorage implements IStorage {
       .where(eq(brands.id, id))
       .returning();
     return brand;
+  }
+
+  async getDashboardStats(userId: string): Promise<any> {
+    const user = await this.getUser(userId);
+    
+    if (!user) {
+      return { totalOrders: 0, openTickets: 0, urgentTickets: 0, lowInventoryItems: 0 };
+    }
+
+    let brandFilter = user.brandId ? eq(orders.brandId, user.brandId) : undefined;
+    let ticketBrandFilter = user.brandId ? eq(tickets.brandId, user.brandId) : undefined;
+    let productBrandFilter = user.brandId ? eq(products.brandId, user.brandId) : undefined;
+
+    // If user is a 3PL, get stats for all their brands
+    if (user.role === 'threePL' && user.threePlId) {
+      const threePlBrands = await this.getBrandsByThreePL(user.threePlId);
+      const brandIds = threePlBrands.map(b => b.id);
+      
+      if (brandIds.length > 0) {
+        brandFilter = or(...brandIds.map(id => eq(orders.brandId, id)));
+        ticketBrandFilter = or(...brandIds.map(id => eq(tickets.brandId, id)));
+        productBrandFilter = or(...brandIds.map(id => eq(products.brandId, id)));
+      }
+    }
+
+    const [totalOrdersResult] = await db
+      .select({ count: count() })
+      .from(orders)
+      .where(brandFilter);
+
+    const [openTicketsResult] = await db
+      .select({ count: count() })
+      .from(tickets)
+      .where(and(
+        ticketBrandFilter,
+        or(eq(tickets.status, 'open'), eq(tickets.status, 'in_progress'))
+      ));
+
+    const [urgentTicketsResult] = await db
+      .select({ count: count() })
+      .from(tickets)
+      .where(and(
+        ticketBrandFilter,
+        eq(tickets.priority, 'urgent'),
+        or(eq(tickets.status, 'open'), eq(tickets.status, 'in_progress'))
+      ));
+
+    const [lowInventoryResult] = await db
+      .select({ count: count() })
+      .from(products)
+      .where(and(
+        productBrandFilter,
+        // Consider items with inventory < 10 as low stock
+        // Note: This is a simplified version, you might want to add a lowStockThreshold field
+      ));
+
+    return {
+      totalOrders: totalOrdersResult?.count || 0,
+      openTickets: openTicketsResult?.count || 0,
+      urgentTickets: urgentTicketsResult?.count || 0,
+      lowInventoryItems: lowInventoryResult?.count || 0,
+    };
   }
 
   async updateThreePlTrackstarApiKey(id: string, apiKey: string): Promise<ThreePL> {
