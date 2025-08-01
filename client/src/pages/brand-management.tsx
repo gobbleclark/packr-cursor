@@ -56,7 +56,7 @@ import {
   Zap,
   TrendingUp
 } from "lucide-react";
-import { SyncStatusDialog } from "./sync-status";
+import { SyncStatusModal } from "@/components/sync-status-modal";
 
 export default function BrandManagement() {
   const { toast } = useToast();
@@ -1041,9 +1041,9 @@ function UserManagement({ brandId, isOpen }: { brandId: string; isOpen: boolean 
         </DialogContent>
       </Dialog>
 
-      {/* Sync Status Dialog */}
+      {/* Sync Status Modal */}
       {selectedBrandForSync && (
-        <SyncStatusDialog
+        <SyncStatusModal
           brandId={selectedBrandForSync.id}
           brandName={selectedBrandForSync.name}
           isOpen={syncStatusDialogOpen}

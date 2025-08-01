@@ -1,14 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -21,8 +18,7 @@ import {
   Clock, 
   AlertCircle, 
   RefreshCw, 
-  Play, 
-  Pause,
+  Play,
   TrendingUp,
   Package,
   Truck,
@@ -30,21 +26,21 @@ import {
   Zap
 } from "lucide-react";
 
-interface SyncStatusProps {
+interface SyncStatusModalProps {
   brandId: string;
   brandName: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function SyncStatusDialog({ brandId, brandName, isOpen, onClose }: SyncStatusProps) {
+export function SyncStatusModal({ brandId, brandName, isOpen, onClose }: SyncStatusModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: syncStatus, isLoading } = useQuery({
     queryKey: [`/api/brands/${brandId}/sync-status`],
     enabled: isOpen && !!brandId,
-    refetchInterval: isOpen ? 10000 : false, // Refresh every 10 seconds when dialog is open
+    refetchInterval: isOpen ? 10000 : false,
   });
 
   const { data: webhookStatus } = useQuery({
@@ -52,7 +48,6 @@ export function SyncStatusDialog({ brandId, brandName, isOpen, onClose }: SyncSt
     enabled: isOpen && !!brandId,
   });
 
-  // Manual sync mutations for different data types
   const syncOrdersMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', `/api/brands/${brandId}/sync/orders`);

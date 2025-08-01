@@ -587,6 +587,18 @@ export class DatabaseStorage implements IStorage {
     return attachment;
   }
 
+  // Get sync status for a brand
+  async getSyncStatus(brandId: string): Promise<any> {
+    // In production, this would query sync status tables
+    // For now, return empty structure for the UI
+    return {
+      orders: null,
+      products: null,
+      shipments: null,
+      initialSync: null
+    };
+  }
+
   async getAttachmentsByTicket(ticketId: string): Promise<Attachment[]> {
     return await db
       .select()
