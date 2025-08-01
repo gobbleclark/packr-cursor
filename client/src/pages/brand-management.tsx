@@ -49,7 +49,10 @@ import {
   Clock,
   ExternalLink,
   Settings,
-  RefreshCw
+  RefreshCw,
+  UserPlus,
+  Edit,
+  Trash2
 } from "lucide-react";
 
 export default function BrandManagement() {
@@ -66,6 +69,8 @@ export default function BrandManagement() {
   const [integrationType, setIntegrationType] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [userId, setUserId] = useState('');
+  const [isUserManagementDialogOpen, setIsUserManagementDialogOpen] = useState(false);
+  const [selectedBrandForUsers, setSelectedBrandForUsers] = useState<any>(null);
 
   // All query hooks at the top level - never conditional
   const { data: brands = [], isLoading: brandsLoading } = useQuery<any[]>({
@@ -301,6 +306,11 @@ export default function BrandManagement() {
     });
   };
 
+  const handleManageUsers = (brand: any) => {
+    setSelectedBrandForUsers(brand);
+    setIsUserManagementDialogOpen(true);
+  };
+
   const getBrandStatusBadge = (brand: any) => {
     if (!brand.isActive) {
       return <Badge variant="outline" className="text-yellow-600 border-yellow-300">Pending Invitation</Badge>;
@@ -522,6 +532,15 @@ export default function BrandManagement() {
                               <Settings className="h-4 w-4" />
                               <span className="hidden sm:inline">Add Integration</span>
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleManageUsers(brand)}
+                              className="flex items-center gap-2"
+                            >
+                              <Users className="h-4 w-4" />
+                              <span className="hidden sm:inline">Manage Users</span>
+                            </Button>
                           </>
                         )}
                       </div>
@@ -620,8 +639,246 @@ export default function BrandManagement() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* User Management Dialog */}
+          <Dialog open={isUserManagementDialogOpen} onOpenChange={setIsUserManagementDialogOpen}>
+            <DialogContent className="sm:max-w-[700px]">
+              <DialogHeader>
+                <DialogTitle>Manage Users for {selectedBrandForUsers?.name}</DialogTitle>
+                <DialogDescription>
+                  View and manage brand users. Brand users can access their brand's dashboard and create support tickets.
+                </DialogDescription>
+              </DialogHeader>
+              <UserManagement 
+                brandId={selectedBrandForUsers?.id} 
+                isOpen={isUserManagementDialogOpen}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
       </main>
+    </div>
+  );
+}
+
+// User Management Component
+function UserManagement({ brandId, isOpen }: { brandId: string; isOpen: boolean }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserFirstName, setNewUserFirstName] = useState('');
+  const [newUserLastName, setNewUserLastName] = useState('');
+
+  const { data: brandUsers = [], isLoading } = useQuery<any[]>({
+    queryKey: ['/api/brands', brandId, 'users'],
+    enabled: isOpen && !!brandId,
+  });
+
+  const addUserMutation = useMutation({
+    mutationFn: async (userData: { email: string; firstName: string; lastName: string }) => {
+      const response = await apiRequest('POST', `/api/brands/${brandId}/users`, userData);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/brands', brandId, 'users'] });
+      setIsAddUserDialogOpen(false);
+      setNewUserEmail('');
+      setNewUserFirstName('');
+      setNewUserLastName('');
+      toast({
+        title: "User Added",
+        description: "Brand user has been created successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to create user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await apiRequest('DELETE', `/api/brands/${brandId}/users/${userId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/brands', brandId, 'users'] });
+      toast({
+        title: "User Deleted",
+        description: "Brand user has been deleted successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddUser = () => {
+    if (!newUserEmail || !newUserFirstName || !newUserLastName) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addUserMutation.mutate({
+      email: newUserEmail,
+      firstName: newUserFirstName,
+      lastName: newUserLastName,
+    });
+  };
+
+  if (isLoading) {
+    return <div className="p-4">Loading users...</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-gray-600">
+          {brandUsers.length} user{brandUsers.length !== 1 ? 's' : ''} found
+        </div>
+        <Button
+          onClick={() => setIsAddUserDialogOpen(true)}
+          size="sm"
+          className="flex items-center gap-2"
+        >
+          <UserPlus className="h-4 w-4" />
+          Add User
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        {brandUsers.map((user: any) => (
+          <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
+            <div className="flex-1">
+              <div className="font-medium">{user.firstName} {user.lastName}</div>
+              <div className="text-sm text-gray-500">{user.email}</div>
+              <Badge variant="outline" className="mt-1">Brand User</Badge>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => deleteUserMutation.mutate(user.id)}
+                disabled={deleteUserMutation.isPending}
+                className="flex items-center gap-2 text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            </div>
+          </div>
+        ))}
+        
+        {brandUsers.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            No users found for this brand
+          </div>
+        )}
+      </div>
+
+      {/* Add User Dialog */}
+      <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Add Brand User</DialogTitle>
+            <DialogDescription>
+              Create a new user account for this brand.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+                placeholder="Enter user email"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="firstName">First Name</Label>
+              <Input
+                id="firstName"
+                value={newUserFirstName}
+                onChange={(e) => setNewUserFirstName(e.target.value)}
+                placeholder="Enter first name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                value={newUserLastName}
+                onChange={(e) => setNewUserLastName(e.target.value)}
+                placeholder="Enter last name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddUserDialogOpen(false);
+                setNewUserEmail('');
+                setNewUserFirstName('');
+                setNewUserLastName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddUser}
+              disabled={addUserMutation.isPending}
+            >
+              {addUserMutation.isPending && (
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Add User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

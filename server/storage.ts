@@ -31,6 +31,10 @@ export interface IStorage {
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  getUsersByBrand(brandId: string): Promise<User[]>;
+  createBrandUser(userData: any): Promise<User>;
+  updateBrandUser(userId: string, userData: any): Promise<User>;
+  deleteBrandUser(userId: string): Promise<void>;
   
   // 3PL operations
   getThreePL(id: string): Promise<ThreePL | undefined>;
@@ -110,6 +114,40 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async getUsersByBrand(brandId: string): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.brandId, brandId))
+      .orderBy(desc(users.createdAt));
+  }
+
+  async createBrandUser(userData: any): Promise<User> {
+    const [user] = await db.insert(users).values({
+      ...userData,
+      role: 'brand',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).returning();
+    return user;
+  }
+
+  async updateBrandUser(userId: string, userData: any): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        ...userData,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async deleteBrandUser(userId: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, userId));
   }
 
   // 3PL operations

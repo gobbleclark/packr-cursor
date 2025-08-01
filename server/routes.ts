@@ -196,6 +196,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Brand user management routes
+  app.get('/api/brands/:id/users', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'threePL' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Only 3PL managers can view brand users" });
+      }
+
+      const { id: brandId } = req.params;
+      
+      // Verify the brand belongs to this 3PL (if user is 3PL)
+      if (user.role === 'threePL' && user.threePlId) {
+        const brand = await storage.getBrand(brandId);
+        if (!brand || brand.threePlId !== user.threePlId) {
+          return res.status(403).json({ message: "Brand not found or access denied" });
+        }
+      }
+      
+      const brandUsers = await storage.getUsersByBrand(brandId);
+      res.json(brandUsers);
+    } catch (error) {
+      console.error("Error fetching brand users:", error);
+      res.status(500).json({ message: "Failed to fetch brand users" });
+    }
+  });
+
+  app.post('/api/brands/:id/users', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'threePL' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Only 3PL managers can create brand users" });
+      }
+
+      const { id: brandId } = req.params;
+      const { email, firstName, lastName } = req.body;
+      
+      // Verify the brand belongs to this 3PL
+      if (user.role === 'threePL' && user.threePlId) {
+        const brand = await storage.getBrand(brandId);
+        if (!brand || brand.threePlId !== user.threePlId) {
+          return res.status(403).json({ message: "Brand not found or access denied" });
+        }
+      }
+      
+      const brandUser = await storage.createBrandUser({
+        id: `brand-user-${Date.now()}`,
+        email,
+        firstName,
+        lastName,
+        brandId,
+      });
+      
+      res.json(brandUser);
+    } catch (error) {
+      console.error("Error creating brand user:", error);
+      res.status(500).json({ message: "Failed to create brand user" });
+    }
+  });
+
+  app.put('/api/brands/:brandId/users/:userId', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'threePL' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Only 3PL managers can update brand users" });
+      }
+
+      const { brandId, userId: targetUserId } = req.params;
+      const { email, firstName, lastName } = req.body;
+      
+      // Verify the brand belongs to this 3PL
+      if (user.role === 'threePL' && user.threePlId) {
+        const brand = await storage.getBrand(brandId);
+        if (!brand || brand.threePlId !== user.threePlId) {
+          return res.status(403).json({ message: "Brand not found or access denied" });
+        }
+      }
+      
+      const updatedUser = await storage.updateBrandUser(targetUserId, {
+        email,
+        firstName,
+        lastName,
+      });
+      
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating brand user:", error);
+      res.status(500).json({ message: "Failed to update brand user" });
+    }
+  });
+
+  app.delete('/api/brands/:brandId/users/:userId', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'threePL' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Only 3PL managers can delete brand users" });
+      }
+
+      const { brandId, userId: targetUserId } = req.params;
+      
+      // Verify the brand belongs to this 3PL
+      if (user.role === 'threePL' && user.threePlId) {
+        const brand = await storage.getBrand(brandId);
+        if (!brand || brand.threePlId !== user.threePlId) {
+          return res.status(403).json({ message: "Brand not found or access denied" });
+        }
+      }
+      
+      await storage.deleteBrandUser(targetUserId);
+      res.json({ message: "Brand user deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting brand user:", error);
+      res.status(500).json({ message: "Failed to delete brand user" });
+    }
+  });
+
   // Brand invitation route
   app.post('/api/brands/invite', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
