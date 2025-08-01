@@ -392,10 +392,18 @@ export class DatabaseStorage implements IStorage {
         orderItems: orders.orderItems,
         createdAt: orders.createdAt,
         updatedAt: orders.updatedAt,
+        lastSyncAt: orders.lastSyncAt,
       })
       .from(orders)
       .leftJoin(brands, eq(orders.brandId, brands.id))
       .where(eq(brands.threePlId, threePlId))
+      .orderBy(desc(orders.createdAt));
+  }
+
+  async getAllOrders(): Promise<Order[]> {
+    return await db
+      .select()
+      .from(orders)
       .orderBy(desc(orders.createdAt));
   }
 
@@ -452,11 +460,24 @@ export class DatabaseStorage implements IStorage {
         shipHeroProductId: products.shipHeroProductId,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
+        lastSyncAt: products.lastSyncAt,
+        weight: products.weight,
+        dimensions: products.dimensions,
+        barcode: products.barcode,
+        hsCode: products.hsCode,
+        countryOfOrigin: products.countryOfOrigin,
         brandName: brands.name,
       })
       .from(products)
       .leftJoin(brands, eq(products.brandId, brands.id))
       .where(eq(brands.threePlId, threePlId))
+      .orderBy(desc(products.createdAt));
+  }
+
+  async getAllProducts(): Promise<Product[]> {
+    return await db
+      .select()
+      .from(products)
       .orderBy(desc(products.createdAt));
   }
 

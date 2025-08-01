@@ -823,6 +823,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Orders routes
+  app.get('/api/orders', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      let orders = [];
+      
+      if (user.role === 'brand' && user.brandId) {
+        // Brand users see only their own orders
+        orders = await storage.getOrdersByBrand(user.brandId);
+      } else if (user.role === 'threePL' && user.threePlId) {
+        // 3PL users see orders from all their brands
+        orders = await storage.getOrdersByThreePL(user.threePlId);
+      } else {
+        // Admin users see all orders
+        orders = await storage.getAllOrders();
+      }
+      
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  app.put('/api/orders/:id/status', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      const order = await storage.updateOrderStatus(id, status);
+      res.json(order);
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      res.status(500).json({ message: "Failed to update order status" });
+    }
+  });
+
+  // Products routes
+  app.get('/api/products', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      let products = [];
+      
+      if (user.role === 'brand' && user.brandId) {
+        // Brand users see only their own products
+        products = await storage.getProductsByBrand(user.brandId);
+      } else if (user.role === 'threePL' && user.threePlId) {
+        // 3PL users see products from all their brands
+        products = await storage.getProductsByThreePL(user.threePlId);
+      } else {
+        // Admin users see all products
+        products = await storage.getAllProducts();
+      }
+      
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
   // Dashboard stats route
   app.get('/api/dashboard/stats', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
@@ -898,31 +971,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // In production, the ShipHeroSyncService would populate real data
         syncResults = { orders: 0, products: 0, shipments: 0 };
         
-        // Mock order sync - for demonstration when API not available
-        const mockOrders = [
+        // Create sample orders and products for demonstration
+        const sampleOrders = [
           {
             orderNumber: `SH-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
             brandId: brandId,
             customerName: 'John Doe',
             customerEmail: 'john@example.com',
-            status: 'processing',
+            status: 'processing' as const,
             totalAmount: 149.99,
             shippingMethod: 'Standard',
             trackingNumber: `1Z${Math.random().toString(36).substr(2, 16).toUpperCase()}`,
             shipHeroOrderId: `sh_${Math.random().toString(36).substr(2, 8)}`,
-            orderItems: [{ sku: 'PROD-001', name: 'Test Product', quantity: 2, price: 74.99 }],
+            orderItems: [{ sku: 'PROD-001', name: 'Wireless Earbuds', quantity: 2, price: 74.99 }],
             createdAt: new Date(),
-            updatedAt: new Date()
+            updatedAt: new Date(),
+            lastSyncAt: new Date()
+          },
+          {
+            orderNumber: `SH-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+            brandId: brandId,
+            customerName: 'Jane Smith',
+            customerEmail: 'jane@example.com',
+            status: 'shipped' as const,
+            totalAmount: 89.99,
+            shippingMethod: 'Express',
+            trackingNumber: `1Z${Math.random().toString(36).substr(2, 16).toUpperCase()}`,
+            shipHeroOrderId: `sh_${Math.random().toString(36).substr(2, 8)}`,
+            orderItems: [{ sku: 'PROD-002', name: 'Phone Case', quantity: 1, price: 89.99 }],
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            lastSyncAt: new Date()
           }
         ];
 
-        // Store orders in database
-        for (const orderData of mockOrders) {
+        const sampleProducts = [
+          {
+            name: 'Wireless Earbuds',
+            brandId: brandId,
+            sku: 'WE-001',
+            description: 'Premium wireless earbuds with noise cancellation',
+            price: '74.99',
+            quantity: 150,
+            weight: '0.5',
+            dimensions: { length: 10, width: 8, height: 3 },
+            barcode: '123456789012',
+            shipHeroProductId: `sh_prod_${Math.random().toString(36).substr(2, 8)}`,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            lastSyncAt: new Date()
+          },
+          {
+            name: 'Phone Case',
+            brandId: brandId,
+            sku: 'PC-002',
+            description: 'Protective phone case with drop protection',
+            price: '29.99',
+            quantity: 75,
+            weight: '0.2',
+            dimensions: { length: 15, width: 8, height: 1 },
+            barcode: '123456789013',
+            shipHeroProductId: `sh_prod_${Math.random().toString(36).substr(2, 8)}`,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            lastSyncAt: new Date()
+          },
+          {
+            name: 'USB Cable',
+            brandId: brandId,
+            sku: 'UC-003',
+            description: 'High-speed USB-C charging cable',
+            price: '19.99',
+            quantity: 5,  // Low stock
+            weight: '0.1',
+            dimensions: { length: 100, width: 2, height: 1 },
+            barcode: '123456789014',
+            shipHeroProductId: `sh_prod_${Math.random().toString(36).substr(2, 8)}`,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            lastSyncAt: new Date()
+          }
+        ];
+
+        // Store sample data in database
+        for (const orderData of sampleOrders) {
           try {
             await storage.createOrder(orderData);
             syncResults.orders++;
           } catch (error) {
             console.error('Failed to create order:', error);
+          }
+        }
+
+        for (const productData of sampleProducts) {
+          try {
+            await storage.createProduct(productData);
+            syncResults.products++;
+          } catch (error) {
+            console.error('Failed to create product:', error);
           }
         }
 
