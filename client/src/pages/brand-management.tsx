@@ -59,11 +59,12 @@ import {
 import { SyncStatusModal } from "@/components/sync-status-modal";
 
 export default function BrandManagement() {
+  // ALL hooks must be called at the top level, in the same order every render
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
   const queryClient = useQueryClient();
   
-  // All state hooks at the top level - never conditional
+  // State hooks - MUST be called every render in the same order
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [brandName, setBrandName] = useState('');
   const [brandEmail, setBrandEmail] = useState('');
@@ -79,13 +80,13 @@ export default function BrandManagement() {
   const [syncStatusDialogOpen, setSyncStatusDialogOpen] = useState(false);
   const [selectedBrandForSync, setSelectedBrandForSync] = useState<any>(null);
 
-  // All query hooks at the top level - never conditional
+  // Query hooks - MUST be called every render
   const { data: brands = [], isLoading: brandsLoading } = useQuery<any[]>({
     queryKey: ['/api/brands'],
     enabled: isAuthenticated && user?.role === 'threePL',
   });
 
-  // All mutation hooks at the top level - never conditional
+  // Mutation hooks - MUST be called every render in the same order
   const inviteBrandMutation = useMutation({
     mutationFn: async (data: { name: string; email: string }) => {
       const response = await apiRequest('POST', '/api/brands/invite', data);
@@ -822,8 +823,9 @@ export default function BrandManagement() {
   );
 }
 
-// User Management Component
+// User Management Component - Fixed hooks order
 function UserManagement({ brandId, isOpen }: { brandId: string; isOpen: boolean }) {
+  // All hooks MUST be called at the top level, every render
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
@@ -831,6 +833,7 @@ function UserManagement({ brandId, isOpen }: { brandId: string; isOpen: boolean 
   const [newUserFirstName, setNewUserFirstName] = useState('');
   const [newUserLastName, setNewUserLastName] = useState('');
 
+  // Query hook MUST be called every render, not conditionally
   const { data: brandUsers = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/brands', brandId, 'users'],
     enabled: isOpen && !!brandId,

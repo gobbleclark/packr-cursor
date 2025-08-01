@@ -9,7 +9,7 @@ import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import BrandDashboard from "@/pages/brand-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
-import BrandManagement from "@/pages/brand-management";
+import BrandManagementClean from "@/pages/brand-management-clean";
 import BrandInvite from "@/pages/brand-invite";
 import Messages from "@/pages/messages";
 import Orders from "@/pages/orders";
@@ -47,7 +47,7 @@ function Router() {
               if (user?.role === 'admin') return <AdminDashboard />;
               return <Dashboard />;
             }} />
-            <Route path="/brands" component={BrandManagement} />
+            <Route path="/brands" component={BrandManagementClean} />
             <Route path="/messages" component={Messages} />
             <Route path="/orders" component={Orders} />
             <Route path="/inventory" component={Inventory} />
