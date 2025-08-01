@@ -49,10 +49,8 @@ export default function BrandManagement() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const queryClient = useQueryClient();
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
-  const [isTrackstarDialogOpen, setIsTrackstarDialogOpen] = useState(false);
   const [brandName, setBrandName] = useState('');
   const [brandEmail, setBrandEmail] = useState('');
-  const [trackstarApiKey, setTrackstarApiKey] = useState('');
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -86,10 +84,7 @@ export default function BrandManagement() {
     enabled: isAuthenticated && user?.role === 'threePL',
   });
 
-  const { data: threePL, isLoading: threePlLoading } = useQuery<any>({
-    queryKey: ['/api/three-pls', user?.threePlId],
-    enabled: isAuthenticated && !!user?.threePlId,
-  });
+
 
   const inviteBrandMutation = useMutation({
     mutationFn: async (data: { name: string; email: string }) => {
@@ -131,43 +126,9 @@ export default function BrandManagement() {
     },
   });
 
-  const updateTrackstarKeyMutation = useMutation({
-    mutationFn: async (apiKey: string) => {
-      const response = await apiRequest('PUT', `/api/three-pls/${user?.threePlId}/trackstar-key`, {
-        apiKey,
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/three-pls', user?.threePlId] });
-      setTrackstarApiKey('');
-      setIsTrackstarDialogOpen(false);
-      toast({
-        title: "Success",
-        description: "Trackstar API key updated successfully",
-      });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to update Trackstar API key",
-        variant: "destructive",
-      });
-    },
-  });
 
-  if (isLoading || brandsLoading || threePlLoading) {
+
+  if (isLoading || brandsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -190,17 +151,7 @@ export default function BrandManagement() {
     inviteBrandMutation.mutate({ name: brandName, email: brandEmail });
   };
 
-  const handleUpdateTrackstarKey = () => {
-    if (!trackstarApiKey.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid Trackstar API key",
-        variant: "destructive",
-      });
-      return;
-    }
-    updateTrackstarKeyMutation.mutate(trackstarApiKey);
-  };
+
 
   const getBrandStatusBadge = (brand: any) => {
     if (!brand.isActive) {
@@ -285,73 +236,7 @@ export default function BrandManagement() {
               </div>
             </div>
 
-            {/* Trackstar Configuration */}
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Trackstar Integration
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-2">
-                      Configure your Trackstar API key to enable WMS integrations for your brands.
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">Status:</span>
-                      {threePL?.trackstarApiKey ? (
-                        <Badge variant="default" className="bg-green-50 text-green-600">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Configured
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-yellow-600 border-yellow-300">
-                          <Clock className="h-3 w-3 mr-1" />
-                          Not Configured
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <Dialog open={isTrackstarDialogOpen} onOpenChange={setIsTrackstarDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline">
-                        {threePL?.trackstarApiKey ? "Update API Key" : "Configure API Key"}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                      <DialogHeader>
-                        <DialogTitle>Trackstar API Configuration</DialogTitle>
-                        <DialogDescription>
-                          Enter your Trackstar organization API key. Contact support@trackstarhq.com to get your API key.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="trackstar-key">Trackstar API Key</Label>
-                          <Input
-                            id="trackstar-key"
-                            type="password"
-                            value={trackstarApiKey}
-                            onChange={(e) => setTrackstarApiKey(e.target.value)}
-                            placeholder="Enter your Trackstar API key"
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button
-                          onClick={handleUpdateTrackstarKey}
-                          disabled={updateTrackstarKeyMutation.isPending}
-                        >
-                          {updateTrackstarKeyMutation.isPending ? "Updating..." : "Update API Key"}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </CardContent>
-            </Card>
+
 
             {/* Brands Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

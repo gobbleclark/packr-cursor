@@ -432,7 +432,8 @@ export default function Integrations() {
                       <>
                         <div>
                           <p className="text-sm text-gray-600 mb-4">
-                            Connect to Trackstar to sync with multiple WMS platforms including ShipHero, ShipBob, Fulfillment Works, and more.
+                            Connect to Trackstar to sync with multiple WMS platforms including ShipHero, ShipBob, Fulfillment Works, and more. 
+                            <span className="font-medium text-purple-600">Uses universal API integration - no manual configuration required.</span>
                           </p>
                         </div>
 
@@ -477,7 +478,7 @@ export default function Integrations() {
                             <Globe className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                             <h3 className="text-sm font-medium text-gray-900 mb-2">Connect to Trackstar</h3>
                             <p className="text-sm text-gray-500 mb-4">
-                              Connect your WMS platform through Trackstar's universal API.
+                              Connect your WMS platform through Trackstar's universal API. No additional API keys needed - ready to connect instantly.
                             </p>
                             <Button
                               onClick={() => connectTrackstarMutation.mutate(currentBrand.id)}
