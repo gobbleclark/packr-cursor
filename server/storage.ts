@@ -195,12 +195,21 @@ export class DatabaseStorage implements IStorage {
     return brand;
   }
 
-  async getBrandsByThreePL(threePlId: string): Promise<Brand[]> {
-    return await db
+  async getBrandsByThreePL(threePlId: string): Promise<any[]> {
+    const brandResults = await db
       .select()
       .from(brands)
       .where(eq(brands.threePlId, threePlId))
       .orderBy(desc(brands.createdAt));
+
+    // Transform brands to include hasShipHeroIntegration flag
+    return brandResults.map(brand => ({
+      ...brand,
+      status: brand.isActive ? 'active' : 'invited',
+      contactEmail: brand.email,
+      hasShipHeroIntegration: !!(brand.shipHeroApiKey && brand.shipHeroPassword),
+      hasTrackstarIntegration: !!brand.trackstarAccessToken
+    }));
   }
 
   async updateBrandApiCredentials(id: string, apiKey: string, userId: string): Promise<Brand> {
