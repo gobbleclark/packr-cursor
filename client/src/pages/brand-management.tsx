@@ -53,8 +53,10 @@ import {
   UserPlus,
   Edit,
   Trash2,
-  Zap
+  Zap,
+  TrendingUp
 } from "lucide-react";
+import { SyncStatusDialog } from "./sync-status";
 
 export default function BrandManagement() {
   const { toast } = useToast();
@@ -74,6 +76,8 @@ export default function BrandManagement() {
   const [shipHeroPassword, setShipHeroPassword] = useState('');
   const [isUserManagementDialogOpen, setIsUserManagementDialogOpen] = useState(false);
   const [selectedBrandForUsers, setSelectedBrandForUsers] = useState<any>(null);
+  const [syncStatusDialogOpen, setSyncStatusDialogOpen] = useState(false);
+  const [selectedBrandForSync, setSelectedBrandForSync] = useState<any>(null);
 
   // All query hooks at the top level - never conditional
   const { data: brands = [], isLoading: brandsLoading } = useQuery<any[]>({
@@ -672,6 +676,18 @@ export default function BrandManagement() {
                                     {setupWebhooksMutation.isPending ? 'Setting up...' : 'Setup Webhooks'}
                                   </span>
                                 </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedBrandForSync(brand);
+                                    setSyncStatusDialogOpen(true);
+                                  }}
+                                  className="flex items-center gap-2"
+                                >
+                                  <TrendingUp className="h-4 w-4" />
+                                  <span className="hidden sm:inline">Sync Status</span>
+                                </Button>
                               </>
                             )}
                           </>
@@ -1024,6 +1040,19 @@ function UserManagement({ brandId, isOpen }: { brandId: string; isOpen: boolean 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Sync Status Dialog */}
+      {selectedBrandForSync && (
+        <SyncStatusDialog
+          brandId={selectedBrandForSync.id}
+          brandName={selectedBrandForSync.name}
+          isOpen={syncStatusDialogOpen}
+          onClose={() => {
+            setSyncStatusDialogOpen(false);
+            setSelectedBrandForSync(null);
+          }}
+        />
+      )}
     </div>
   );
 }
