@@ -953,144 +953,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Brand not found" });
       }
 
-      // Use the comprehensive ShipHero sync service
-      let syncResults = { orders: 0, products: 0, shipments: 0 };
+      // Use REAL API sync service - NO dummy data
+      const { realApiSync } = await import('./services/realApiSync');
+      const syncResult = await realApiSync.syncBrandData(brandId);
 
-      if (brand.shipHeroApiKey && brand.shipHeroPassword) {
-        console.log(`Starting comprehensive sync for brand ${brand.name} with ShipHero`);
-        
-        // For now, simulate comprehensive sync with mock data to demonstrate the system
-        console.log(`⚡ Simulating comprehensive ShipHero sync for brand ${brand.name}`);
-        
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Real ShipHero sync would happen here
-        console.log(`✅ Sync completed for brand ${brand.name} - no dummy data created`);
-        
-        // In production, the ShipHeroSyncService would populate real data
-        syncResults = { orders: 0, products: 0, shipments: 0 };
-        
-        // Create sample orders and products for demonstration
-        const sampleOrders = [
-          {
-            orderNumber: `SH-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-            brandId: brandId,
-            customerName: 'John Doe',
-            customerEmail: 'john@example.com',
-            status: 'processing' as const,
-            totalAmount: 149.99,
-            shippingMethod: 'Standard',
-            trackingNumber: `1Z${Math.random().toString(36).substr(2, 16).toUpperCase()}`,
-            shipHeroOrderId: `sh_${Math.random().toString(36).substr(2, 8)}`,
-            orderItems: [{ sku: 'PROD-001', name: 'Wireless Earbuds', quantity: 2, price: 74.99 }],
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            lastSyncAt: new Date()
-          },
-          {
-            orderNumber: `SH-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-            brandId: brandId,
-            customerName: 'Jane Smith',
-            customerEmail: 'jane@example.com',
-            status: 'shipped' as const,
-            totalAmount: 89.99,
-            shippingMethod: 'Express',
-            trackingNumber: `1Z${Math.random().toString(36).substr(2, 16).toUpperCase()}`,
-            shipHeroOrderId: `sh_${Math.random().toString(36).substr(2, 8)}`,
-            orderItems: [{ sku: 'PROD-002', name: 'Phone Case', quantity: 1, price: 89.99 }],
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            lastSyncAt: new Date()
-          }
-        ];
-
-        const sampleProducts = [
-          {
-            name: 'Wireless Earbuds',
-            brandId: brandId,
-            sku: 'WE-001',
-            description: 'Premium wireless earbuds with noise cancellation',
-            price: '74.99',
-            quantity: 150,
-            weight: '0.5',
-            dimensions: { length: 10, width: 8, height: 3 },
-            barcode: '123456789012',
-            shipHeroProductId: `sh_prod_${Math.random().toString(36).substr(2, 8)}`,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            lastSyncAt: new Date()
-          },
-          {
-            name: 'Phone Case',
-            brandId: brandId,
-            sku: 'PC-002',
-            description: 'Protective phone case with drop protection',
-            price: '29.99',
-            quantity: 75,
-            weight: '0.2',
-            dimensions: { length: 15, width: 8, height: 1 },
-            barcode: '123456789013',
-            shipHeroProductId: `sh_prod_${Math.random().toString(36).substr(2, 8)}`,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            lastSyncAt: new Date()
-          },
-          {
-            name: 'USB Cable',
-            brandId: brandId,
-            sku: 'UC-003',
-            description: 'High-speed USB-C charging cable',
-            price: '19.99',
-            quantity: 5,  // Low stock
-            weight: '0.1',
-            dimensions: { length: 100, width: 2, height: 1 },
-            barcode: '123456789014',
-            shipHeroProductId: `sh_prod_${Math.random().toString(36).substr(2, 8)}`,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            lastSyncAt: new Date()
-          }
-        ];
-
-        // Store sample data in database
-        for (const orderData of sampleOrders) {
-          try {
-            await storage.createOrder(orderData);
-            syncResults.orders++;
-            console.log(`✅ Created order: ${orderData.orderNumber}`);
-          } catch (error) {
-            console.error('❌ Failed to create order:', error);
-          }
-        }
-
-        for (const productData of sampleProducts) {
-          try {
-            await storage.createProduct(productData);
-            syncResults.products++;
-            console.log(`✅ Created product: ${productData.name} (${productData.sku})`);
-          } catch (error) {
-            console.error('❌ Failed to create product:', error);
-          }
-        }
-
-        console.log(`📊 Initial sync completed for ${brand.name}: ${syncResults.orders} orders, ${syncResults.products} products created`);
+      if (syncResult.success) {
+        console.log(`✅ Real API sync completed for ${brand.name}: ${syncResult.orders} orders, ${syncResult.products} products`);
+      } else {
+        console.log(`❌ Real API sync failed for ${brand.name}: ${syncResult.errors.join(', ')}`);
       }
 
-      res.json({
-        message: "Sync completed successfully",
-        results: syncResults,
-        timestamp: new Date().toISOString(),
-        details: {
-          ordersProcessed: syncResults.orders,
-          productsProcessed: syncResults.products,
-          shipmentsProcessed: syncResults.shipments || 0,
-          nextSync: "Automatic sync every 5 minutes for orders"
-        }
-      });
+      if (syncResult.success) {
+        res.json({
+          success: true,
+          message: `Real API sync completed for ${brand.name}`,
+          results: {
+            orders: syncResult.orders,
+            products: syncResult.products,
+            shipments: syncResult.shipments
+          },
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: "Real API sync failed",
+          errors: syncResult.errors,
+          results: {
+            orders: syncResult.orders,
+            products: syncResult.products,
+            shipments: syncResult.shipments
+          }
+        });
+      }
     } catch (error) {
-      console.error("Error syncing brand data:", error);
-      res.status(500).json({ message: "Failed to sync brand data" });
+      console.error("Real API sync error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Real API sync failed", 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
     }
   });
 

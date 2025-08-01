@@ -99,6 +99,35 @@ export class DatabaseStorage implements IStorage {
     return order;
   }
 
+  async getOrderByTrackstarId(trackstarOrderId: string): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.trackstarOrderId, trackstarOrderId));
+    return order;
+  }
+
+  async getProductByShipHeroId(shipHeroProductId: string): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.shipHeroProductId, shipHeroProductId));
+    return product;
+  }
+
+  async getProductByTrackstarId(trackstarProductId: string): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.trackstarProductId, trackstarProductId));
+    return product;
+  }
+
+  async updateBrandSyncStatus(brandId: string, lastSyncAt: Date): Promise<void> {
+    await db.update(brands).set({ lastSyncAt }).where(eq(brands.id, brandId));
+  }
+
+  async updateOrder(id: string, orderData: any): Promise<Order> {
+    const [order] = await db.update(orders).set(orderData).where(eq(orders.id, id)).returning();
+    return order;
+  }
+
+  async updateProduct(id: string, productData: any): Promise<Product> {
+    const [product] = await db.update(products).set(productData).where(eq(products.id, id)).returning();
+    return product;
+  }
+
   async getBrandsWithShipHeroCredentials(): Promise<Brand[]> {
     return await db.select().from(brands).where(
       and(

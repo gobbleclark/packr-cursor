@@ -1,0 +1,304 @@
+/**
+ * Real API Synchronization Service
+ * Only pulls and stores real data from ShipHero and Trackstar APIs
+ * NO dummy data or mock data whatsoever
+ */
+
+import { shipHeroApi } from './shipHeroApi';
+import { trackstarApi } from './trackstarApi';
+import { storage } from '../storage';
+
+interface SyncResult {
+  success: boolean;
+  orders: number;
+  products: number;
+  shipments: number;
+  errors: string[];
+}
+
+export class RealApiSyncService {
+  
+  async syncBrandData(brandId: string): Promise<SyncResult> {
+    const result: SyncResult = {
+      success: false,
+      orders: 0,
+      products: 0,
+      shipments: 0,
+      errors: []
+    };
+
+    try {
+      const brand = await storage.getBrand(brandId);
+      if (!brand) {
+        result.errors.push('Brand not found');
+        return result;
+      }
+
+      console.log(`🔄 Starting real API sync for brand: ${brand.name}`);
+
+      // Sync from ShipHero if credentials are available
+      if (brand.shipHeroApiKey && brand.shipHeroPassword) {
+        console.log(`📡 Syncing from ShipHero API for ${brand.name}...`);
+        const shipHeroResult = await this.syncShipHeroData(brand);
+        result.orders += shipHeroResult.orders;
+        result.products += shipHeroResult.products;
+        result.shipments += shipHeroResult.shipments;
+        result.errors.push(...shipHeroResult.errors);
+      }
+
+      // Sync from Trackstar if credentials are available
+      if (brand.trackstarApiKey) {
+        console.log(`📡 Syncing from Trackstar API for ${brand.name}...`);
+        const trackstarResult = await this.syncTrackstarData(brand);
+        result.orders += trackstarResult.orders;
+        result.products += trackstarResult.products;
+        result.shipments += trackstarResult.shipments;
+        result.errors.push(...trackstarResult.errors);
+      }
+
+      // If no credentials are configured, return appropriate message
+      if (!brand.shipHeroApiKey && !brand.shipHeroPassword && !brand.trackstarApiKey) {
+        result.errors.push('No API credentials configured for this brand. Please add ShipHero or Trackstar credentials to sync real data.');
+        return result;
+      }
+
+      result.success = result.errors.length === 0;
+      
+      // Update brand's last sync timestamp
+      await storage.updateBrandSyncStatus(brandId, new Date());
+      
+      console.log(`✅ Real API sync completed for ${brand.name}: ${result.orders} orders, ${result.products} products, ${result.shipments} shipments`);
+      
+      return result;
+
+    } catch (error) {
+      console.error(`❌ Real API sync failed for brand ${brandId}:`, error);
+      result.errors.push(`Sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return result;
+    }
+  }
+
+  private async syncShipHeroData(brand: any): Promise<SyncResult> {
+    const result: SyncResult = { success: false, orders: 0, products: 0, shipments: 0, errors: [] };
+
+    try {
+      const credentials = {
+        username: brand.shipHeroApiKey,
+        password: brand.shipHeroPassword
+      };
+
+      // Test connection first
+      const connectionValid = await shipHeroApi.testConnection(credentials);
+      if (!connectionValid) {
+        result.errors.push('ShipHero API connection failed - please check credentials');
+        return result;
+      }
+
+      // Sync Orders (last 7 days)
+      const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const orders = await shipHeroApi.getOrders(credentials, lastWeek);
+      
+      for (const shipHeroOrder of orders) {
+        const orderData = {
+          orderNumber: shipHeroOrder.order_number,
+          brandId: brand.id,
+          customerName: shipHeroOrder.profile?.name || `${shipHeroOrder.shipping_address?.first_name} ${shipHeroOrder.shipping_address?.last_name}`.trim(),
+          customerEmail: shipHeroOrder.email,
+          status: this.mapShipHeroStatus(shipHeroOrder.fulfillment_status),
+          totalAmount: parseFloat(shipHeroOrder.total_price || '0'),
+          shippingMethod: shipHeroOrder.shipments?.[0]?.method || 'Standard',
+          trackingNumber: shipHeroOrder.shipments?.[0]?.tracking_number || null,
+          shipHeroOrderId: shipHeroOrder.id,
+          orderItems: shipHeroOrder.line_items.map(item => ({
+            sku: item.sku,
+            name: item.title,
+            quantity: item.quantity,
+            price: parseFloat(item.price || '0')
+          })),
+          shippingAddress: shipHeroOrder.shipping_address ? {
+            name: `${shipHeroOrder.shipping_address.first_name} ${shipHeroOrder.shipping_address.last_name}`.trim(),
+            address1: shipHeroOrder.shipping_address.address1,
+            address2: shipHeroOrder.shipping_address.address2,
+            city: shipHeroOrder.shipping_address.city,
+            state: shipHeroOrder.shipping_address.state,
+            country: shipHeroOrder.shipping_address.country,
+            zipCode: shipHeroOrder.shipping_address.zip
+          } : null,
+          createdAt: new Date(shipHeroOrder.order_date),
+          updatedAt: new Date(),
+          lastSyncAt: new Date()
+        };
+
+        // Check if order already exists to prevent duplicates
+        const existingOrder = await storage.getOrderByShipHeroId(shipHeroOrder.id);
+        if (!existingOrder) {
+          await storage.createOrder(orderData);
+          result.orders++;
+        } else {
+          await storage.updateOrder(existingOrder.id, orderData);
+        }
+      }
+
+      // Sync Products
+      const products = await shipHeroApi.getProducts(credentials);
+      
+      for (const shipHeroProduct of products) {
+        const productData = {
+          name: shipHeroProduct.name,
+          brandId: brand.id,
+          sku: shipHeroProduct.sku,
+          description: shipHeroProduct.customs_description || shipHeroProduct.product_note || '',
+          price: shipHeroProduct.price || '0',
+          inventoryCount: shipHeroProduct.total_available || 0,
+          weight: shipHeroProduct.weight || '0',
+          dimensions: {
+            length: parseFloat(shipHeroProduct.length || '0'),
+            width: parseFloat(shipHeroProduct.width || '0'),
+            height: parseFloat(shipHeroProduct.height || '0')
+          },
+          barcode: shipHeroProduct.barcode || '',
+          shipHeroProductId: shipHeroProduct.id,
+          countryOfOrigin: shipHeroProduct.country_of_origin || '',
+          hsCode: shipHeroProduct.customs_description_2 || '',
+          reservedQuantity: shipHeroProduct.total_committed || 0,
+          lowStockThreshold: 10, // Default threshold
+          createdAt: new Date(shipHeroProduct.created_at || Date.now()),
+          updatedAt: new Date(),
+          lastSyncAt: new Date()
+        };
+
+        // Check if product already exists to prevent duplicates
+        const existingProduct = await storage.getProductByShipHeroId(shipHeroProduct.id);
+        if (!existingProduct) {
+          await storage.createProduct(productData);
+          result.products++;
+        } else {
+          await storage.updateProduct(existingProduct.id, productData);
+        }
+      }
+
+      result.success = true;
+      return result;
+
+    } catch (error) {
+      console.error('ShipHero sync error:', error);
+      result.errors.push(`ShipHero sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return result;
+    }
+  }
+
+  private async syncTrackstarData(brand: any): Promise<SyncResult> {
+    const result: SyncResult = { success: false, orders: 0, products: 0, shipments: 0, errors: [] };
+
+    try {
+      const credentials = { apiKey: brand.trackstarApiKey };
+
+      // Test connection first
+      const connectionValid = await trackstarApi.testConnection(credentials);
+      if (!connectionValid) {
+        result.errors.push('Trackstar API connection failed - please check credentials');
+        return result;
+      }
+
+      // Sync Orders (last 7 days)
+      const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const orders = await trackstarApi.getOrders(credentials, lastWeek);
+      
+      for (const trackstarOrder of orders) {
+        const orderData = {
+          orderNumber: trackstarOrder.orderNumber,
+          brandId: brand.id,
+          customerName: trackstarOrder.customerName,
+          customerEmail: trackstarOrder.customerEmail,
+          status: this.mapTrackstarStatus(trackstarOrder.status),
+          totalAmount: trackstarOrder.totalAmount,
+          shippingMethod: trackstarOrder.shippingMethod,
+          trackingNumber: trackstarOrder.trackingNumber || null,
+          orderItems: trackstarOrder.items,
+          shippingAddress: trackstarOrder.shippingAddress,
+          createdAt: new Date(trackstarOrder.createdAt),
+          updatedAt: new Date(),
+          lastSyncAt: new Date()
+        };
+
+        // Check if order already exists to prevent duplicates
+        const existingOrder = await storage.getOrderByTrackstarId(trackstarOrder.orderId);
+        if (!existingOrder) {
+          await storage.createOrder(orderData);
+          result.orders++;
+        } else {
+          await storage.updateOrder(existingOrder.id, orderData);
+        }
+      }
+
+      // Sync Products
+      const products = await trackstarApi.getProducts(credentials);
+      
+      for (const trackstarProduct of products) {
+        const productData = {
+          name: trackstarProduct.name,
+          brandId: brand.id,
+          sku: trackstarProduct.sku,
+          description: trackstarProduct.description || '',
+          price: trackstarProduct.price.toString(),
+          inventoryCount: trackstarProduct.inventoryCount,
+          weight: trackstarProduct.weight?.toString() || '0',
+          dimensions: trackstarProduct.dimensions || { length: 0, width: 0, height: 0 },
+          barcode: trackstarProduct.barcode || '',
+          lowStockThreshold: trackstarProduct.lowStockThreshold || 10,
+          createdAt: new Date(trackstarProduct.createdAt),
+          updatedAt: new Date(),
+          lastSyncAt: new Date()
+        };
+
+        // Check if product already exists to prevent duplicates
+        const existingProduct = await storage.getProductByTrackstarId(trackstarProduct.productId);
+        if (!existingProduct) {
+          await storage.createProduct(productData);
+          result.products++;
+        } else {
+          await storage.updateProduct(existingProduct.id, productData);
+        }
+      }
+
+      result.success = true;
+      return result;
+
+    } catch (error) {
+      console.error('Trackstar sync error:', error);
+      result.errors.push(`Trackstar sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return result;
+    }
+  }
+
+  private mapShipHeroStatus(status: string): 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' {
+    const statusMap: { [key: string]: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' } = {
+      'pending': 'pending',
+      'awaiting_fulfillment': 'pending',
+      'partially_fulfilled': 'processing',
+      'fulfilled': 'shipped',
+      'shipped': 'shipped',
+      'delivered': 'delivered',
+      'cancelled': 'cancelled',
+      'canceled': 'cancelled'
+    };
+    
+    return statusMap[status.toLowerCase()] || 'pending';
+  }
+
+  private mapTrackstarStatus(status: string): 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' {
+    const statusMap: { [key: string]: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' } = {
+      'pending': 'pending',
+      'processing': 'processing',
+      'fulfilled': 'shipped',
+      'shipped': 'shipped',
+      'delivered': 'delivered',
+      'cancelled': 'cancelled',
+      'canceled': 'cancelled'
+    };
+    
+    return statusMap[status.toLowerCase()] || 'pending';
+  }
+}
+
+export const realApiSync = new RealApiSyncService();
