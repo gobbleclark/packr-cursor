@@ -32,7 +32,11 @@ import {
   Menu,
   X,
   Copy,
-  Mail
+  Mail,
+  Building2,
+  Zap,
+  LogOut,
+  Warehouse
 } from "lucide-react";
 
 export default function MobileApp() {
@@ -273,44 +277,90 @@ export default function MobileApp() {
                 <Button 
                   variant="ghost" 
                   className="w-full justify-start"
-                  onClick={() => window.location.href = "/"}
+                  onClick={() => {
+                    window.location.href = "/";
+                    setIsMenuOpen(false);
+                  }}
                 >
                   <BarChart3 className="h-4 w-4 mr-3" />
                   Dashboard
                 </Button>
+                
+                {/* Brand Management - Only for 3PL users */}
+                {user?.role === 'threePL' && (
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start"
+                    onClick={() => {
+                      window.location.href = "/brands";
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    <Building2 className="h-4 w-4 mr-3" />
+                    Brand Management
+                  </Button>
+                )}
+                
                 <Button 
                   variant="ghost" 
                   className="w-full justify-start"
-                  onClick={() => window.location.href = "/orders"}
+                  onClick={() => {
+                    window.location.href = "/orders";
+                    setIsMenuOpen(false);
+                  }}
                 >
                   <Package className="h-4 w-4 mr-3" />
                   Orders
                 </Button>
+                
                 <Button 
                   variant="ghost" 
                   className="w-full justify-start"
-                  onClick={() => window.location.href = "/messages"}
+                  onClick={() => {
+                    window.location.href = "/inventory";
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  <Warehouse className="h-4 w-4 mr-3" />
+                  Inventory
+                </Button>
+                
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start"
+                  onClick={() => {
+                    window.location.href = "/messages";
+                    setIsMenuOpen(false);
+                  }}
                 >
                   <MessageSquare className="h-4 w-4 mr-3" />
-                  Messages
+                  Support Tickets
                 </Button>
+                
                 <Button 
                   variant="ghost" 
                   className="w-full justify-start"
-                  onClick={() => window.location.href = "/integrations"}
+                  onClick={() => {
+                    window.location.href = "/integrations";
+                    setIsMenuOpen(false);
+                  }}
                 >
-                  <SettingsIcon className="h-4 w-4 mr-3" />
+                  <Zap className="h-4 w-4 mr-3" />
                   Integrations
                 </Button>
-              </div>
-              <div className="pt-4 border-t">
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => window.location.href = "/api/logout"}
-                >
-                  Sign Out
-                </Button>
+                
+                <div className="pt-4 border-t border-gray-200">
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => {
+                      window.location.href = "/api/logout";
+                    }}
+                  >
+                    <LogOut className="h-4 w-4 mr-3" />
+                    Sign Out
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
