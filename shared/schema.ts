@@ -65,6 +65,7 @@ export const brands = pgTable("brands", {
   email: varchar("email"),
   threePlId: varchar("three_pl_id").notNull().references(() => threePLs.id),
   shipHeroApiKey: varchar("ship_hero_api_key"),
+  shipHeroPassword: varchar("ship_hero_password"),
   shipHeroUserId: varchar("ship_hero_user_id"),
   trackstarAccessToken: varchar("trackstar_access_token"),
   trackstarConnectionId: varchar("trackstar_connection_id"),

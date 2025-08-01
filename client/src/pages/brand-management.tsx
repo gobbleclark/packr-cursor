@@ -337,6 +337,44 @@ export default function BrandManagement() {
     setIsUserManagementDialogOpen(true);
   };
 
+  const syncBrandMutation = useMutation({
+    mutationFn: async (brandId: string) => {
+      const response = await apiRequest('POST', `/api/brands/${brandId}/sync`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Sync Completed",
+        description: `Synced ${data.results.orders} orders and ${data.results.products} products`,
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Sync Failed",
+        description: "Failed to sync brand data",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSyncBrand = (brandId: string) => {
+    syncBrandMutation.mutate(brandId);
+  };
+
   const getBrandStatusBadge = (brand: any) => {
     if (!brand.isActive) {
       return <Badge variant="outline" className="text-yellow-600 border-yellow-300">Pending Invitation</Badge>;
@@ -349,13 +387,13 @@ export default function BrandManagement() {
     const hasTrackstar = brand.trackstarAccessToken;
     
     if (hasShipHero && hasTrackstar) {
-      return <Badge variant="default" className="bg-blue-50 text-blue-600">ShipHero + Trackstar</Badge>;
+      return <Badge variant="default" className="bg-blue-50 text-blue-600 border-blue-200">ShipHero + Trackstar</Badge>;
     } else if (hasShipHero) {
-      return <Badge variant="secondary">ShipHero Only</Badge>;
+      return <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">ShipHero Connected</Badge>;
     } else if (hasTrackstar) {
-      return <Badge variant="secondary">Trackstar Only</Badge>;
+      return <Badge variant="outline" className="bg-purple-50 text-purple-600 border-purple-200">Trackstar Connected</Badge>;
     } else {
-      return <Badge variant="outline">No Integration</Badge>;
+      return <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">No Integration</Badge>;
     }
   };
 
@@ -567,6 +605,17 @@ export default function BrandManagement() {
                               <Users className="h-4 w-4" />
                               <span className="hidden sm:inline">Manage Users</span>
                             </Button>
+                            {brand.shipHeroApiKey && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleSyncBrand(brand.id)}
+                                className="flex items-center gap-2"
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                                <span className="hidden sm:inline">Sync Data</span>
+                              </Button>
+                            )}
                           </>
                         )}
                       </div>

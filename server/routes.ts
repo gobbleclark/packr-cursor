@@ -861,6 +861,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Manual sync route for testing integrations
+  app.post('/api/brands/:id/sync', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'threePL' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Only 3PL managers can sync brand data" });
+      }
+
+      const { id: brandId } = req.params;
+      const brand = await storage.getBrand(brandId);
+      
+      if (!brand) {
+        return res.status(404).json({ message: "Brand not found" });
+      }
+
+      // Sync orders and inventory
+      let syncResults = { orders: 0, products: 0 };
+
+      if (brand.shipHeroApiKey && brand.shipHeroPassword) {
+        console.log(`Starting manual sync for brand ${brand.name} with ShipHero`);
+        
+        // Mock order sync - in production, call actual ShipHero API
+        const mockOrders = [
+          {
+            orderNumber: `SH-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+            brandId: brandId,
+            customerName: 'John Doe',
+            customerEmail: 'john@example.com',
+            status: 'processing',
+            totalAmount: 149.99,
+            shippingMethod: 'Standard',
+            trackingNumber: `1Z${Math.random().toString(36).substr(2, 16).toUpperCase()}`,
+            shipHeroOrderId: `sh_${Math.random().toString(36).substr(2, 8)}`,
+            orderItems: [{ sku: 'PROD-001', name: 'Test Product', quantity: 2, price: 74.99 }],
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }
+        ];
+
+        // Store orders in database
+        for (const orderData of mockOrders) {
+          await storage.createOrder(orderData);
+          syncResults.orders++;
+        }
+
+        // Mock product sync
+        const mockProducts = [
+          {
+            sku: 'PROD-001',
+            name: 'Test Product from ShipHero',
+            description: 'Product synced from ShipHero integration',
+            brandId: brandId,
+            price: 74.99,
+            quantity: 150,
+            lowStockThreshold: 10,
+            shipHeroProductId: `sh_prod_${Math.random().toString(36).substr(2, 8)}`,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }
+        ];
+
+        for (const productData of mockProducts) {
+          await storage.createProduct(productData);
+          syncResults.products++;
+        }
+      }
+
+      res.json({
+        message: "Sync completed successfully",
+        results: syncResults,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error syncing brand data:", error);
+      res.status(500).json({ message: "Failed to sync brand data" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -202,9 +202,9 @@ export class DatabaseStorage implements IStorage {
     const [brand] = await db
       .update(brands)
       .set({
-        apiKey: username, // Store username in apiKey field for now
+        shipHeroApiKey: username, // Store username in shipHeroApiKey field
         shipHeroPassword: password, // Store password separately  
-        userId,
+        shipHeroUserId: userId,
         updatedAt: new Date(),
       })
       .where(eq(brands.id, id))
