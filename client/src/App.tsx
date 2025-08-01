@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import Layout from "@/components/layout/layout";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import BrandDashboard from "@/pages/brand-dashboard";
@@ -38,18 +39,21 @@ function Router() {
           <Route path="/invite/:token" component={BrandInvite} />
         </>
       ) : (
-        <>
-          <Route path="/" component={() => {
-            if (user?.role === 'brand') return <BrandDashboard />;
-            if (user?.role === 'admin') return <AdminDashboard />;
-            return <Dashboard />;
-          }} />
-          <Route path="/brands" component={BrandManagement} />
-          <Route path="/messages" component={Messages} />
-          <Route path="/orders" component={Orders} />
-          <Route path="/inventory" component={Inventory} />
-          <Route path="/integrations" component={Integrations} />
-        </>
+        <Layout>
+          <Switch>
+            <Route path="/" component={() => {
+              if (user?.role === 'brand') return <BrandDashboard />;
+              if (user?.role === 'admin') return <AdminDashboard />;
+              return <Dashboard />;
+            }} />
+            <Route path="/brands" component={BrandManagement} />
+            <Route path="/messages" component={Messages} />
+            <Route path="/orders" component={Orders} />
+            <Route path="/inventory" component={Inventory} />
+            <Route path="/integrations" component={Integrations} />
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
       )}
       <Route component={NotFound} />
     </Switch>

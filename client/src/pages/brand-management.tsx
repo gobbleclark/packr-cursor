@@ -4,8 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
-import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -227,9 +226,6 @@ export default function BrandManagement() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="flex">
-        <Sidebar />
         <main className="flex-1 p-8">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
@@ -450,7 +446,6 @@ export default function BrandManagement() {
             )}
           </div>
         </main>
-      </div>
     </div>
   );
 }

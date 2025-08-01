@@ -2,8 +2,6 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
 import StatsCards from "@/components/dashboard/stats-cards";
 import RecentActivity from "@/components/dashboard/recent-activity";
 
@@ -39,11 +37,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="flex h-screen pt-16">
-        <Sidebar />
-        
-        <main className="flex-1 relative z-0 overflow-y-auto focus:outline-none">
+      <main className="flex-1 relative z-0 overflow-y-auto focus:outline-none">
           {/* Dashboard Header */}
           <div className="bg-white shadow-sm border-b border-gray-200">
             <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -87,7 +81,6 @@ export default function Dashboard() {
             </div>
           </div>
         </main>
-      </div>
     </div>
   );
 }

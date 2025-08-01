@@ -4,8 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
-import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -100,10 +99,6 @@ export default function Inventory() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="flex h-screen pt-16">
-        <Sidebar />
-        
         <main className="flex-1 relative z-0 overflow-y-auto focus:outline-none">
           {/* Inventory Header */}
           <div className="bg-white shadow-sm border-b border-gray-200">
@@ -294,7 +289,6 @@ export default function Inventory() {
             )}
           </div>
         </main>
-      </div>
     </div>
   );
 }
