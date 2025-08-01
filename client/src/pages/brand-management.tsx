@@ -70,7 +70,7 @@ export default function BrandManagement() {
       }
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
       setBrandName('');
       setBrandEmail('');
@@ -81,7 +81,12 @@ export default function BrandManagement() {
         description: "Copy the invitation link and send it to the brand.",
       });
       
-      navigator.clipboard.writeText(data.invitationLink);
+      // Try to copy to clipboard, but don't fail if it doesn't work
+      try {
+        await navigator.clipboard.writeText(data.invitationLink);
+      } catch (clipboardError) {
+        console.warn("Failed to copy to clipboard:", clipboardError);
+      }
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -111,7 +116,7 @@ export default function BrandManagement() {
       }
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
       
       toast({
@@ -123,7 +128,11 @@ export default function BrandManagement() {
       });
       
       if (data.invitationLink) {
-        navigator.clipboard.writeText(data.invitationLink);
+        try {
+          await navigator.clipboard.writeText(data.invitationLink);
+        } catch (clipboardError) {
+          console.warn("Failed to copy to clipboard:", clipboardError);
+        }
       }
     },
     onError: (error) => {
@@ -234,13 +243,23 @@ export default function BrandManagement() {
     }
   };
 
-  const handleCopyInviteLink = (inviteToken: string) => {
+  const handleCopyInviteLink = async (inviteToken: string) => {
     const inviteLink = `${window.location.origin}/brand-invite/${inviteToken}`;
-    navigator.clipboard.writeText(inviteLink);
-    toast({
-      title: "Link Copied",
-      description: "Invitation link copied to clipboard",
-    });
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      toast({
+        title: "Link Copied",
+        description: "Invitation link copied to clipboard",
+      });
+    } catch (clipboardError) {
+      console.warn("Failed to copy to clipboard:", clipboardError);
+      // Fallback: show the link in a toast so user can copy manually
+      toast({
+        title: "Copy Link Manually",
+        description: inviteLink,
+        variant: "outline",
+      });
+    }
   };
 
   return (
