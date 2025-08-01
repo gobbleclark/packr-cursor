@@ -1,6 +1,14 @@
 # Overview
 
-This is a comprehensive 3PL (Third-Party Logistics) management SaaS platform built with React and Express.js. The application enables 3PL companies to manage their brand clients, handle support tickets, track orders, manage inventory, and integrate with ShipHero's fulfillment API. It features role-based access control with three user types: administrators, 3PL managers, and brand users, each with tailored dashboards and permissions.
+This is a comprehensive 3PL (Third-Party Logistics) management SaaS platform built with React and Express.js. The application enables 3PL companies to manage their brand clients through a complete invitation workflow, handle support tickets, track orders, manage inventory, and integrate with both ShipHero and Trackstar APIs for universal WMS connectivity. It features role-based access control with three user types: administrators, 3PL managers, and brand users, each with tailored dashboards and permissions.
+
+## Recent Updates (August 2025)
+- ✅ Brand creation and invitation system with automated SendGrid email notifications
+- ✅ Trackstar API integration for universal WMS platform connectivity
+- ✅ Enhanced multi-tenant architecture with brand invitation workflow
+- ✅ Database schema updated with brand invitations and Trackstar integration tables
+- ✅ Brand management dashboard for 3PL users with invitation tracking
+- ✅ Comprehensive integrations page supporting both ShipHero and Trackstar
 
 # User Preferences
 
@@ -60,6 +68,8 @@ Preferred communication style: Simple, everyday language.
 
 ## Third-Party APIs
 - **ShipHero API**: E-commerce fulfillment platform integration for order and inventory management (currently mocked, ready for production implementation)
+- **Trackstar API**: Universal WMS API platform that connects to multiple fulfillment providers (ShipHero, ShipBob, Fulfillment Works, etc.) through a single unified interface
+- **SendGrid API**: Email delivery service for automated brand invitation emails and notifications
 
 ## Development & Deployment
 - **Replit Platform**: Development environment with built-in deployment capabilities
