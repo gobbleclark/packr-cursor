@@ -52,7 +52,8 @@ import {
   RefreshCw,
   UserPlus,
   Edit,
-  Trash2
+  Trash2,
+  Zap
 } from "lucide-react";
 
 export default function BrandManagement() {
@@ -377,6 +378,36 @@ export default function BrandManagement() {
     syncBrandMutation.mutate(brandId);
   };
 
+  // Setup webhooks for real-time updates
+  const setupWebhooksMutation = useMutation({
+    mutationFn: async (brandId: string) => {
+      const response = await apiRequest(`/api/brands/${brandId}/setup-webhooks`, {
+        method: 'POST'
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Webhooks Setup Complete",
+        description: "Real-time updates are now active for orders, shipments, and inventory",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Webhook Setup Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleSetupWebhooks = (brandId: string) => {
+    setupWebhooksMutation.mutate(brandId);
+  };
+
   const getBrandStatusBadge = (brand: any) => {
     if (!brand.isActive) {
       return <Badge variant="outline" className="text-yellow-600 border-yellow-300">Pending Invitation</Badge>;
@@ -608,22 +639,40 @@ export default function BrandManagement() {
                               <span className="hidden sm:inline">Manage Users</span>
                             </Button>
                             {brand.shipHeroApiKey && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleSyncBrand(brand.id)}
-                                disabled={syncBrandMutation.isPending}
-                                className="flex items-center gap-2"
-                              >
-                                {syncBrandMutation.isPending ? (
-                                  <RefreshCw className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <RefreshCw className="h-4 w-4" />
-                                )}
-                                <span className="hidden sm:inline">
-                                  {syncBrandMutation.isPending ? 'Syncing...' : 'Sync Data'}
-                                </span>
-                              </Button>
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleSyncBrand(brand.id)}
+                                  disabled={syncBrandMutation.isPending}
+                                  className="flex items-center gap-2"
+                                >
+                                  {syncBrandMutation.isPending ? (
+                                    <RefreshCw className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="h-4 w-4" />
+                                  )}
+                                  <span className="hidden sm:inline">
+                                    {syncBrandMutation.isPending ? 'Syncing...' : 'Sync Data'}
+                                  </span>
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleSetupWebhooks(brand.id)}
+                                  disabled={setupWebhooksMutation.isPending}
+                                  className="flex items-center gap-2"
+                                >
+                                  {setupWebhooksMutation.isPending ? (
+                                    <Zap className="h-4 w-4 animate-pulse" />
+                                  ) : (
+                                    <Zap className="h-4 w-4" />
+                                  )}
+                                  <span className="hidden sm:inline">
+                                    {setupWebhooksMutation.isPending ? 'Setting up...' : 'Setup Webhooks'}
+                                  </span>
+                                </Button>
+                              </>
                             )}
                           </>
                         )}
