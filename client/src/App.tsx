@@ -4,9 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
-import { useMobile } from "@/hooks/use-mobile";
 import Layout from "@/components/layout/layout";
-import { MobileRedirect } from "@/components/mobile-redirect";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import BrandDashboard from "@/pages/brand-dashboard";
@@ -22,10 +20,6 @@ import NotFound from "@/pages/not-found";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const { isMobile } = useMobile();
-  
-  // Check if user prefers desktop view
-  const preferDesktop = sessionStorage.getItem('preferDesktop') === 'true';
 
   if (isLoading) {
     return (
@@ -43,29 +37,24 @@ function Router() {
       {!isAuthenticated ? (
         <>
           <Route path="/" component={Landing} />
-          <Route path="/invite/:token" component={BrandInvite} />
+          <Route path="/brand-invite/:token" component={BrandInvite} />
         </>
       ) : (
-        <>
-          <Route path="/mobile" component={MobileApp} />
-          <MobileRedirect>
-            <Layout>
-              <Switch>
-                <Route path="/" component={() => {
-                  if (user?.role === 'brand') return <BrandDashboard />;
-                  if (user?.role === 'admin') return <AdminDashboard />;
-                  return <Dashboard />;
-                }} />
-                <Route path="/brands" component={BrandManagement} />
-                <Route path="/messages" component={Messages} />
-                <Route path="/orders" component={Orders} />
-                <Route path="/inventory" component={Inventory} />
-                <Route path="/integrations" component={Integrations} />
-                <Route component={NotFound} />
-              </Switch>
-            </Layout>
-          </MobileRedirect>
-        </>
+        <Layout>
+          <Switch>
+            <Route path="/" component={() => {
+              if (user?.role === 'brand') return <BrandDashboard />;
+              if (user?.role === 'admin') return <AdminDashboard />;
+              return <Dashboard />;
+            }} />
+            <Route path="/brands" component={BrandManagement} />
+            <Route path="/messages" component={Messages} />
+            <Route path="/orders" component={Orders} />
+            <Route path="/inventory" component={Inventory} />
+            <Route path="/integrations" component={Integrations} />
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
       )}
       <Route component={NotFound} />
     </Switch>

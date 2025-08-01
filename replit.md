@@ -21,6 +21,8 @@ This is a comprehensive 3PL (Third-Party Logistics) management SaaS platform bui
 - ✅ 3PL consolidated dashboard with brand filtering capabilities across orders, tickets, inventory
 - ✅ "Resend invite" functionality added to both desktop and mobile interfaces
 - ✅ Fixed brand invitation runtime errors and improved error handling
+- ✅ Removed separate mobile app - now using single responsive desktop interface optimized for all devices
+- ✅ Eliminated mobile redirection popups for better user experience
 
 # User Preferences
 
