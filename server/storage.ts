@@ -243,7 +243,6 @@ export class DatabaseStorage implements IStorage {
     const [brand] = await db
       .update(brands)
       .set({
-        trackstarApiKey: apiKey,
         updatedAt: new Date(),
       })
       .where(eq(brands.id, id))
@@ -316,7 +315,7 @@ export class DatabaseStorage implements IStorage {
       .from(tickets)
       .where(and(
         ticketBrandFilter,
-        or(eq(tickets.status, 'open'), eq(tickets.status, 'in_progress'))
+        eq(tickets.status, 'open')
       ));
 
     const [urgentTicketsResult] = await db
@@ -325,7 +324,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         ticketBrandFilter,
         eq(tickets.priority, 'urgent'),
-        or(eq(tickets.status, 'open'), eq(tickets.status, 'in_progress'))
+        eq(tickets.status, 'open')
       ));
 
     const [lowInventoryResult] = await db
@@ -349,7 +348,6 @@ export class DatabaseStorage implements IStorage {
     const [threePL] = await db
       .update(threePLs)
       .set({
-        trackstarApiKey: apiKey,
         updatedAt: new Date(),
       })
       .where(eq(threePLs.id, id))
@@ -450,7 +448,7 @@ export class DatabaseStorage implements IStorage {
         description: products.description,
         brandId: products.brandId,
         price: products.price,
-        inventoryCount: products.inventoryCount,
+        quantity: products.quantity,
         shipHeroProductId: products.shipHeroProductId,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
@@ -465,7 +463,7 @@ export class DatabaseStorage implements IStorage {
   async updateProductInventory(id: string, count: number): Promise<Product> {
     const [product] = await db
       .update(products)
-      .set({ inventoryCount: count, updatedAt: new Date() })
+      .set({ quantity: count, updatedAt: new Date() })
       .where(eq(products.id, id))
       .returning();
     return product;
