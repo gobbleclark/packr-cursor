@@ -12,7 +12,10 @@ import {
   insertProductSchema 
 } from "@shared/schema";
 import { ShipHeroService } from "./services/shiphero";
+import { TrackstarService } from "./services/trackstar";
 import { BackgroundJobService } from "./services/backgroundJobs";
+import { sendBrandInvitationEmail } from "./services/emailService";
+import { nanoid } from "nanoid";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -32,6 +35,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Initialize services
   const shipHeroService = new ShipHeroService();
+  const trackstarService = new TrackstarService();
   const backgroundJobService = new BackgroundJobService(storage, shipHeroService);
   
   // Start background jobs
@@ -129,6 +133,231 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(brand);
     } catch (error) {
       res.status(500).json({ message: "Failed to update API credentials" });
+    }
+  });
+
+  // Brand invitation route
+  app.post('/api/brands/invite', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'threePL' || !user.threePlId) {
+        return res.status(403).json({ message: "Only 3PL managers can invite brands" });
+      }
+
+      const { name, email } = req.body;
+      const invitationToken = nanoid(32);
+      
+      const brandData = {
+        name,
+        email,
+        threePlId: user.threePlId,
+        invitationToken,
+        invitationSentAt: new Date(),
+        isActive: false, // Will be activated when they accept invitation
+      };
+
+      const brand = await storage.createBrand(brandData);
+      
+      // Send invitation email to the brand
+      const invitationLink = `${req.protocol}://${req.get('host')}/invite/${invitationToken}`;
+      const threePL = await storage.getThreePL(user.threePlId);
+      
+      try {
+        const emailSent = await sendBrandInvitationEmail(
+          name,
+          email,
+          invitationLink,
+          threePL?.name || '3PL Company'
+        );
+        
+        if (emailSent) {
+          res.json({ 
+            brand, 
+            invitationLink,
+            message: "Brand invitation created and email sent successfully!"
+          });
+        } else {
+          res.json({ 
+            brand, 
+            invitationLink,
+            message: "Brand invitation created, but email failed to send. Please share the invitation link manually.",
+            emailFailed: true
+          });
+        }
+      } catch (emailError) {
+        console.error("Error sending invitation email:", emailError);
+        res.json({ 
+          brand, 
+          invitationLink,
+          message: "Brand invitation created, but email failed to send. Please share the invitation link manually.",
+          emailFailed: true
+        });
+      }
+    } catch (error) {
+      console.error("Error creating brand invitation:", error);
+      res.status(500).json({ message: "Failed to create brand invitation" });
+    }
+  });
+
+  // Accept brand invitation route (public)
+  app.get('/api/brands/invite/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+      const brand = await storage.getBrandByInvitationToken(token);
+      
+      if (!brand) {
+        return res.status(404).json({ message: "Invalid invitation token" });
+      }
+      
+      res.json({ brand: { id: brand.id, name: brand.name, email: brand.email } });
+    } catch (error) {
+      console.error("Error validating invitation:", error);
+      res.status(500).json({ message: "Failed to validate invitation" });
+    }
+  });
+
+  app.post('/api/brands/invite/:token/accept', async (req, res) => {
+    try {
+      const { token } = req.params;
+      const brand = await storage.getBrandByInvitationToken(token);
+      
+      if (!brand) {
+        return res.status(404).json({ message: "Invalid invitation token" });
+      }
+      
+      // Activate the brand
+      await storage.updateBrandInvitationStatus(brand.id, true);
+      
+      res.json({ 
+        message: "Invitation accepted successfully. You can now sign in to access your dashboard.",
+        brandId: brand.id
+      });
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+      res.status(500).json({ message: "Failed to accept invitation" });
+    }
+  });
+
+  // 3PL Trackstar API key management
+  app.put('/api/three-pls/:id/trackstar-key', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'threePL' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Only 3PL managers can update Trackstar API keys" });
+      }
+
+      const { id } = req.params;
+      const { apiKey } = req.body;
+      
+      const threePL = await storage.updateThreePlTrackstarApiKey(id, apiKey);
+      res.json(threePL);
+    } catch (error) {
+      console.error("Error updating Trackstar API key:", error);
+      res.status(500).json({ message: "Failed to update Trackstar API key" });
+    }
+  });
+
+  // Trackstar integration routes
+  app.post('/api/trackstar/link-token', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.threePlId) {
+        return res.status(403).json({ message: "Trackstar integration requires 3PL association" });
+      }
+
+      const threePL = await storage.getThreePL(user.threePlId);
+      if (!threePL?.trackstarApiKey) {
+        return res.status(400).json({ message: "Trackstar API key not configured for this 3PL" });
+      }
+
+      const trackstarServiceWithKey = new TrackstarService(threePL.trackstarApiKey);
+      const linkToken = await trackstarServiceWithKey.getLinkToken();
+      
+      res.json({ linkToken });
+    } catch (error) {
+      console.error("Error getting Trackstar link token:", error);
+      res.status(500).json({ message: "Failed to get Trackstar link token" });
+    }
+  });
+
+  app.post('/api/trackstar/exchange', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      const { authCode, brandId } = req.body;
+      
+      if (!user?.threePlId) {
+        return res.status(403).json({ message: "Trackstar integration requires 3PL association" });
+      }
+
+      const threePL = await storage.getThreePL(user.threePlId);
+      if (!threePL?.trackstarApiKey) {
+        return res.status(400).json({ message: "Trackstar API key not configured for this 3PL" });
+      }
+
+      const trackstarServiceWithKey = new TrackstarService(threePL.trackstarApiKey);
+      const tokenData = await trackstarServiceWithKey.exchangeAuthCode(authCode);
+      
+      // Update brand with Trackstar credentials
+      await storage.updateBrandTrackstarCredentials(
+        brandId,
+        tokenData.access_token,
+        tokenData.connection_id,
+        tokenData.integration_name
+      );
+      
+      res.json({ 
+        message: "Trackstar integration connected successfully",
+        integrationName: tokenData.integration_name
+      });
+    } catch (error) {
+      console.error("Error exchanging Trackstar auth code:", error);
+      res.status(500).json({ message: "Failed to connect Trackstar integration" });
+    }
+  });
+
+  app.post('/api/trackstar/sync/:brandId', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { brandId } = req.params;
+      const { syncType } = req.body; // 'inventory' or 'orders'
+      
+      const brand = await storage.getBrand(brandId);
+      if (!brand?.trackstarAccessToken || !brand?.trackstarConnectionId) {
+        return res.status(400).json({ message: "Trackstar not configured for this brand" });
+      }
+
+      const threePL = await storage.getThreePL(brand.threePlId);
+      if (!threePL?.trackstarApiKey) {
+        return res.status(400).json({ message: "Trackstar API key not configured" });
+      }
+
+      const trackstarServiceWithKey = new TrackstarService(threePL.trackstarApiKey);
+      
+      let result;
+      if (syncType === 'inventory') {
+        result = await trackstarServiceWithKey.syncInventoryForBrand(
+          brand.trackstarAccessToken,
+          brand.trackstarConnectionId
+        );
+      } else if (syncType === 'orders') {
+        result = await trackstarServiceWithKey.syncOrdersForBrand(
+          brand.trackstarAccessToken,
+          brand.trackstarConnectionId
+        );
+      } else {
+        return res.status(400).json({ message: "Invalid sync type. Use 'inventory' or 'orders'" });
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error syncing Trackstar data:", error);
+      res.status(500).json({ message: "Failed to sync Trackstar data" });
     }
   });
 

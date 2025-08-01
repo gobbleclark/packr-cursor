@@ -21,7 +21,10 @@ import {
   Truck, 
   Key,
   RefreshCw,
-  Save
+  Save,
+  Globe,
+  Link,
+  Zap
 } from "lucide-react";
 
 export default function Integrations() {
@@ -31,6 +34,8 @@ export default function Integrations() {
   const [apiKey, setApiKey] = useState('');
   const [userId, setUserId] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [trackstarApiKey, setTrackstarApiKey] = useState('');
+  const [isTrackstarEditing, setIsTrackstarEditing] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -49,6 +54,11 @@ export default function Integrations() {
   const { data: brands = [], isLoading: brandsLoading } = useQuery<any[]>({
     queryKey: ['/api/brands'],
     enabled: isAuthenticated,
+  });
+
+  const { data: threePL, isLoading: threePlLoading } = useQuery<any>({
+    queryKey: ['/api/three-pls', user?.threePlId],
+    enabled: isAuthenticated && !!user?.threePlId,
   });
 
   const updateApiCredentialsMutation = useMutation({
@@ -120,7 +130,86 @@ export default function Integrations() {
     },
   });
 
-  if (isLoading || brandsLoading) {
+  const updateTrackstarKeyMutation = useMutation({
+    mutationFn: async (apiKey: string) => {
+      const response = await apiRequest('PUT', `/api/three-pls/${user?.threePlId}/trackstar-key`, {
+        apiKey,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/three-pls', user?.threePlId] });
+      setTrackstarApiKey('');
+      setIsTrackstarEditing(false);
+      toast({
+        title: "Success",
+        description: "Trackstar API key updated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update Trackstar API key",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const connectTrackstarMutation = useMutation({
+    mutationFn: async (brandId: string) => {
+      // Get link token first
+      const linkResponse = await apiRequest('POST', '/api/trackstar/link-token');
+      const { linkToken } = await linkResponse.json();
+      
+      // For demo purposes, we'll simulate the OAuth flow
+      // In production, this would redirect to Trackstar's OAuth page
+      const authCode = 'demo_auth_code_' + Date.now();
+      
+      const response = await apiRequest('POST', '/api/trackstar/exchange', {
+        authCode,
+        brandId,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
+      toast({
+        title: "Success",
+        description: `Trackstar integration connected: ${data.integrationName}`,
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to connect Trackstar integration",
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (isLoading || brandsLoading || threePlLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
@@ -188,7 +277,7 @@ export default function Integrations() {
                     API Integrations
                   </h2>
                   <p className="mt-1 text-sm text-gray-500">
-                    Manage your ShipHero API connections and sync settings
+                    Manage your ShipHero, Trackstar, and other API connections
                   </p>
                 </div>
                 <div className="mt-4 flex md:mt-0 md:ml-4">
@@ -208,6 +297,92 @@ export default function Integrations() {
               </div>
             </div>
           </div>
+
+          {/* Trackstar Configuration - Only for 3PL users */}
+          {user?.role === 'threePL' && (
+            <div className="bg-white shadow-sm border-b border-gray-200">
+              <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Globe className="h-5 w-5" />
+                      Trackstar Universal WMS Integration
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600 mb-2">
+                            Configure your Trackstar API key to enable universal WMS integrations for all your brands.
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">Status:</span>
+                            {threePL?.trackstarApiKey ? (
+                              <Badge variant="default" className="bg-green-50 text-green-600">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Configured
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-yellow-600 border-yellow-300">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Not Configured
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setIsTrackstarEditing(!isTrackstarEditing)}
+                        >
+                          <Settings className="h-4 w-4 mr-2" />
+                          {threePL?.trackstarApiKey ? "Update API Key" : "Configure API Key"}
+                        </Button>
+                      </div>
+
+                      {isTrackstarEditing && (
+                        <div className="border-t pt-4 space-y-4">
+                          <div className="grid gap-4">
+                            <div>
+                              <Label htmlFor="trackstar-key">Trackstar Organization API Key</Label>
+                              <Input
+                                id="trackstar-key"
+                                type="password"
+                                value={trackstarApiKey}
+                                onChange={(e) => setTrackstarApiKey(e.target.value)}
+                                placeholder="Enter your Trackstar API key"
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                Contact support@trackstarhq.com to get your organization API key
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => updateTrackstarKeyMutation.mutate(trackstarApiKey)}
+                                disabled={updateTrackstarKeyMutation.isPending || !trackstarApiKey.trim()}
+                              >
+                                <Save className="h-4 w-4 mr-2" />
+                                {updateTrackstarKeyMutation.isPending ? "Saving..." : "Save API Key"}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setIsTrackstarEditing(false);
+                                  setTrackstarApiKey('');
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
 
           {/* Integrations Content */}
           <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -354,6 +529,114 @@ export default function Integrations() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Trackstar Integration - Brand Level */}
+              {threePL?.trackstarApiKey && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Globe className="h-6 w-6 text-purple-600" />
+                        <CardTitle>Trackstar WMS Integration</CardTitle>
+                      </div>
+                      {currentBrand && (
+                        <Badge 
+                          className={currentBrand.trackstarAccessToken ? 
+                            "bg-green-50 text-green-600" : 
+                            "bg-gray-50 text-gray-600"
+                          }
+                        >
+                          <span className="flex items-center">
+                            {currentBrand.trackstarAccessToken ? (
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                            ) : (
+                              <XCircle className="h-3 w-3 mr-1" />
+                            )}
+                            {currentBrand.trackstarAccessToken ? 'Connected' : 'Not Connected'}
+                          </span>
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {currentBrand ? (
+                      <>
+                        <div>
+                          <p className="text-sm text-gray-600 mb-4">
+                            Connect to Trackstar to sync with multiple WMS platforms including ShipHero, ShipBob, Fulfillment Works, and more.
+                          </p>
+                        </div>
+
+                        {currentBrand.trackstarAccessToken ? (
+                          <div className="space-y-4">
+                            <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                              <div className="flex">
+                                <CheckCircle className="h-5 w-5 text-green-400" />
+                                <div className="ml-3">
+                                  <h4 className="text-sm font-medium text-green-800">
+                                    Connected to {currentBrand.trackstarIntegrationName || 'WMS Platform'}
+                                  </h4>
+                                  <p className="text-sm text-green-700">
+                                    Your WMS data is being synced automatically.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-3">
+                              <h4 className="text-sm font-medium">Sync Status</h4>
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-600">Order Sync:</span>
+                                  <span className="flex items-center text-green-600">
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Active
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-600">Inventory Sync:</span>
+                                  <span className="flex items-center text-green-600">
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Active
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-6">
+                            <Globe className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                            <h3 className="text-sm font-medium text-gray-900 mb-2">Connect to Trackstar</h3>
+                            <p className="text-sm text-gray-500 mb-4">
+                              Connect your WMS platform through Trackstar's universal API.
+                            </p>
+                            <Button
+                              onClick={() => connectTrackstarMutation.mutate(currentBrand.id)}
+                              disabled={connectTrackstarMutation.isPending}
+                              className="bg-purple-600 hover:bg-purple-700"
+                            >
+                              {connectTrackstarMutation.isPending ? (
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Link className="h-4 w-4 mr-2" />
+                              )}
+                              {connectTrackstarMutation.isPending ? 'Connecting...' : 'Connect Trackstar'}
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Settings className="mx-auto h-12 w-12 text-gray-400" />
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">No brand found</h3>
+                        <p className="mt-1 text-sm text-gray-500">
+                          Please contact your administrator to set up your brand account.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Sync Schedule */}
               <Card>

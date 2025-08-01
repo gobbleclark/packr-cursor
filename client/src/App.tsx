@@ -8,6 +8,8 @@ import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import BrandDashboard from "@/pages/brand-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
+import BrandManagement from "@/pages/brand-management";
+import BrandInvite from "@/pages/brand-invite";
 import Messages from "@/pages/messages";
 import Orders from "@/pages/orders";
 import Inventory from "@/pages/inventory";
@@ -31,7 +33,10 @@ function Router() {
   return (
     <Switch>
       {!isAuthenticated ? (
-        <Route path="/" component={Landing} />
+        <>
+          <Route path="/" component={Landing} />
+          <Route path="/invite/:token" component={BrandInvite} />
+        </>
       ) : (
         <>
           <Route path="/" component={() => {
@@ -39,6 +44,7 @@ function Router() {
             if (user?.role === 'admin') return <AdminDashboard />;
             return <Dashboard />;
           }} />
+          <Route path="/brands" component={BrandManagement} />
           <Route path="/messages" component={Messages} />
           <Route path="/orders" component={Orders} />
           <Route path="/inventory" component={Inventory} />

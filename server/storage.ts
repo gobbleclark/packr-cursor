@@ -36,12 +36,16 @@ export interface IStorage {
   getThreePL(id: string): Promise<ThreePL | undefined>;
   createThreePL(threePL: InsertThreePL): Promise<ThreePL>;
   getThreePLs(): Promise<ThreePL[]>;
+  updateThreePlTrackstarApiKey(id: string, apiKey: string): Promise<ThreePL>;
   
   // Brand operations
   getBrand(id: string): Promise<Brand | undefined>;
   createBrand(brand: InsertBrand): Promise<Brand>;
   getBrandsByThreePL(threePlId: string): Promise<Brand[]>;
   updateBrandApiCredentials(id: string, apiKey: string, userId: string): Promise<Brand>;
+  updateBrandTrackstarCredentials(id: string, accessToken: string, connectionId: string, integrationName: string): Promise<Brand>;
+  getBrandByInvitationToken(token: string): Promise<Brand | undefined>;
+  updateBrandInvitationStatus(id: string, isActive: boolean): Promise<Brand>;
   
   // Order operations
   getOrder(id: string): Promise<Order | undefined>;
@@ -151,6 +155,52 @@ export class DatabaseStorage implements IStorage {
       .where(eq(brands.id, id))
       .returning();
     return brand;
+  }
+
+  async updateBrandTrackstarCredentials(id: string, accessToken: string, connectionId: string, integrationName: string): Promise<Brand> {
+    const [brand] = await db
+      .update(brands)
+      .set({
+        trackstarAccessToken: accessToken,
+        trackstarConnectionId: connectionId,
+        trackstarIntegrationName: integrationName,
+        updatedAt: new Date(),
+      })
+      .where(eq(brands.id, id))
+      .returning();
+    return brand;
+  }
+
+  async getBrandByInvitationToken(token: string): Promise<Brand | undefined> {
+    const [brand] = await db
+      .select()
+      .from(brands)
+      .where(eq(brands.invitationToken, token));
+    return brand;
+  }
+
+  async updateBrandInvitationStatus(id: string, isActive: boolean): Promise<Brand> {
+    const [brand] = await db
+      .update(brands)
+      .set({
+        isActive,
+        updatedAt: new Date(),
+      })
+      .where(eq(brands.id, id))
+      .returning();
+    return brand;
+  }
+
+  async updateThreePlTrackstarApiKey(id: string, apiKey: string): Promise<ThreePL> {
+    const [threePL] = await db
+      .update(threePLs)
+      .set({
+        trackstarApiKey: apiKey,
+        updatedAt: new Date(),
+      })
+      .where(eq(threePLs.id, id))
+      .returning();
+    return threePL;
   }
 
   // Order operations

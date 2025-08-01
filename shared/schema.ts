@@ -52,6 +52,7 @@ export const threePLs = pgTable("three_pls", {
   email: varchar("email"),
   phone: varchar("phone"),
   address: text("address"),
+  trackstarApiKey: varchar("trackstar_api_key"), // Trackstar organization API key
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -64,6 +65,11 @@ export const brands = pgTable("brands", {
   threePlId: varchar("three_pl_id").notNull().references(() => threePLs.id),
   shipHeroApiKey: varchar("ship_hero_api_key"),
   shipHeroUserId: varchar("ship_hero_user_id"),
+  trackstarAccessToken: varchar("trackstar_access_token"),
+  trackstarConnectionId: varchar("trackstar_connection_id"),
+  trackstarIntegrationName: varchar("trackstar_integration_name"),
+  invitationToken: varchar("invitation_token"), // For brand signup invitations
+  invitationSentAt: timestamp("invitation_sent_at"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
