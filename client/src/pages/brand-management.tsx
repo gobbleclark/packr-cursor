@@ -21,6 +21,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -54,6 +61,11 @@ export default function BrandManagement() {
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [brandName, setBrandName] = useState('');
   const [brandEmail, setBrandEmail] = useState('');
+  const [isIntegrationDialogOpen, setIsIntegrationDialogOpen] = useState(false);
+  const [selectedBrand, setSelectedBrand] = useState<any>(null);
+  const [integrationType, setIntegrationType] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [userId, setUserId] = useState('');
 
   // All query hooks at the top level - never conditional
   const { data: brands = [], isLoading: brandsLoading } = useQuery<any[]>({
@@ -103,6 +115,51 @@ export default function BrandManagement() {
       toast({
         title: "Error",
         description: "Failed to create brand invitation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addIntegrationMutation = useMutation({
+    mutationFn: async (data: { brandId: string; integrationType: string; apiKey: string; userId?: string }) => {
+      const response = await apiRequest('PUT', `/api/brands/${data.brandId}/integrations`, {
+        integrationType: data.integrationType,
+        apiKey: data.apiKey,
+        userId: data.userId
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
+      setIsIntegrationDialogOpen(false);
+      setSelectedBrand(null);
+      setIntegrationType('');
+      setApiKey('');
+      setUserId('');
+      
+      toast({
+        title: "Integration Added",
+        description: "Brand integration has been configured successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to add integration",
         variant: "destructive",
       });
     },
@@ -219,6 +276,29 @@ export default function BrandManagement() {
 
   const handleResendInvite = (brandId: string) => {
     resendInviteMutation.mutate(brandId);
+  };
+
+  const handleAddIntegration = (brand: any) => {
+    setSelectedBrand(brand);
+    setIsIntegrationDialogOpen(true);
+  };
+
+  const handleSaveIntegration = () => {
+    if (!selectedBrand || !integrationType || !apiKey) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addIntegrationMutation.mutate({
+      brandId: selectedBrand.id,
+      integrationType,
+      apiKey,
+      userId: userId || undefined
+    });
   };
 
   const getBrandStatusBadge = (brand: any) => {
@@ -432,14 +512,17 @@ export default function BrandManagement() {
                           </>
                         )}
                         {brand.isActive && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex items-center gap-2"
-                          >
-                            <Settings className="h-4 w-4" />
-                            <span className="hidden sm:inline">Manage</span>
-                          </Button>
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAddIntegration(brand)}
+                              className="flex items-center gap-2"
+                            >
+                              <Settings className="h-4 w-4" />
+                              <span className="hidden sm:inline">Add Integration</span>
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -448,6 +531,95 @@ export default function BrandManagement() {
               )}
             </CardContent>
           </Card>
+
+          {/* Add Integration Dialog */}
+          <Dialog open={isIntegrationDialogOpen} onOpenChange={setIsIntegrationDialogOpen}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Add Integration for {selectedBrand?.name}</DialogTitle>
+                <DialogDescription>
+                  Configure API integration for this brand to enable order and inventory sync.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="integration-type">Integration Type</Label>
+                  <Select value={integrationType} onValueChange={setIntegrationType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select integration type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="shiphero">ShipHero</SelectItem>
+                      <SelectItem value="trackstar">Trackstar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {integrationType === 'shiphero' && (
+                  <>
+                    <div className="grid gap-2">
+                      <Label htmlFor="api-key">ShipHero API Key</Label>
+                      <Input
+                        id="api-key"
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        placeholder="Enter ShipHero API key"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="user-id">ShipHero User ID</Label>
+                      <Input
+                        id="user-id"
+                        value={userId}
+                        onChange={(e) => setUserId(e.target.value)}
+                        placeholder="Enter ShipHero user ID"
+                      />
+                    </div>
+                  </>
+                )}
+                
+                {integrationType === 'trackstar' && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="api-key">Trackstar API Key</Label>
+                    <Input
+                      id="api-key"
+                      type="password"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="Enter Trackstar API key"
+                    />
+                    <p className="text-sm text-gray-500">
+                      Note: Trackstar provides universal WMS connectivity through a single API.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsIntegrationDialogOpen(false);
+                    setSelectedBrand(null);
+                    setIntegrationType('');
+                    setApiKey('');
+                    setUserId('');
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveIntegration}
+                  disabled={addIntegrationMutation.isPending}
+                >
+                  {addIntegrationMutation.isPending && (
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Save Integration
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </main>
     </div>

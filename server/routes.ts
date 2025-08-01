@@ -161,6 +161,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/brands/:id/integrations', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'threePL' || !user.threePlId) {
+        return res.status(403).json({ message: "Only 3PL managers can add integrations for brands" });
+      }
+
+      const { id: brandId } = req.params;
+      const { integrationType, apiKey, userId: integrationUserId } = req.body;
+      
+      // Verify the brand belongs to this 3PL
+      const brand = await storage.getBrand(brandId);
+      if (!brand || brand.threePlId !== user.threePlId) {
+        return res.status(403).json({ message: "Brand not found or access denied" });
+      }
+      
+      let updatedBrand;
+      if (integrationType === 'shiphero') {
+        updatedBrand = await storage.updateBrandApiCredentials(brandId, apiKey, integrationUserId);
+      } else if (integrationType === 'trackstar') {
+        // For Trackstar, we store the API key but might use universal key for actual API calls
+        updatedBrand = await storage.updateBrandTrackstarCredentials(brandId, apiKey);
+      } else {
+        return res.status(400).json({ message: "Invalid integration type" });
+      }
+      
+      res.json(updatedBrand);
+    } catch (error) {
+      console.error("Error adding brand integration:", error);
+      res.status(500).json({ message: "Failed to add integration" });
+    }
+  });
+
   // Brand invitation route
   app.post('/api/brands/invite', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
