@@ -137,7 +137,7 @@ export default function BrandManagement() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
       setIsIntegrationDialogOpen(false);
       setSelectedBrand(null);
@@ -145,9 +145,10 @@ export default function BrandManagement() {
       setApiKey('');
       setUserId('');
       
+      const integrationName = integrationType === 'trackstar' ? 'Trackstar (Universal WMS)' : 'ShipHero';
       toast({
         title: "Integration Added",
-        description: "Brand integration has been configured successfully!",
+        description: `${integrationName} integration has been configured successfully!`,
       });
     },
     onError: (error) => {
@@ -289,19 +290,32 @@ export default function BrandManagement() {
   };
 
   const handleSaveIntegration = () => {
-    if (!selectedBrand || !integrationType || !apiKey) {
+    if (!selectedBrand || !integrationType) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: "Please select an integration type",
         variant: "destructive",
       });
       return;
     }
 
+    // For ShipHero, require API key
+    if (integrationType === 'shiphero' && !apiKey) {
+      toast({
+        title: "Error",
+        description: "Please enter your ShipHero API key",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // For Trackstar, use universal API key
+    const finalApiKey = integrationType === 'trackstar' ? '269fcaf8b50a4fb4b384724f3e5d76db' : apiKey;
+
     addIntegrationMutation.mutate({
       brandId: selectedBrand.id,
       integrationType,
-      apiKey,
+      apiKey: finalApiKey,
       userId: userId || undefined
     });
   };
@@ -600,17 +614,15 @@ export default function BrandManagement() {
                 
                 {integrationType === 'trackstar' && (
                   <div className="grid gap-2">
-                    <Label htmlFor="api-key">Trackstar API Key</Label>
-                    <Input
-                      id="api-key"
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="Enter Trackstar API key"
-                    />
-                    <p className="text-sm text-gray-500">
-                      Note: Trackstar provides universal WMS connectivity through a single API.
-                    </p>
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle className="h-5 w-5 text-blue-600" />
+                        <span className="font-medium text-blue-900">Universal API Key Configured</span>
+                      </div>
+                      <p className="text-sm text-blue-700">
+                        Trackstar integration uses our universal API key for seamless connectivity across all WMS platforms (ShipHero, ShipBob, Fulfillment Works, etc.). No additional setup required.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -634,7 +646,7 @@ export default function BrandManagement() {
                   {addIntegrationMutation.isPending && (
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Save Integration
+                  {integrationType === 'trackstar' ? 'Configure Universal Integration' : 'Save Integration'}
                 </Button>
               </DialogFooter>
             </DialogContent>

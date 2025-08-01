@@ -183,8 +183,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (integrationType === 'shiphero') {
         updatedBrand = await storage.updateBrandApiCredentials(brandId, apiKey, integrationUserId);
       } else if (integrationType === 'trackstar') {
-        // For Trackstar, we store the API key but might use universal key for actual API calls
-        updatedBrand = await storage.updateBrandTrackstarCredentials(brandId, apiKey);
+        // For Trackstar, always use the universal API key
+        const universalTrackstarKey = '269fcaf8b50a4fb4b384724f3e5d76db';
+        updatedBrand = await storage.updateBrandTrackstarCredentials(brandId, universalTrackstarKey);
       } else {
         return res.status(400).json({ message: "Invalid integration type" });
       }
