@@ -2,6 +2,7 @@ import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
 import path from "path";
+import crypto from "crypto";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { 
@@ -286,7 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Generate new invitation token and link
-      const invitationToken = require('crypto').randomBytes(32).toString('hex');
+      const invitationToken = crypto.randomBytes(32).toString('hex');
       await storage.updateBrandInvitationToken(brandId, invitationToken);
       
       const invitationLink = `${req.protocol}://${req.hostname}/brand-invite/${invitationToken}`;
