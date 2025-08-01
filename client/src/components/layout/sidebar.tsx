@@ -2,6 +2,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useMobile } from "@/hooks/use-mobile";
 import { 
   BarChart3, 
   Store, 
@@ -11,7 +13,8 @@ import {
   Settings, 
   Plug,
   Users,
-  Building2
+  Building2,
+  Smartphone
 } from "lucide-react";
 
 interface NavItem {
@@ -149,6 +152,18 @@ export default function Sidebar() {
             );
           })}
         </nav>
+        
+        {/* Mobile App Toggle */}
+        <div className="mt-auto px-2 pb-4">
+          <Button
+            variant="outline" 
+            className="w-full justify-start text-sm"
+            onClick={() => window.location.href = '/mobile'}
+          >
+            <Smartphone className="mr-3 h-4 w-4" />
+            Mobile App
+          </Button>
+        </div>
       </div>
     </div>
   );
