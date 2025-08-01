@@ -41,7 +41,8 @@ import {
   XCircle, 
   Clock,
   ExternalLink,
-  Settings
+  Settings,
+  RefreshCw
 } from "lucide-react";
 
 export default function BrandManagement() {
@@ -89,6 +90,9 @@ export default function BrandManagement() {
   const inviteBrandMutation = useMutation({
     mutationFn: async (data: { name: string; email: string }) => {
       const response = await apiRequest('POST', '/api/brands/invite', data);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
       return response.json();
     },
     onSuccess: (data) => {
@@ -149,6 +153,54 @@ export default function BrandManagement() {
       return;
     }
     inviteBrandMutation.mutate({ name: brandName, email: brandEmail });
+  };
+
+  const resendInviteMutation = useMutation({
+    mutationFn: async (brandId: string) => {
+      const response = await apiRequest('POST', `/api/brands/${brandId}/resend-invite`, {});
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
+      
+      toast({
+        title: "Invitation Resent",
+        description: data.emailFailed 
+          ? "Invitation updated, but email failed. Please share the link manually." 
+          : "Brand invitation has been resent successfully!",
+        variant: data.emailFailed ? "destructive" : "default",
+      });
+      
+      // Copy new invitation link to clipboard if available
+      if (data.invitationLink) {
+        navigator.clipboard.writeText(data.invitationLink);
+      }
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to resend brand invitation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleResendInvite = (brandId: string) => {
+    resendInviteMutation.mutate(brandId);
   };
 
 
@@ -286,13 +338,13 @@ export default function BrandManagement() {
                     </div>
 
                     {!brand.isActive && brand.invitationToken && (
-                      <div className="mt-4">
+                      <div className="mt-4 space-y-2">
                         <Button
                           variant="outline"
                           size="sm"
                           className="w-full"
                           onClick={() => {
-                            const invitationLink = `${window.location.origin}/invite/${brand.invitationToken}`;
+                            const invitationLink = `${window.location.origin}/brand-invite/${brand.invitationToken}`;
                             navigator.clipboard.writeText(invitationLink);
                             toast({
                               title: "Invitation Link Copied",
@@ -302,6 +354,16 @@ export default function BrandManagement() {
                         >
                           <Copy className="h-4 w-4 mr-2" />
                           Copy Invitation Link
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => handleResendInvite(brand.id)}
+                          disabled={resendInviteMutation.isPending}
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-2 ${resendInviteMutation.isPending ? 'animate-spin' : ''}`} />
+                          {resendInviteMutation.isPending ? "Resending..." : "Resend Invite"}
                         </Button>
                       </div>
                     )}

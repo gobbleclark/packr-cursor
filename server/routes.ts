@@ -63,7 +63,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      const stats = await storage.getDashboardStats(userId, user.role || 'brand');
+      let stats = {
+        totalOrders: 0,
+        openTickets: 0,
+        urgentTickets: 0,
+        pendingOrders: 0,
+        recentActivity: []
+      };
+      
+      if (user.role === 'brand' && user.brandId) {
+        stats.totalOrders = await storage.getTotalOrdersCountByBrand(user.brandId);
+        stats.openTickets = await storage.getOpenTicketsCountByBrand(user.brandId);
+        stats.urgentTickets = await storage.getUrgentTicketsCountByBrand(user.brandId);
+        stats.pendingOrders = await storage.getPendingOrdersCountByBrand(user.brandId);
+      } else if (user.role === 'threePL' && user.threePlId) {
+        stats.totalOrders = await storage.getTotalOrdersCountByThreePL(user.threePlId);
+        stats.openTickets = await storage.getOpenTicketsCountByThreePL(user.threePlId);
+        stats.urgentTickets = await storage.getUrgentTicketsCountByThreePL(user.threePlId);
+        stats.pendingOrders = await storage.getPendingOrdersCountByThreePL(user.threePlId);
+      } else {
+        stats.totalOrders = await storage.getTotalOrdersCount();
+        stats.openTickets = await storage.getOpenTicketsCount();
+        stats.urgentTickets = await storage.getUrgentTicketsCount();
+        stats.pendingOrders = await storage.getPendingOrdersCount();
+      }
+      
       res.json(stats);
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
@@ -240,6 +264,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Resend brand invitation route
+  app.post('/api/brands/:brandId/resend-invite', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { brandId } = req.params;
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user is 3PL and has access to this brand
+      if (user?.role !== 'threePL' || !user.threePlId) {
+        return res.status(403).json({ message: "Only 3PL managers can resend invitations" });
+      }
+      
+      const brand = await storage.getBrand(brandId);
+      if (!brand || brand.threePlId !== user.threePlId) {
+        return res.status(404).json({ message: "Brand not found or access denied" });
+      }
+      
+      if (brand.isActive) {
+        return res.status(400).json({ message: "Brand is already active - no need to resend invitation" });
+      }
+      
+      // Generate new invitation token and link
+      const invitationToken = require('crypto').randomBytes(32).toString('hex');
+      await storage.updateBrandInvitationToken(brandId, invitationToken);
+      
+      const invitationLink = `${req.protocol}://${req.hostname}/brand-invite/${invitationToken}`;
+      
+      // Send invitation email
+      try {
+        const threePLCompany = await storage.getThreePL(user.threePlId);
+        const emailSent = await sendBrandInvitationEmail(
+          brand.email,
+          brand.name,
+          threePLCompany?.name || "Your 3PL Partner",
+          invitationLink
+        );
+        
+        if (emailSent) {
+          res.json({ 
+            message: "Brand invitation resent successfully!",
+            invitationLink
+          });
+        } else {
+          res.json({ 
+            message: "Invitation updated, but email failed to send. Please share the invitation link manually.",
+            invitationLink,
+            emailFailed: true
+          });
+        }
+      } catch (emailError) {
+        console.error("Error sending resend invitation email:", emailError);
+        res.json({ 
+          message: "Invitation updated, but email failed to send. Please share the invitation link manually.",
+          invitationLink,
+          emailFailed: true
+        });
+      }
+    } catch (error) {
+      console.error("Error resending brand invitation:", error);
+      res.status(500).json({ message: "Failed to resend brand invitation" });
+    }
+  });
+
 
 
   // Trackstar integration routes
@@ -382,8 +469,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       
-      if (user?.brandId) {
+      if (user?.role === 'brand' && user.brandId) {
+        // Brand users only see their own products
         const products = await storage.getProductsByBrand(user.brandId);
+        res.json(products);
+      } else if (user?.role === 'threePL' && user.threePlId) {
+        // 3PL users see products from all their brands
+        const products = await storage.getProductsByThreePL(user.threePlId);
         res.json(products);
       } else {
         res.json([]);
@@ -406,17 +498,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Ticket routes
   app.get('/api/tickets', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
-      const { status, priority } = req.query;
       const userId = req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       
-      const filters: any = {};
-      if (status) filters.status = status as string;
-      if (priority) filters.priority = priority as string;
-      if (user?.brandId) filters.brandId = user.brandId;
-      
-      const tickets = await storage.getTicketsWithComments(filters);
-      res.json(tickets);
+      if (user?.role === 'brand' && user.brandId) {
+        // Brand users only see tickets related to their brand
+        const tickets = await storage.getTicketsByBrand(user.brandId);
+        res.json(tickets);
+      } else if (user?.role === 'threePL' && user.threePlId) {
+        // 3PL users see tickets from all their brands
+        const tickets = await storage.getTicketsByThreePL(user.threePlId);
+        res.json(tickets);
+      } else {
+        // Admin users see all tickets they're involved with
+        const tickets = await storage.getTicketsByUser(userId);
+        res.json(tickets);
+      }
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch tickets" });
     }
@@ -560,6 +657,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       res.status(500).json({ message: "Failed to sync inventory" });
+    }
+  });
+
+  // Dashboard stats route
+  app.get('/api/dashboard/stats', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      let stats = {
+        totalOrders: 0,
+        openTickets: 0,
+        urgentTickets: 0,
+        pendingOrders: 0,
+        recentActivity: []
+      };
+      
+      if (user?.role === 'brand' && user.brandId) {
+        // Brand-specific stats
+        stats.totalOrders = await storage.getTotalOrdersCountByBrand(user.brandId);
+        stats.openTickets = await storage.getOpenTicketsCountByBrand(user.brandId);
+        stats.urgentTickets = await storage.getUrgentTicketsCountByBrand(user.brandId);
+        stats.pendingOrders = await storage.getPendingOrdersCountByBrand(user.brandId);
+      } else if (user?.role === 'threePL' && user.threePlId) {
+        // 3PL consolidated stats across all brands
+        stats.totalOrders = await storage.getTotalOrdersCountByThreePL(user.threePlId);
+        stats.openTickets = await storage.getOpenTicketsCountByThreePL(user.threePlId);
+        stats.urgentTickets = await storage.getUrgentTicketsCountByThreePL(user.threePlId);
+        stats.pendingOrders = await storage.getPendingOrdersCountByThreePL(user.threePlId);
+      } else {
+        // Admin stats - overall system stats
+        stats.totalOrders = await storage.getTotalOrdersCount();
+        stats.openTickets = await storage.getOpenTicketsCount();
+        stats.urgentTickets = await storage.getUrgentTicketsCount();
+        stats.pendingOrders = await storage.getPendingOrdersCount();
+      }
+      
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
     }
   });
 

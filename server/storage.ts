@@ -191,6 +191,18 @@ export class DatabaseStorage implements IStorage {
     return brand;
   }
 
+  async updateBrandInvitationToken(id: string, token: string): Promise<Brand> {
+    const [brand] = await db
+      .update(brands)
+      .set({
+        invitationToken: token,
+        updatedAt: new Date(),
+      })
+      .where(eq(brands.id, id))
+      .returning();
+    return brand;
+  }
+
   async updateThreePlTrackstarApiKey(id: string, apiKey: string): Promise<ThreePL> {
     const [threePL] = await db
       .update(threePLs)
@@ -287,6 +299,27 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(products.createdAt));
   }
 
+  async getProductsByThreePL(threePlId: string): Promise<Product[]> {
+    return await db
+      .select({
+        id: products.id,
+        sku: products.sku,
+        name: products.name,
+        description: products.description,
+        brandId: products.brandId,
+        price: products.price,
+        inventoryCount: products.inventoryCount,
+        shipHeroProductId: products.shipHeroProductId,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+        brandName: brands.name,
+      })
+      .from(products)
+      .leftJoin(brands, eq(products.brandId, brands.id))
+      .where(eq(brands.threePlId, threePlId))
+      .orderBy(desc(products.createdAt));
+  }
+
   async updateProductInventory(id: string, count: number): Promise<Product> {
     const [product] = await db
       .update(products)
@@ -332,8 +365,24 @@ export class DatabaseStorage implements IStorage {
 
   async getTicketsByThreePL(threePlId: string): Promise<Ticket[]> {
     return await db
-      .select()
+      .select({
+        id: tickets.id,
+        ticketNumber: tickets.ticketNumber,
+        title: tickets.title,
+        description: tickets.description,
+        status: tickets.status,
+        priority: tickets.priority,
+        createdById: tickets.createdById,
+        assignedToId: tickets.assignedToId,
+        brandId: tickets.brandId,
+        threePlId: tickets.threePlId,
+        orderId: tickets.orderId,
+        createdAt: tickets.createdAt,
+        updatedAt: tickets.updatedAt,
+        brandName: brands.name,
+      })
       .from(tickets)
+      .leftJoin(brands, eq(tickets.brandId, brands.id))
       .where(eq(tickets.threePlId, threePlId))
       .orderBy(desc(tickets.createdAt));
   }
@@ -383,6 +432,8 @@ export class DatabaseStorage implements IStorage {
     return await query;
   }
 
+
+
   // Comment operations
   async createComment(commentData: InsertTicketComment): Promise<TicketComment> {
     const [comment] = await db.insert(ticketComments).values(commentData).returning();
@@ -411,56 +462,88 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(attachments.createdAt));
   }
 
-  // Dashboard stats
-  async getDashboardStats(userId: string, role: string): Promise<any> {
-    const user = await this.getUser(userId);
-    if (!user) return null;
+  // Dashboard stats operations
+  async getTotalOrdersCount(): Promise<number> {
+    const result = await db.select({ count: count() }).from(orders);
+    return result[0].count;
+  }
 
-    let brandIds: string[] = [];
-    let threePlId: string | null = null;
+  async getTotalOrdersCountByBrand(brandId: string): Promise<number> {
+    const result = await db.select({ count: count() }).from(orders).where(eq(orders.brandId, brandId));
+    return result[0].count;
+  }
 
-    if (role === 'brand' && user.brandId) {
-      brandIds = [user.brandId];
-    } else if (role === 'threePL' && user.threePlId) {
-      threePlId = user.threePlId;
-      const brands = await this.getBrandsByThreePL(user.threePlId);
-      brandIds = brands.map(b => b.id);
-    } else if (role === 'admin') {
-      const allBrands = await db.select().from(brands);
-      brandIds = allBrands.map(b => b.id);
-    }
+  async getTotalOrdersCountByThreePL(threePlId: string): Promise<number> {
+    const result = await db
+      .select({ count: count(orders.id) })
+      .from(orders)
+      .leftJoin(brands, eq(orders.brandId, brands.id))
+      .where(eq(brands.threePlId, threePlId));
+    return result[0].count;
+  }
 
-    // Get counts
-    const totalOrders = brandIds.length > 0 
-      ? await db.select({ count: count() }).from(orders).where(or(...brandIds.map(id => eq(orders.brandId, id))))
-      : [{ count: 0 }];
+  async getOpenTicketsCount(): Promise<number> {
+    const result = await db.select({ count: count() }).from(tickets).where(eq(tickets.status, 'open'));
+    return result[0].count;
+  }
 
-    const openTickets = brandIds.length > 0 
-      ? await db.select({ count: count() }).from(tickets).where(and(
-          eq(tickets.status, 'open'),
-          or(...brandIds.map(id => eq(tickets.brandId, id)))
-        ))
-      : [{ count: 0 }];
+  async getOpenTicketsCountByBrand(brandId: string): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(tickets)
+      .where(and(eq(tickets.status, 'open'), eq(tickets.brandId, brandId)));
+    return result[0].count;
+  }
 
-    const urgentTickets = brandIds.length > 0 
-      ? await db.select({ count: count() }).from(tickets).where(and(
-          eq(tickets.priority, 'urgent'),
-          or(...brandIds.map(id => eq(tickets.brandId, id)))
-        ))
-      : [{ count: 0 }];
+  async getOpenTicketsCountByThreePL(threePlId: string): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(tickets)
+      .where(and(eq(tickets.status, 'open'), eq(tickets.threePlId, threePlId)));
+    return result[0].count;
+  }
 
-    const activeBrands = role === 'threePL' && threePlId
-      ? await db.select({ count: count() }).from(brands).where(eq(brands.threePlId, threePlId))
-      : role === 'admin'
-      ? await db.select({ count: count() }).from(brands)
-      : [{ count: 1 }];
+  async getUrgentTicketsCount(): Promise<number> {
+    const result = await db.select({ count: count() }).from(tickets).where(eq(tickets.priority, 'urgent'));
+    return result[0].count;
+  }
 
-    return {
-      totalOrders: totalOrders[0].count,
-      openTickets: openTickets[0].count,
-      urgentTickets: urgentTickets[0].count,
-      activeBrands: activeBrands[0].count,
-    };
+  async getUrgentTicketsCountByBrand(brandId: string): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(tickets)
+      .where(and(eq(tickets.priority, 'urgent'), eq(tickets.brandId, brandId)));
+    return result[0].count;
+  }
+
+  async getUrgentTicketsCountByThreePL(threePlId: string): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(tickets)
+      .where(and(eq(tickets.priority, 'urgent'), eq(tickets.threePlId, threePlId)));
+    return result[0].count;
+  }
+
+  async getPendingOrdersCount(): Promise<number> {
+    const result = await db.select({ count: count() }).from(orders).where(eq(orders.status, 'pending'));
+    return result[0].count;
+  }
+
+  async getPendingOrdersCountByBrand(brandId: string): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(orders)
+      .where(and(eq(orders.status, 'pending'), eq(orders.brandId, brandId)));
+    return result[0].count;
+  }
+
+  async getPendingOrdersCountByThreePL(threePlId: string): Promise<number> {
+    const result = await db
+      .select({ count: count(orders.id) })
+      .from(orders)
+      .leftJoin(brands, eq(orders.brandId, brands.id))
+      .where(and(eq(orders.status, 'pending'), eq(brands.threePlId, threePlId)));
+    return result[0].count;
   }
 }
 
