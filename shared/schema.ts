@@ -52,7 +52,8 @@ export const threePLs = pgTable("three_pls", {
   email: varchar("email"),
   phone: varchar("phone"),
   address: text("address"),
-  trackstarApiKey: varchar("trackstar_api_key"), // Trackstar organization API key
+  trackstarApiKey: varchar("trackstar_api_key"),
+  shipHeroPassword: varchar("shiphero_password"), // Trackstar organization API key
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

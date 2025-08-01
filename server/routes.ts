@@ -171,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { id: brandId } = req.params;
-      const { integrationType, apiKey, userId: integrationUserId } = req.body;
+      const { integrationType, apiKey, userId: integrationUserId, username, password } = req.body;
       
       // Verify the brand belongs to this 3PL
       const brand = await storage.getBrand(brandId);
@@ -181,7 +181,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let updatedBrand;
       if (integrationType === 'shiphero') {
-        updatedBrand = await storage.updateBrandApiCredentials(brandId, apiKey, integrationUserId);
+        // Store username and password for ShipHero
+        updatedBrand = await storage.updateBrandShipHeroCredentials(brandId, username, password, integrationUserId);
       } else if (integrationType === 'trackstar') {
         // For Trackstar, always use the universal API key
         const universalTrackstarKey = '269fcaf8b50a4fb4b384724f3e5d76db';

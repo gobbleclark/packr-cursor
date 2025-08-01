@@ -69,6 +69,8 @@ export default function BrandManagement() {
   const [integrationType, setIntegrationType] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [userId, setUserId] = useState('');
+  const [shipHeroUsername, setShipHeroUsername] = useState('');
+  const [shipHeroPassword, setShipHeroPassword] = useState('');
   const [isUserManagementDialogOpen, setIsUserManagementDialogOpen] = useState(false);
   const [selectedBrandForUsers, setSelectedBrandForUsers] = useState<any>(null);
 
@@ -144,6 +146,8 @@ export default function BrandManagement() {
       setIntegrationType('');
       setApiKey('');
       setUserId('');
+      setShipHeroUsername('');
+      setShipHeroPassword('');
       
       const integrationName = integrationType === 'trackstar' ? 'Trackstar (Universal WMS)' : 'ShipHero';
       toast({
@@ -299,24 +303,32 @@ export default function BrandManagement() {
       return;
     }
 
-    // For ShipHero, require API key
-    if (integrationType === 'shiphero' && !apiKey) {
+    // For ShipHero, require username and password
+    if (integrationType === 'shiphero' && (!shipHeroUsername || !shipHeroPassword)) {
       toast({
         title: "Error",
-        description: "Please enter your ShipHero API key",
+        description: "Please enter your ShipHero username and password",
         variant: "destructive",
       });
       return;
     }
 
-    // For Trackstar, use universal API key
-    const finalApiKey = integrationType === 'trackstar' ? '269fcaf8b50a4fb4b384724f3e5d76db' : apiKey;
+    // Prepare credentials based on integration type
+    let credentials = {};
+    if (integrationType === 'trackstar') {
+      credentials = { apiKey: '269fcaf8b50a4fb4b384724f3e5d76db' };
+    } else if (integrationType === 'shiphero') {
+      credentials = { 
+        username: shipHeroUsername, 
+        password: shipHeroPassword,
+        userId: userId || undefined
+      };
+    }
 
     addIntegrationMutation.mutate({
       brandId: selectedBrand.id,
       integrationType,
-      apiKey: finalApiKey,
-      userId: userId || undefined
+      ...credentials
     });
   };
 
@@ -591,23 +603,35 @@ export default function BrandManagement() {
                 {integrationType === 'shiphero' && (
                   <>
                     <div className="grid gap-2">
-                      <Label htmlFor="api-key">ShipHero API Key</Label>
+                      <Label htmlFor="shiphero-username">ShipHero Username</Label>
                       <Input
-                        id="api-key"
-                        type="password"
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="Enter ShipHero API key"
+                        id="shiphero-username"
+                        value={shipHeroUsername}
+                        onChange={(e) => setShipHeroUsername(e.target.value)}
+                        placeholder="Enter your ShipHero username"
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="user-id">ShipHero User ID</Label>
+                      <Label htmlFor="shiphero-password">ShipHero Password</Label>
+                      <Input
+                        id="shiphero-password"
+                        type="password"
+                        value={shipHeroPassword}
+                        onChange={(e) => setShipHeroPassword(e.target.value)}
+                        placeholder="Enter your ShipHero password"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="user-id">User ID (Optional)</Label>
                       <Input
                         id="user-id"
                         value={userId}
                         onChange={(e) => setUserId(e.target.value)}
-                        placeholder="Enter ShipHero user ID"
+                        placeholder="Enter ShipHero user ID (optional)"
                       />
+                      <p className="text-sm text-gray-500">
+                        Use your brand's ShipHero login credentials. User ID is optional.
+                      </p>
                     </div>
                   </>
                 )}
@@ -635,6 +659,8 @@ export default function BrandManagement() {
                     setIntegrationType('');
                     setApiKey('');
                     setUserId('');
+                    setShipHeroUsername('');
+                    setShipHeroPassword('');
                   }}
                 >
                   Cancel

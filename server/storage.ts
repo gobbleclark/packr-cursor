@@ -47,6 +47,7 @@ export interface IStorage {
   createBrand(brand: InsertBrand): Promise<Brand>;
   getBrandsByThreePL(threePlId: string): Promise<Brand[]>;
   updateBrandApiCredentials(id: string, apiKey: string, userId: string): Promise<Brand>;
+  updateBrandShipHeroCredentials(id: string, username: string, password: string, userId?: string): Promise<Brand>;
   updateBrandTrackstarCredentials(id: string, apiKey: string): Promise<Brand>;
   getBrandByInvitationToken(token: string): Promise<Brand | undefined>;
   updateBrandInvitationStatus(id: string, isActive: boolean): Promise<Brand>;
@@ -190,6 +191,20 @@ export class DatabaseStorage implements IStorage {
       .set({
         shipHeroApiKey: apiKey,
         shipHeroUserId: userId,
+        updatedAt: new Date(),
+      })
+      .where(eq(brands.id, id))
+      .returning();
+    return brand;
+  }
+
+  async updateBrandShipHeroCredentials(id: string, username: string, password: string, userId?: string): Promise<Brand> {
+    const [brand] = await db
+      .update(brands)
+      .set({
+        apiKey: username, // Store username in apiKey field for now
+        shipHeroPassword: password, // Store password separately  
+        userId,
         updatedAt: new Date(),
       })
       .where(eq(brands.id, id))
