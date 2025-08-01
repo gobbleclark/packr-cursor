@@ -52,9 +52,9 @@ export default function Inventory() {
     const matchesBrand = brandFilter === 'all' || product.brandId === brandFilter;
     
     const matchesStock = stockFilter === 'all' ||
-                        (stockFilter === 'low' && product.quantity < 10) ||
-                        (stockFilter === 'out' && product.quantity === 0) ||
-                        (stockFilter === 'in-stock' && product.quantity > 0);
+                        (stockFilter === 'low' && (product.inventory_count || product.quantity || 0) < 10) ||
+                        (stockFilter === 'out' && (product.inventory_count || product.quantity || 0) === 0) ||
+                        (stockFilter === 'in-stock' && (product.inventory_count || product.quantity || 0) > 0);
     
     return matchesSearch && matchesBrand && matchesStock;
   });
@@ -131,7 +131,7 @@ export default function Inventory() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">In Stock</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {filteredProducts.filter(p => p.quantity > 0).length}
+                    {filteredProducts.filter(p => (p.inventory_count || p.quantity || 0) > 0).length}
                   </p>
                 </div>
                 <TrendingUp className="h-8 w-8 text-green-500" />
@@ -145,7 +145,10 @@ export default function Inventory() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Low Stock</p>
                   <p className="text-2xl font-bold text-yellow-600">
-                    {filteredProducts.filter(p => p.quantity > 0 && p.quantity < 10).length}
+                    {filteredProducts.filter(p => {
+                      const qty = p.inventory_count || p.quantity || 0;
+                      return qty > 0 && qty < 10;
+                    }).length}
                   </p>
                 </div>
                 <TrendingDown className="h-8 w-8 text-yellow-500" />
@@ -159,7 +162,7 @@ export default function Inventory() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Out of Stock</p>
                   <p className="text-2xl font-bold text-red-600">
-                    {filteredProducts.filter(p => p.quantity === 0).length}
+                    {filteredProducts.filter(p => (p.inventory_count || p.quantity || 0) === 0).length}
                   </p>
                 </div>
                 <AlertTriangle className="h-8 w-8 text-red-500" />
@@ -274,11 +277,11 @@ export default function Inventory() {
                         )}
                         <TableCell>
                           <span className="text-lg font-bold">
-                            {product.quantity || 0}
+                            {product.inventory_count || product.quantity || 0}
                           </span>
                         </TableCell>
                         <TableCell>
-                          {getStockBadge(product.quantity || 0)}
+                          {getStockBadge(product.inventory_count || product.quantity || 0)}
                         </TableCell>
                         <TableCell>
                           {product.price ? `$${parseFloat(product.price).toFixed(2)}` : 'N/A'}

@@ -466,6 +466,8 @@ export class DatabaseStorage implements IStorage {
         barcode: products.barcode,
         hsCode: products.hsCode,
         countryOfOrigin: products.countryOfOrigin,
+        reservedQuantity: products.reservedQuantity,
+        lowStockThreshold: products.lowStockThreshold,
         brandName: brands.name,
       })
       .from(products)

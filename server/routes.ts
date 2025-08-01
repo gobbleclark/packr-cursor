@@ -1058,8 +1058,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             await storage.createOrder(orderData);
             syncResults.orders++;
+            console.log(`✅ Created order: ${orderData.orderNumber}`);
           } catch (error) {
-            console.error('Failed to create order:', error);
+            console.error('❌ Failed to create order:', error);
           }
         }
 
@@ -1067,35 +1068,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             await storage.createProduct(productData);
             syncResults.products++;
+            console.log(`✅ Created product: ${productData.name} (${productData.sku})`);
           } catch (error) {
-            console.error('Failed to create product:', error);
+            console.error('❌ Failed to create product:', error);
           }
         }
 
-        // Mock product sync
-        const mockProducts = [
-          {
-            sku: 'PROD-001',
-            name: 'Test Product from ShipHero',
-            description: 'Product synced from ShipHero integration',
-            brandId: brandId,
-            price: 74.99,
-            quantity: 150,
-            lowStockThreshold: 10,
-            shipHeroProductId: `sh_prod_${Math.random().toString(36).substr(2, 8)}`,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          }
-        ];
-
-        for (const productData of mockProducts) {
-          try {
-            await storage.createProduct(productData);
-            syncResults.products++;
-          } catch (error) {
-            console.error('Failed to create product:', error);
-          }
-        }
+        console.log(`📊 Initial sync completed for ${brand.name}: ${syncResults.orders} orders, ${syncResults.products} products created`);
       }
 
       res.json({
