@@ -52,6 +52,7 @@ export default function BrandManagement() {
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [brandName, setBrandName] = useState('');
   const [brandEmail, setBrandEmail] = useState('');
+  const [shouldRedirect, setShouldRedirect] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -63,7 +64,7 @@ export default function BrandManagement() {
       setTimeout(() => {
         window.location.href = "/api/login";
       }, 500);
-      return;
+      setShouldRedirect(true);
     }
   }, [isAuthenticated, isLoading, toast]);
 
@@ -75,8 +76,10 @@ export default function BrandManagement() {
         description: "Only 3PL managers can access brand management.",
         variant: "destructive",
       });
-      window.location.href = "/";
-      return;
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 500);
+      setShouldRedirect(true);
     }
   }, [user, isLoading, toast]);
 
@@ -132,12 +135,14 @@ export default function BrandManagement() {
 
 
 
-  if (isLoading || brandsLoading) {
+  if (isLoading || brandsLoading || shouldRedirect) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading brand management...</p>
+          <p className="mt-4 text-gray-600">
+            {shouldRedirect ? "Redirecting..." : "Loading brand management..."}
+          </p>
         </div>
       </div>
     );
