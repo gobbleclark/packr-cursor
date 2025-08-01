@@ -254,15 +254,29 @@ export class DatabaseStorage implements IStorage {
     return brand;
   }
 
-  async updateBrandShipHeroCredentials(id: string, username: string, password: string, userId?: string): Promise<Brand> {
+  async updateBrandShipHeroCredentials(id: string, username: string | null, password?: string | null, userId?: string): Promise<Brand> {
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    // Update username if provided (can be null to clear)
+    if (username !== undefined) {
+      updateData.shipHeroApiKey = username;
+    }
+
+    // Update password if provided (can be null to clear, undefined to keep current)
+    if (password !== undefined) {
+      updateData.shipHeroPassword = password;
+    }
+
+    // Update user ID if provided
+    if (userId !== undefined) {
+      updateData.shipHeroUserId = userId;
+    }
+
     const [brand] = await db
       .update(brands)
-      .set({
-        shipHeroApiKey: username, // Store username in shipHeroApiKey field
-        shipHeroPassword: password, // Store password separately  
-        shipHeroUserId: userId,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(brands.id, id))
       .returning();
     return brand;

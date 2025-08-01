@@ -492,6 +492,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
+  // Update brand ShipHero credentials
+  app.put('/api/brands/:id/integrations', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'threePL' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Only 3PL managers can update brand integrations" });
+      }
+
+      const { id } = req.params;
+      const { integrationType, shipHeroUsername, shipHeroPassword } = req.body;
+
+      if (integrationType === 'shiphero') {
+        // Handle password update logic - don't update if 'KEEP_CURRENT'
+        const actualPassword = shipHeroPassword === 'KEEP_CURRENT' ? undefined : shipHeroPassword;
+        await storage.updateBrandShipHeroCredentials(id, shipHeroUsername, actualPassword);
+        res.json({ message: "ShipHero integration updated successfully" });
+      } else {
+        res.status(400).json({ message: "Unsupported integration type" });
+      }
+    } catch (error) {
+      console.error("Error updating brand integration:", error);
+      res.status(500).json({ message: "Failed to update brand integration" });
+    }
+  });
+
+  // Delete brand integration
+  app.delete('/api/brands/:id/integrations', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'threePL' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Only 3PL managers can delete brand integrations" });
+      }
+
+      const { id } = req.params;
+      
+      // Clear all integration credentials
+      await storage.updateBrandShipHeroCredentials(id, null, null);
+      res.json({ message: "Integration removed successfully" });
+    } catch (error) {
+      console.error("Error removing brand integration:", error);
+      res.status(500).json({ message: "Failed to remove brand integration" });
+    }
+  });
+
   // Trackstar integration routes
   app.post('/api/trackstar/link-token', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {

@@ -59,6 +59,10 @@ export default function BrandManagementClean() {
   const [selectedBrandForSync, setSelectedBrandForSync] = useState<any>(null);
   const [isUserManagementDialogOpen, setIsUserManagementDialogOpen] = useState(false);
   const [selectedBrandForUsers, setSelectedBrandForUsers] = useState<any>(null);
+  const [isEditIntegrationDialogOpen, setIsEditIntegrationDialogOpen] = useState(false);
+  const [selectedBrandForEdit, setSelectedBrandForEdit] = useState<any>(null);
+  const [editShipHeroUsername, setEditShipHeroUsername] = useState('');
+  const [editShipHeroPassword, setEditShipHeroPassword] = useState('');
 
   const { data: brands = [], isLoading: brandsLoading } = useQuery<any[]>({
     queryKey: ['/api/brands'],
@@ -202,6 +206,84 @@ export default function BrandManagementClean() {
     }
   });
 
+  const editIntegrationMutation = useMutation({
+    mutationFn: async (data: { brandId: string; shipHeroUsername: string; shipHeroPassword: string }) => {
+      const response = await apiRequest('PUT', `/api/brands/${data.brandId}/integrations`, {
+        integrationType: 'shiphero',
+        shipHeroUsername: data.shipHeroUsername,
+        shipHeroPassword: data.shipHeroPassword
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
+      setIsEditIntegrationDialogOpen(false);
+      setSelectedBrandForEdit(null);
+      setEditShipHeroUsername('');
+      setEditShipHeroPassword('');
+      toast({
+        title: "Integration Updated",
+        description: "ShipHero credentials have been updated successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update integration",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteIntegrationMutation = useMutation({
+    mutationFn: async (brandId: string) => {
+      const response = await apiRequest('DELETE', `/api/brands/${brandId}/integrations`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
+      toast({
+        title: "Integration Removed",
+        description: "Integration has been deleted successfully.",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete integration",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Effects after all hooks
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -335,16 +417,45 @@ export default function BrandManagementClean() {
                         </Badge>
                       </div>
 
-                      <div className="flex items-center gap-2 text-sm">
-                        {brand.hasShipHeroIntegration ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-red-500" />
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {brand.hasShipHeroIntegration && (
+                          <div className="flex items-center gap-1">
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              ShipHero Connected
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
+                              onClick={() => {
+                                setSelectedBrandForEdit(brand);
+                                setEditShipHeroUsername(brand.shipHeroApiKey || '');
+                                setEditShipHeroPassword('');
+                                setIsEditIntegrationDialogOpen(true);
+                              }}
+                            >
+                              <Settings className="h-3 w-3" />
+                            </Button>
+                          </div>
                         )}
-                        <span className={brand.hasShipHeroIntegration ? "text-green-700" : "text-red-700"}>
-                          {brand.hasShipHeroIntegration ? "ShipHero Connected" : "No Integration"}
-                        </span>
+                        
+                        {brand.hasTrackstarIntegration && (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Trackstar Connected
+                          </Badge>
+                        )}
+                        
+                        {!brand.hasShipHeroIntegration && !brand.hasTrackstarIntegration && (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                            <XCircle className="h-3 w-3 mr-1" />
+                            No Integration
+                          </Badge>
+                        )}
                       </div>
+
+
 
                       <div className="flex flex-wrap gap-2">
                         {!brand.hasShipHeroIntegration ? (
@@ -372,6 +483,34 @@ export default function BrandManagementClean() {
                                 <RefreshCw className="h-4 w-4" />
                               )}
                               <span className="hidden sm:inline">Sync Data</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedBrandForEdit(brand);
+                                setEditShipHeroUsername(brand.shipHeroApiKey || '');
+                                setEditShipHeroPassword('');
+                                setIsEditIntegrationDialogOpen(true);
+                              }}
+                              className="flex items-center gap-2"
+                            >
+                              <Settings className="h-4 w-4" />
+                              <span className="hidden sm:inline">Edit Integration</span>
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm(`Are you sure you want to remove the integration for ${brand.name}? This will stop all syncing.`)) {
+                                  deleteIntegrationMutation.mutate(brand.id);
+                                }
+                              }}
+                              disabled={deleteIntegrationMutation.isPending}
+                              className="flex items-center gap-2"
+                            >
+                              <XCircle className="h-4 w-4" />
+                              <span className="hidden sm:inline">Remove</span>
                             </Button>
                             <Button
                               variant="outline"
@@ -522,6 +661,76 @@ export default function BrandManagementClean() {
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                   )}
                   Save Integration
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit Integration Dialog */}
+          <Dialog open={isEditIntegrationDialogOpen} onOpenChange={setIsEditIntegrationDialogOpen}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Edit Integration for {selectedBrandForEdit?.name}</DialogTitle>
+                <DialogDescription>
+                  Update ShipHero API credentials for this brand. Leave password blank to keep current password.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-shiphero-username">ShipHero Username</Label>
+                  <Input
+                    id="edit-shiphero-username"
+                    value={editShipHeroUsername}
+                    onChange={(e) => setEditShipHeroUsername(e.target.value)}
+                    placeholder="Enter your ShipHero username"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-shiphero-password">ShipHero Password</Label>
+                  <Input
+                    id="edit-shiphero-password"
+                    type="password"
+                    value={editShipHeroPassword}
+                    onChange={(e) => setEditShipHeroPassword(e.target.value)}
+                    placeholder="Enter new password (leave blank to keep current)"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditIntegrationDialogOpen(false);
+                    setSelectedBrandForEdit(null);
+                    setEditShipHeroUsername('');
+                    setEditShipHeroPassword('');
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!selectedBrandForEdit || !editShipHeroUsername) {
+                      toast({
+                        title: "Error",
+                        description: "Please enter a ShipHero username",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    editIntegrationMutation.mutate({
+                      brandId: selectedBrandForEdit.id,
+                      shipHeroUsername: editShipHeroUsername,
+                      shipHeroPassword: editShipHeroPassword || 'KEEP_CURRENT'
+                    });
+                  }}
+                  disabled={editIntegrationMutation.isPending}
+                >
+                  {editIntegrationMutation.isPending && (
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Update Integration
                 </Button>
               </DialogFooter>
             </DialogContent>
