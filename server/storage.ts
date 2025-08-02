@@ -237,7 +237,7 @@ export class DatabaseStorage implements IStorage {
       status: brand.isActive ? 'active' : 'invited',
       contactEmail: brand.email,
       hasShipHeroIntegration: !!(brand.ship_hero_api_key && brand.ship_hero_password),
-      hasTrackstarIntegration: !!brand.trackstar_access_token,
+      hasTrackstarIntegration: !!brand.trackstar_api_key,
       shipHeroApiKey: brand.ship_hero_api_key,
       // Also map the database column names to the expected API format
       shipHeroPassword: brand.ship_hero_password ? 'SET' : null
