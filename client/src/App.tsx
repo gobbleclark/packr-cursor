@@ -16,6 +16,8 @@ import Orders from "@/pages/orders";
 import Inventory from "@/pages/inventory";
 import Integrations from "@/pages/integrations";
 import MobileApp from "@/pages/mobile-app";
+import SyncStatus from "@/pages/sync-status";
+import WebhookStatus from "@/pages/webhook-status";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -48,6 +50,8 @@ function Router() {
               return <Dashboard />;
             }} />
             <Route path="/brands" component={BrandManagementClean} />
+            <Route path="/sync-status" component={SyncStatus} />
+            <Route path="/webhook-status" component={WebhookStatus} />
             <Route path="/messages" component={Messages} />
             <Route path="/orders" component={Orders} />
             <Route path="/inventory" component={Inventory} />

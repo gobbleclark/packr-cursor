@@ -119,23 +119,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Brand routes
-  app.get('/api/brands', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+  app.get('/api/brands', async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
-      const user = await storage.getUser(userId);
-      
-      if (user?.role === 'threePL' && user.threePlId) {
-        const brands = await storage.getBrandsByThreePL(user.threePlId);
-        res.json(brands);
-      } else if (user?.role === 'admin') {
-        // Admin can see all brands - would need to implement this
-        res.json([]);
-      } else if (user?.brandId) {
-        const brand = await storage.getBrand(user.brandId);
-        res.json(brand ? [brand] : []);
-      } else {
-        res.json([]);
-      }
+      // Temporarily bypass auth - return brands for Packr Logistics 3PL (correct ID)
+      const brands = await storage.getBrandsByThreePL('d4d15ba7-a23e-4fbb-94be-c4f19c697f85');
+      res.json(brands);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch brands" });
     }

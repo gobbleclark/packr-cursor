@@ -37,7 +37,7 @@ interface SyncStatusProps {
   onClose: () => void;
 }
 
-export function SyncStatusDialog({ brandId, brandName, isOpen, onClose }: SyncStatusProps) {
+function SyncStatusDialog({ brandId, brandName, isOpen, onClose }: SyncStatusProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -427,3 +427,44 @@ export function SyncStatusDialog({ brandId, brandName, isOpen, onClose }: SyncSt
     </Dialog>
   );
 }
+
+// Main Sync Status Page Component
+function SyncStatusPage() {
+  const { user } = useAuth();
+  const { data: brands } = useQuery({
+    queryKey: ['/api/brands'],
+  });
+
+  if (!brands || brands.length === 0) {
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mb-4">Sync Status</h1>
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p>No brands with integrations found.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Sync Status</h1>
+      <div className="grid gap-4">
+        {brands.map((brand: any) => (
+          <Card key={brand.id}>
+            <CardHeader>
+              <CardTitle>{brand.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>Sync monitoring for {brand.name}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default SyncStatusPage;

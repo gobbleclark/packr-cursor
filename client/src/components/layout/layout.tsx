@@ -78,6 +78,18 @@ const navigation: NavItem[] = [
     roles: ['threePL', 'brand', 'admin'],
   },
   {
+    name: 'Sync Status',
+    href: '/sync-status',
+    icon: Truck,
+    roles: ['threePL', 'admin'],
+  },
+  {
+    name: 'Webhook Status',
+    href: '/webhook-status',
+    icon: Settings,
+    roles: ['threePL', 'admin'],
+  },
+  {
     name: 'User Management',
     href: '/users',
     icon: Users,

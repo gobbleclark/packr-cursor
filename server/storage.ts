@@ -228,7 +228,7 @@ export class DatabaseStorage implements IStorage {
     const brandResults = await db
       .select()
       .from(brands)
-      .where(eq(brands.threePlId, threePlId))
+      .where(eq(brands.three_pl_id, threePlId))
       .orderBy(desc(brands.createdAt));
 
     // Transform brands to include hasShipHeroIntegration flag

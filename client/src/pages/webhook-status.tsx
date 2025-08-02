@@ -8,7 +8,7 @@ interface WebhookStatusProps {
   brandName: string;
 }
 
-export function WebhookStatus({ brandId, brandName }: WebhookStatusProps) {
+function WebhookStatus({ brandId, brandName }: WebhookStatusProps) {
   const { data: webhookStatus, isLoading } = useQuery({
     queryKey: [`/api/brands/${brandId}/webhook-status`],
     refetchInterval: 30000, // Refresh every 30 seconds
@@ -103,3 +103,44 @@ export function WebhookStatus({ brandId, brandName }: WebhookStatusProps) {
     </Card>
   );
 }
+
+// Main Webhook Status Page Component  
+function WebhookStatusPage() {
+  const { user } = useAuth();
+  const { data: brands } = useQuery({
+    queryKey: ['/api/brands'],
+  });
+
+  if (!brands || brands.length === 0) {
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mb-4">Webhook Status</h1>
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p>No brands with integrations found.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Webhook Status</h1>
+      <div className="grid gap-4">
+        {brands.map((brand: any) => (
+          <Card key={brand.id}>
+            <CardHeader>
+              <CardTitle>{brand.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>Webhook monitoring for {brand.name}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default WebhookStatusPage;
