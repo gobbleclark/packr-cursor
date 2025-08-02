@@ -115,7 +115,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateBrandSyncStatus(brandId: string, lastSyncAt: Date): Promise<void> {
-    await db.update(brands).set({ lastSyncAt }).where(eq(brands.id, brandId));
+    // Use sync_status table for tracking instead of adding column to brands table
+    try {
+      await this.updateSyncStatus(brandId, 'general', 'success', 0);
+    } catch (error) {
+      console.error('Failed to update brand sync status:', error);
+    }
   }
 
   async updateOrder(id: string, orderData: any): Promise<Order> {
@@ -408,8 +413,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createOrder(orderData: InsertOrder): Promise<Order> {
-    const [order] = await db.insert(orders).values(orderData).returning();
-    return order;
+    console.log("🔍 STORAGE: Creating order with data:", JSON.stringify(orderData, null, 2));
+    
+    try {
+      const [order] = await db.insert(orders).values(orderData).returning();
+      console.log("✅ STORAGE: Order created with ID:", order.id);
+      return order;
+    } catch (error) {
+      console.error("❌ STORAGE: Order creation failed:", error);
+      console.error("❌ STORAGE: Stack trace:", error.stack);
+      throw error;
+    }
   }
 
   async getOrdersByBrand(brandId: string): Promise<Order[]> {
@@ -481,8 +495,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProduct(productData: InsertProduct): Promise<Product> {
-    const [product] = await db.insert(products).values(productData).returning();
-    return product;
+    console.log("🔍 STORAGE: Creating product with data:", JSON.stringify(productData, null, 2));
+    
+    try {
+      const [product] = await db.insert(products).values(productData).returning();
+      console.log("✅ STORAGE: Product created with ID:", product.id);
+      return product;
+    } catch (error) {
+      console.error("❌ STORAGE: Product creation failed:", error);
+      console.error("❌ STORAGE: Stack trace:", error.stack);
+      throw error;
+    }
   }
 
   async getProductsByBrand(brandId: string): Promise<Product[]> {
@@ -502,7 +525,7 @@ export class DatabaseStorage implements IStorage {
         description: products.description,
         brandId: products.brandId,
         price: products.price,
-        quantity: products.quantity,
+        inventoryCount: products.inventoryCount,
         shipHeroProductId: products.shipHeroProductId,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
@@ -532,7 +555,7 @@ export class DatabaseStorage implements IStorage {
   async updateProductInventory(id: string, count: number): Promise<Product> {
     const [product] = await db
       .update(products)
-      .set({ quantity: count, updatedAt: new Date() })
+      .set({ inventoryCount: count, updatedAt: new Date() })
       .where(eq(products.id, id))
       .returning();
     return product;

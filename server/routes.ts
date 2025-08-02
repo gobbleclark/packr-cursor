@@ -16,7 +16,7 @@ import {
 import { ShipHeroService } from "./services/shiphero";
 import { TrackstarService } from "./services/trackstar";
 import { BackgroundJobService } from "./services/backgroundJobs";
-// ShipHero sync service removed for optimization - using simulated sync for now
+import { RealApiSyncService } from "./services/realApiSync";
 import { sendBrandInvitationEmail } from "./services/emailService";
 import { nanoid } from "nanoid";
 
@@ -1229,7 +1229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Individual sync endpoints
+  // Individual sync endpoints - REAL API INTEGRATION
   app.post('/api/brands/:id/sync/orders', async (req: any, res) => {
     try {
       const { id: brandId } = req.params;
@@ -1240,10 +1240,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`📦 Manual orders sync for brand ${brand.name}`);
-      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      const results = { orders: 2 };
-      res.json({ message: "Orders sync completed", results });
+      // Use REAL API sync service
+      const realApiSync = new RealApiSyncService(storage);
+      const syncResult = await realApiSync.syncBrandData(brandId);
+      
+      const results = { 
+        orders: syncResult.orders,
+        errors: syncResult.errors
+      };
+      
+      if (syncResult.success) {
+        res.json({ message: "Orders sync completed", results });
+      } else {
+        res.status(500).json({ message: "Orders sync failed", results, errors: syncResult.errors });
+      }
     } catch (error) {
       console.error("Error syncing orders:", error);
       res.status(500).json({ message: "Failed to sync orders" });
@@ -1260,10 +1271,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`📊 Manual products sync for brand ${brand.name}`);
-      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      const results = { products: 3 };
-      res.json({ message: "Products sync completed", results });
+      // Use REAL API sync service  
+      const realApiSync = new RealApiSyncService(storage);
+      const syncResult = await realApiSync.syncBrandData(brandId);
+      
+      const results = { 
+        products: syncResult.products,
+        errors: syncResult.errors
+      };
+      
+      if (syncResult.success) {
+        res.json({ message: "Products sync completed", results });
+      } else {
+        res.status(500).json({ message: "Products sync failed", results, errors: syncResult.errors });
+      }
     } catch (error) {
       console.error("Error syncing products:", error);
       res.status(500).json({ message: "Failed to sync products" });

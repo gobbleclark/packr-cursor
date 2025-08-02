@@ -35,9 +35,12 @@ export class RealApiSyncService {
       }
 
       console.log(`🔄 Starting real API sync for brand: ${brand.name}`);
+      console.log(`🔍 CREDENTIAL DEBUG - Brand has:`);
+      console.log(`  - shipHeroApiKey: ${brand.shipHeroApiKey || 'MISSING'}`);
+      console.log(`  - shipHeroPassword: ${brand.shipHeroPassword ? 'EXISTS' : 'MISSING'}`);
 
-      // Sync from ShipHero if credentials are available
-      if (brand.ship_hero_api_key && brand.ship_hero_password) {
+      // Sync from ShipHero if credentials are available (FIXED: use camelCase from Drizzle)
+      if (brand.shipHeroApiKey && brand.shipHeroPassword) {
         console.log(`📡 Syncing from ShipHero API for ${brand.name}...`);
         const shipHeroResult = await this.syncShipHeroData(brand);
         result.orders += shipHeroResult.orders;
@@ -56,8 +59,8 @@ export class RealApiSyncService {
         result.errors.push(...trackstarResult.errors);
       }
 
-      // If no credentials are configured, return appropriate message
-      if (!brand.ship_hero_api_key && !brand.ship_hero_password && !brand.trackstar_access_token) {
+      // FIXED: Check credentials with correct camelCase field names
+      if (!brand.shipHeroApiKey && !brand.shipHeroPassword && !brand.trackstarApiKey) {
         result.errors.push('No API credentials configured for this brand. Please add ShipHero or Trackstar credentials to sync real data.');
         return result;
       }
@@ -83,9 +86,11 @@ export class RealApiSyncService {
 
     try {
       const credentials = {
-        username: brand.ship_hero_api_key,
-        password: brand.ship_hero_password
+        username: brand.shipHeroApiKey,  // FIXED: camelCase from Drizzle
+        password: brand.shipHeroPassword  // FIXED: camelCase from Drizzle
       };
+      
+      console.log(`🔍 Using ShipHero credentials: ${credentials.username}`);
 
       // Test connection first
       const connectionValid = await shipHeroApi.testConnection(credentials);
@@ -96,8 +101,11 @@ export class RealApiSyncService {
 
       // Sync Orders (last 7 days)
       const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      console.log(`🔍 Fetching orders from ShipHero API for brand ${brand.name}...`);
       const orders = await shipHeroApi.getOrders(credentials, lastWeek);
+      console.log(`📊 ShipHero API returned ${orders?.length || 0} orders`);
       
+      console.log(`🔄 Processing ${orders?.length || 0} orders from ShipHero...`);
       for (const shipHeroOrder of orders) {
         const orderData = {
           orderNumber: shipHeroOrder.order_number,
@@ -126,22 +134,41 @@ export class RealApiSyncService {
           } : null,
           createdAt: new Date(shipHeroOrder.order_date),
           updatedAt: new Date(),
-          lastSyncAt: new Date()
+          lastSyncAt: new Date(),
+          trackstarOrderId: null // Add missing field
         };
 
         // Check if order already exists to prevent duplicates
         const existingOrder = await storage.getOrderByShipHeroId(shipHeroOrder.id);
         if (!existingOrder) {
-          await storage.createOrder(orderData);
-          result.orders++;
+          try {
+            console.log(`📦 Creating order: ${orderData.orderNumber} for brand ${brand.name}`);
+            console.log(`📦 Order data:`, JSON.stringify(orderData, null, 2));
+            const createdOrder = await storage.createOrder(orderData);
+            result.orders++;
+            console.log(`✅ Order created successfully with ID: ${createdOrder.id}, Order Number: ${orderData.orderNumber}`);
+          } catch (error) {
+            console.error(`❌ Failed to create order ${orderData.orderNumber}:`, error);
+            console.error(`❌ Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
+            result.errors.push(`Failed to create order ${orderData.orderNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
         } else {
-          await storage.updateOrder(existingOrder.id, orderData);
+          try {
+            await storage.updateOrder(existingOrder.id, orderData);
+            console.log(`🔄 Updated existing order: ${orderData.orderNumber}`);
+          } catch (error) {
+            console.error(`❌ Failed to update order ${orderData.orderNumber}:`, error);
+            result.errors.push(`Failed to update order ${orderData.orderNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
         }
       }
 
       // Sync Products
+      console.log(`🔍 Fetching products from ShipHero API for brand ${brand.name}...`);
       const products = await shipHeroApi.getProducts(credentials);
+      console.log(`📊 ShipHero API returned ${products?.length || 0} products`);
       
+      console.log(`🔄 Processing ${products?.length || 0} products from ShipHero...`);
       for (const shipHeroProduct of products) {
         const productData = {
           name: shipHeroProduct.name,
@@ -162,6 +189,7 @@ export class RealApiSyncService {
           hsCode: shipHeroProduct.customs_description_2 || '',
           reservedQuantity: shipHeroProduct.total_committed || 0,
           lowStockThreshold: 10, // Default threshold
+          trackstarProductId: null, // Add missing field
           createdAt: new Date(shipHeroProduct.created_at || Date.now()),
           updatedAt: new Date(),
           lastSyncAt: new Date()
@@ -170,10 +198,25 @@ export class RealApiSyncService {
         // Check if product already exists to prevent duplicates
         const existingProduct = await storage.getProductByShipHeroId(shipHeroProduct.id);
         if (!existingProduct) {
-          await storage.createProduct(productData);
-          result.products++;
+          try {
+            console.log(`📦 Creating product: ${productData.sku} - ${productData.name}`);
+            console.log(`📦 Product data:`, JSON.stringify(productData, null, 2));
+            const createdProduct = await storage.createProduct(productData);
+            result.products++;
+            console.log(`✅ Product created successfully with ID: ${createdProduct.id}, SKU: ${productData.sku}`);
+          } catch (error) {
+            console.error(`❌ Failed to create product ${productData.sku}:`, error);
+            console.error(`❌ Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
+            result.errors.push(`Failed to create product ${productData.sku}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
         } else {
-          await storage.updateProduct(existingProduct.id, productData);
+          try {
+            await storage.updateProduct(existingProduct.id, productData);
+            console.log(`🔄 Updated existing product: ${productData.sku}`);
+          } catch (error) {
+            console.error(`❌ Failed to update product ${productData.sku}:`, error);
+            result.errors.push(`Failed to update product ${productData.sku}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
         }
       }
 

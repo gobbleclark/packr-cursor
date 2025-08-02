@@ -121,8 +121,10 @@ export class ShipHeroApiService {
     }
 
     const data = await response.json();
+    console.log(`🔍 ShipHero API Response:`, JSON.stringify(data, null, 2));
     
     if (data.errors) {
+      console.error(`❌ ShipHero API errors:`, data.errors);
       throw new Error(`ShipHero API errors: ${JSON.stringify(data.errors)}`);
     }
 
@@ -131,6 +133,7 @@ export class ShipHeroApiService {
 
   async getOrders(credentials: ShipHeroCredentials, fromDate?: Date): Promise<ShipHeroOrder[]> {
     const dateFilter = fromDate ? fromDate.toISOString() : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    console.log(`🔍 Fetching ShipHero orders from ${dateFilter} with credentials ${credentials.username}`);
     
     const query = `
       query getOrders($fromDate: ISODateTime) {
@@ -200,6 +203,7 @@ export class ShipHeroApiService {
   }
 
   async getProducts(credentials: ShipHeroCredentials): Promise<ShipHeroProduct[]> {
+    console.log(`🔍 Fetching ShipHero products with credentials ${credentials.username}`);
     const query = `
       query getProducts {
         products(first: 200) {
