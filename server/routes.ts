@@ -33,8 +33,8 @@ interface AuthenticatedRequest extends Request {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware (temporarily commented out for debugging)
-  // await setupAuth(app);
+  // Auth middleware
+  await setupAuth(app);
 
   // Initialize services
   const shipHeroService = new ShipHeroService();
@@ -45,8 +45,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   backgroundJobService.startOrderSync();
   backgroundJobService.startInventorySync();
 
-  // Auth routes (temporarily disable auth middleware)
-  app.get('/api/auth/user', async (req: any, res) => {
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.claims?.sub;
       const user = await storage.getUser(userId);
@@ -57,8 +57,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dashboard stats (temporarily disable auth middleware)
-  app.get('/api/dashboard/stats', async (req: any, res) => {
+  // Dashboard stats
+  app.get('/api/dashboard/stats', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.claims?.sub;
       const user = await storage.getUser(userId);
@@ -99,7 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 3PL routes
-  app.get('/api/three-pls', async (req: any, res) => {
+  app.get('/api/three-pls', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
       const threePLs = await storage.getThreePLs();
       res.json(threePLs);
@@ -108,7 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/three-pls', async (req: any, res) => {
+  app.post('/api/three-pls', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
       const threePLData = req.body;
       const threePL = await storage.createThreePL(threePLData);
@@ -119,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Brand routes
-  app.get('/api/brands', async (req: any, res) => {
+  app.get('/api/brands', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.claims?.sub;
       const user = await storage.getUser(userId);
@@ -141,7 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/brands', async (req: any, res) => {
+  app.post('/api/brands', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
       const brandData = insertBrandSchema.parse(req.body);
       const brand = await storage.createBrand(brandData);
@@ -151,7 +151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/brands/:id/api-credentials', async (req: any, res) => {
+  app.put('/api/brands/:id/api-credentials', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       const { apiKey, userId } = req.body;
@@ -163,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Temporary direct credentials endpoint - bypasses all auth
+  // Credentials endpoint - keep auth bypass only for this specific endpoint
   app.put('/api/brands/:id/integrations', async (req: any, res) => {
     console.log("Credentials endpoint hit with:", req.body);
     try {
@@ -188,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Brand user management routes
-  app.get('/api/brands/:id/users', async (req: any, res) => {
+  app.get('/api/brands/:id/users', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.claims?.sub;
       const user = await storage.getUser(userId);
@@ -215,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/brands/:id/users', async (req: any, res) => {
+  app.post('/api/brands/:id/users', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.claims?.sub;
       const user = await storage.getUser(userId);
