@@ -228,7 +228,7 @@ export class DatabaseStorage implements IStorage {
     const brandResults = await db
       .select()
       .from(brands)
-      .where(eq(brands.three_pl_id, threePlId))
+      .where(eq(brands.threePlId, threePlId))
       .orderBy(desc(brands.createdAt));
 
     // Transform brands to include hasShipHeroIntegration flag
@@ -236,11 +236,11 @@ export class DatabaseStorage implements IStorage {
       ...brand,
       status: brand.isActive ? 'active' : 'invited',
       contactEmail: brand.email,
-      hasShipHeroIntegration: !!(brand.ship_hero_api_key && brand.ship_hero_password),
-      hasTrackstarIntegration: !!brand.trackstar_api_key,
-      shipHeroApiKey: brand.ship_hero_api_key,
+      hasShipHeroIntegration: !!(brand.shipHeroApiKey && brand.shipHeroPassword),
+      hasTrackstarIntegration: !!brand.trackstarApiKey,
+      shipHeroApiKey: brand.shipHeroApiKey,
       // Also map the database column names to the expected API format
-      shipHeroPassword: brand.ship_hero_password ? 'SET' : null
+      shipHeroPassword: brand.shipHeroPassword ? 'SET' : null
     }));
   }
 
