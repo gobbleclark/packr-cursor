@@ -38,8 +38,9 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production', // Allow http in development
       maxAge: sessionTtl,
+      sameSite: 'lax', // Allow cross-site cookies for API calls
     },
   });
 }
@@ -130,17 +131,19 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!req.isAuthenticated() || !user || !user.expires_at) {
+    console.log("Auth failed: isAuthenticated =", req.isAuthenticated(), "user =", !!user, "expires_at =", user?.expires_at);
     return res.status(401).json({ message: "Unauthorized" });
   }
 
   const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
+  if (now < user.expires_at) {
     return next();
   }
 
   const refreshToken = user.refresh_token;
   if (!refreshToken) {
+    console.log("Auth failed: No refresh token");
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
@@ -151,6 +154,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     updateUserSession(user, tokenResponse);
     return next();
   } catch (error) {
+    console.log("Auth failed: Token refresh error:", error);
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
