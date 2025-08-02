@@ -236,8 +236,9 @@ export class DatabaseStorage implements IStorage {
       ...brand,
       status: brand.isActive ? 'active' : 'invited',
       contactEmail: brand.email,
-      hasShipHeroIntegration: !!(brand.shipHeroApiKey && brand.shipHeroPassword),
-      hasTrackstarIntegration: !!brand.trackstarAccessToken
+      hasShipHeroIntegration: !!(brand.ship_hero_api_key && brand.ship_hero_password),
+      hasTrackstarIntegration: !!brand.trackstar_access_token,
+      shipHeroApiKey: brand.ship_hero_api_key
     }));
   }
 
@@ -261,17 +262,17 @@ export class DatabaseStorage implements IStorage {
 
     // Update username if provided (can be null to clear)
     if (username !== undefined) {
-      updateData.shipHeroApiKey = username;
+      updateData.ship_hero_api_key = username;
     }
 
     // Update password if provided (can be null to clear, undefined to keep current)
     if (password !== undefined) {
-      updateData.shipHeroPassword = password;
+      updateData.ship_hero_password = password;
     }
 
     // Update user ID if provided
     if (userId !== undefined) {
-      updateData.shipHeroUserId = userId;
+      updateData.ship_hero_user_id = userId;
     }
 
     const [brand] = await db
