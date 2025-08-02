@@ -37,7 +37,7 @@ export class RealApiSyncService {
       console.log(`🔄 Starting real API sync for brand: ${brand.name}`);
 
       // Sync from ShipHero if credentials are available
-      if (brand.shipHeroApiKey && brand.shipHeroPassword) {
+      if (brand.ship_hero_api_key && brand.ship_hero_password) {
         console.log(`📡 Syncing from ShipHero API for ${brand.name}...`);
         const shipHeroResult = await this.syncShipHeroData(brand);
         result.orders += shipHeroResult.orders;
@@ -47,7 +47,7 @@ export class RealApiSyncService {
       }
 
       // Sync from Trackstar if credentials are available
-      if (brand.trackstarApiKey) {
+      if (brand.trackstar_access_token) {
         console.log(`📡 Syncing from Trackstar API for ${brand.name}...`);
         const trackstarResult = await this.syncTrackstarData(brand);
         result.orders += trackstarResult.orders;
@@ -57,7 +57,7 @@ export class RealApiSyncService {
       }
 
       // If no credentials are configured, return appropriate message
-      if (!brand.shipHeroApiKey && !brand.shipHeroPassword && !brand.trackstarApiKey) {
+      if (!brand.ship_hero_api_key && !brand.ship_hero_password && !brand.trackstar_access_token) {
         result.errors.push('No API credentials configured for this brand. Please add ShipHero or Trackstar credentials to sync real data.');
         return result;
       }
@@ -83,8 +83,8 @@ export class RealApiSyncService {
 
     try {
       const credentials = {
-        username: brand.shipHeroApiKey,
-        password: brand.shipHeroPassword
+        username: brand.ship_hero_api_key,
+        password: brand.ship_hero_password
       };
 
       // Test connection first
