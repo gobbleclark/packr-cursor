@@ -1173,17 +1173,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         
-        // Simulate comprehensive 7-day historical sync for now
-        // In production, this will connect to real ShipHero API
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Use REAL API sync service for initial sync - NO MOCK DATA
+        const realApiSync = new RealApiSyncService(storage);
+        const apiSyncResult = await realApiSync.syncBrandData(brandId);
         
         const syncResult = {
-          orders: { created: 8, updated: 3, duplicatesSkipped: 2 },
-          products: { created: 15, updated: 7 },
-          shipments: { created: 5, updated: 1 },
-          warehouses: { created: 1, updated: 0 },
-          inventory: { updated: 23 },
-          errors: []
+          orders: { created: apiSyncResult.orders, updated: 0, duplicatesSkipped: 0 },
+          products: { created: apiSyncResult.products, updated: 0 },
+          shipments: { created: apiSyncResult.shipments, updated: 0 },
+          warehouses: { created: 0, updated: 0 },
+          inventory: { updated: 0 },
+          errors: apiSyncResult.errors
         };
         
         const totalRecords = syncResult.orders.created + syncResult.orders.updated + 
