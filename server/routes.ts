@@ -1567,6 +1567,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 7-day manual sync endpoint
+  app.post('/api/sync/trigger-orders-7day', async (req, res) => {
+    try {
+      console.log('📦 Manual 7-day order sync triggered');
+      const brandId = 'dce4813e-aeb7-41fe-bb00-a36e314288f3'; // Mabē brand
+      const brand = await storage.getBrand(brandId);
+      
+      if (brand && brand.shipHeroApiKey && brand.shipHeroPassword) {
+        const credentials = { username: brand.shipHeroApiKey, password: brand.shipHeroPassword };
+        const fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+        
+        console.log(`🔍 Running 7-day sync for ${brand.name} since ${fromDate.toISOString()}...`);
+        
+        const orders = await shipHeroApiFixed.getOrders(credentials, fromDate);
+        console.log(`📊 Found ${orders.length} orders in 7-day window for ${brand.name}`);
+        
+        // Process orders similar to integrity check
+        let newOrdersCount = 0;
+        let updatedOrdersCount = 0;
+        
+        for (const shOrder of orders) {
+          try {
+            const existingOrder = await storage.getOrderByShipHeroId(shOrder.id);
+            
+            if (!existingOrder) {
+              // Create new order
+              const orderData = {
+                orderNumber: shOrder.order_number,
+                brandId: brand.id,
+                customerName: `${shOrder.shipping_address?.first_name || ''} ${shOrder.shipping_address?.last_name || ''}`.trim(),
+                customerEmail: shOrder.email || '',
+                shippingAddress: shOrder.shipping_address,
+                status: shOrder.fulfillment_status || 'pending',
+                totalAmount: shOrder.total_price || '0.00',
+                orderItems: shOrder.line_items?.map((item: any) => ({
+                  id: item.id,
+                  sku: item.sku,
+                  quantity: item.quantity,
+                  backorder_quantity: item.backorder_quantity || 0
+                })) || [],
+                shipHeroOrderId: shOrder.id,
+                backorderQuantity: shOrder.total_backorder_quantity || 0,
+                orderCreatedAt: new Date(shOrder.order_date),
+                allocatedAt: null,
+                shippedAt: null,
+                lastSyncAt: new Date()
+              };
+              
+              await storage.createOrder(orderData);
+              newOrdersCount++;
+            } else {
+              // Update existing order
+              const updatedOrder = {
+                ...existingOrder,
+                status: shOrder.fulfillment_status || existingOrder.status,
+                backorderQuantity: shOrder.total_backorder_quantity || existingOrder.backorderQuantity,
+                lastSyncAt: new Date()
+              };
+              
+              await storage.updateOrder(existingOrder.id, updatedOrder);
+              updatedOrdersCount++;
+            }
+          } catch (error) {
+            console.error(`❌ Failed to process order ${shOrder.order_number}:`, error);
+          }
+        }
+        
+        res.json({ 
+          success: true, 
+          message: `7-day sync completed: ${newOrdersCount} new, ${updatedOrdersCount} updated`,
+          details: {
+            totalOrders: orders.length,
+            newOrders: newOrdersCount,
+            updatedOrders: updatedOrdersCount,
+            dateRange: {
+              from: fromDate.toISOString(),
+              to: new Date().toISOString()
+            }
+          }
+        });
+      } else {
+        res.status(400).json({ error: 'Brand not found or missing ShipHero API credentials' });
+      }
+    } catch (error) {
+      console.error('7-day order sync failed:', error);
+      res.status(500).json({ error: 'Failed to sync 7-day orders' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

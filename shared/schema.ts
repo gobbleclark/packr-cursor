@@ -29,7 +29,7 @@ export const sessions = pgTable(
 export const userRoleEnum = pgEnum('user_role', ['admin', 'threePL', 'brand']);
 export const ticketStatusEnum = pgEnum('ticket_status', ['open', 'closed', 'pending']);
 export const ticketPriorityEnum = pgEnum('ticket_priority', ['normal', 'urgent', 'high', 'low']);
-export const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'shipped', 'delivered', 'cancelled']);
+export const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'fulfilled', 'allocated', 'on_hold']);
 
 // Users table (mandatory for Replit Auth)
 export const users = pgTable("users", {
