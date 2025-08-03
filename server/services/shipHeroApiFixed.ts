@@ -126,6 +126,8 @@ export class ShipHeroApiService {
     }
 
     console.log(`🔐 Requesting new ShipHero access token for ${credentials.username}`);
+    console.log(`🌐 Auth URL: ${this.baseUrl}/auth/token`);
+    console.log(`📝 Request payload:`, { username: credentials.username, password: '***hidden***' });
 
     // Request new access token
     const response = await fetch(`${this.baseUrl}/auth/token`, {
@@ -139,12 +141,26 @@ export class ShipHeroApiService {
       }),
     });
 
+    console.log(`🔍 Auth response status: ${response.status} ${response.statusText}`);
+    console.log(`🔍 Auth response headers:`, Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
+      console.log(`❌ Auth error response body:`, errorText);
       throw new Error(`ShipHero authentication failed: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
-    const tokenData: ShipHeroTokenResponse = await response.json();
+    const responseText = await response.text();
+    console.log(`📄 Auth response body:`, responseText);
+    
+    let tokenData: ShipHeroTokenResponse;
+    try {
+      tokenData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error(`❌ Failed to parse auth response as JSON:`, parseError);
+      throw new Error(`ShipHero authentication response is not valid JSON: ${responseText}`);
+    }
+    
     console.log(`✅ ShipHero token obtained for ${credentials.username}, expires in ${tokenData.expires_in} seconds`);
 
     // Cache the token (expire 5 minutes before actual expiry for safety)
