@@ -208,7 +208,7 @@ export class ShipHeroApiService {
           orders(order_date_from: $orderDateFrom, order_date_to: $orderDateTo) {
             request_id
             complexity
-            data(first: 5, after: $after) {
+            data(first: 100, after: $after) {
               pageInfo {
                 hasNextPage
                 endCursor
@@ -235,7 +235,7 @@ export class ShipHeroApiService {
                     country
                     phone
                   }
-                  line_items(first: 3) {
+                  line_items(first: 10) {
                     edges {
                       node {
                         id
