@@ -697,18 +697,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       
       if (user?.role === 'brand' && user.brandId) {
-        // Brand users only see their own products
-        const products = await storage.getProductsByBrand(user.brandId);
+        // Brand users only see their own products with warehouse data
+        const products = await storage.getProductsWithWarehouseByBrand(user.brandId);
         res.json(products);
       } else if (user?.role === 'threePL' && user.threePlId) {
-        // 3PL users see products from all their brands
-        const products = await storage.getProductsByThreePL(user.threePlId);
+        // 3PL users see products from all their brands with warehouse data
+        const products = await storage.getProductsWithWarehouseByThreePL(user.threePlId);
         res.json(products);
       } else {
         res.json([]);
       }
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
+  // Warehouses route for filtering
+  app.get('/api/warehouses', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role === 'brand' && user.brandId) {
+        const warehouses = await storage.getWarehousesByBrand(user.brandId);
+        res.json(warehouses);
+      } else if (user?.role === 'threePL' && user.threePlId) {
+        const warehouses = await storage.getWarehousesByThreePL(user.threePlId);
+        res.json(warehouses);
+      } else {
+        res.json([]);
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch warehouses" });
     }
   });
 

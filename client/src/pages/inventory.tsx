@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Package, Search, Filter, AlertTriangle, TrendingUp, TrendingDown } from "lucide-react";
+import SyncMonitor from "@/components/sync-monitor";
 
 export default function Inventory() {
   const { toast } = useToast();
@@ -18,6 +19,7 @@ export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [brandFilter, setBrandFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState('all');
+  const [warehouseFilter, setWarehouseFilter] = useState('all');
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -44,7 +46,12 @@ export default function Inventory() {
     enabled: isAuthenticated && user?.role === 'threePL',
   });
 
-  // Filter products based on search term, brand, and stock level
+  const { data: warehouses = [] } = useQuery<any[]>({
+    queryKey: ['/api/warehouses'],
+    enabled: isAuthenticated,
+  });
+
+  // Filter products based on search term, brand, stock level, and warehouse
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.sku?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -56,7 +63,10 @@ export default function Inventory() {
                         (stockFilter === 'out' && (product.inventory_count || product.quantity || 0) === 0) ||
                         (stockFilter === 'in-stock' && (product.inventory_count || product.quantity || 0) > 0);
     
-    return matchesSearch && matchesBrand && matchesStock;
+    const matchesWarehouse = warehouseFilter === 'all' || 
+                            (product.warehouses && product.warehouses.some(w => w.warehouseId === warehouseFilter));
+    
+    return matchesSearch && matchesBrand && matchesStock && matchesWarehouse;
   });
 
   const getStockBadge = (quantity: number) => {
@@ -110,6 +120,39 @@ export default function Inventory() {
             }
           </p>
         </div>
+
+        {/* Sync Progress Card */}
+        <Card className="mb-6 bg-blue-50 border-blue-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-800">Warehouse Sync Progress</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-blue-600">
+                    {products.filter(p => p.warehouses && p.warehouses.length > 0).length} of {products.length} products have warehouse data
+                  </p>
+                  <SyncMonitor 
+                    totalProducts={products.length}
+                    syncedProducts={products.filter(p => p.warehouses && p.warehouses.length > 0).length}
+                    onSyncComplete={() => {
+                      // Refresh data when sync is complete
+                      window.location.reload();
+                    }}
+                  />
+                </div>
+                <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                    style={{ 
+                      width: `${products.length > 0 ? (products.filter(p => p.warehouses && p.warehouses.length > 0).length / products.length) * 100 : 0}%` 
+                    }}
+                  ></div>
+                </div>
+              </div>
+              <Package className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -214,6 +257,20 @@ export default function Inventory() {
                   <SelectItem value="out">Out of Stock</SelectItem>
                 </SelectContent>
               </Select>
+
+              <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by warehouse" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Warehouses</SelectItem>
+                  {warehouses.map((warehouse) => (
+                    <SelectItem key={warehouse.warehouseId} value={warehouse.warehouseId}>
+                      {warehouse.warehouseName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
@@ -234,6 +291,7 @@ export default function Inventory() {
                     <TableHead>Product Name</TableHead>
                     <TableHead>SKU</TableHead>
                     {user?.role === 'threePL' && <TableHead>Brand</TableHead>}
+                    <TableHead>Warehouse</TableHead>
                     <TableHead>Stock Level</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Price</TableHead>
@@ -243,7 +301,7 @@ export default function Inventory() {
                 <TableBody>
                   {filteredProducts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={user?.role === 'threePL' ? 7 : 6} className="text-center py-8">
+                      <TableCell colSpan={user?.role === 'threePL' ? 8 : 7} className="text-center py-8">
                         <div className="flex flex-col items-center gap-2">
                           <Package className="h-12 w-12 text-gray-400" />
                           <p className="text-gray-500">No products found matching your filters</p>
@@ -276,9 +334,36 @@ export default function Inventory() {
                           </TableCell>
                         )}
                         <TableCell>
-                          <span className="text-lg font-bold">
-                            {product.inventory_count || product.quantity || 0}
-                          </span>
+                          <div className="space-y-1">
+                            {product.warehouses && product.warehouses.length > 0 ? (
+                              product.warehouses.map((warehouse, index) => (
+                                <div key={index} className="text-sm">
+                                  <Badge variant="outline" className="text-xs">
+                                    {warehouse.warehouseName}
+                                  </Badge>
+                                </div>
+                              ))
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">
+                                Sync Pending
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            {product.warehouses && product.warehouses.length > 0 ? (
+                              product.warehouses.map((warehouse, index) => (
+                                <div key={index} className="text-sm font-bold">
+                                  {warehouse.available || 0}
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-lg font-bold text-gray-400">
+                                {product.inventoryCount || 0}
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           {getStockBadge(product.inventory_count || product.quantity || 0)}

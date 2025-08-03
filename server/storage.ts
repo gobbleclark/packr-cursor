@@ -74,12 +74,17 @@ export interface IStorage {
   getProduct(id: string): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   getProductsByBrand(brandId: string): Promise<Product[]>;
+  getProductsWithWarehouseByBrand(brandId: string): Promise<any[]>;
+  getProductsByThreePL(threePlId: string): Promise<Product[]>;
+  getProductsWithWarehouseByThreePL(threePlId: string): Promise<any[]>;
   updateProductInventory(id: string, count: number): Promise<Product>;
   
   // Warehouse inventory operations
   upsertProductWarehouse(productWarehouse: InsertProductWarehouse): Promise<ProductWarehouse>;
   getProductWarehouseInventory(productId: string): Promise<ProductWarehouse[]>;
   getWarehouseInventoryByBrand(brandId: string): Promise<{ product: Product; warehouses: ProductWarehouse[] }[]>;
+  getWarehousesByBrand(brandId: string): Promise<any[]>;
+  getWarehousesByThreePL(threePlId: string): Promise<any[]>;
   
   // Ticket operations
   getTicket(id: string): Promise<Ticket | undefined>;
@@ -610,6 +615,177 @@ export class DatabaseStorage implements IStorage {
       .where(eq(products.id, id))
       .returning();
     return product;
+  }
+
+  async getProductsWithWarehouseByBrand(brandId: string): Promise<any[]> {
+    const result = await db
+      .select({
+        id: products.id,
+        sku: products.sku,
+        name: products.name,
+        description: products.description,
+        brandId: products.brandId,
+        price: products.price,
+        inventoryCount: products.inventoryCount,
+        shipHeroProductId: products.shipHeroProductId,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+        lastSyncAt: products.lastSyncAt,
+        weight: products.weight,
+        dimensions: products.dimensions,
+        barcode: products.barcode,
+        hsCode: products.hsCode,
+        countryOfOrigin: products.countryOfOrigin,
+        reservedQuantity: products.reservedQuantity,
+        lowStockThreshold: products.lowStockThreshold,
+        // Warehouse data
+        warehouseId: productWarehouse.warehouseId,
+        warehouseName: productWarehouse.warehouseName,
+        onHand: productWarehouse.onHand,
+        available: productWarehouse.available,
+        allocated: productWarehouse.allocated,
+        reserved: productWarehouse.reserved,
+        lastWarehouseSync: productWarehouse.lastSyncAt,
+      })
+      .from(products)
+      .leftJoin(productWarehouse, eq(products.id, productWarehouse.productId))
+      .where(eq(products.brandId, brandId))
+      .orderBy(desc(products.createdAt));
+
+    // Group products with their warehouse data
+    const grouped = result.reduce((acc, row) => {
+      const existing = acc.find(p => p.id === row.id);
+      if (existing) {
+        if (row.warehouseId) {
+          existing.warehouses.push({
+            warehouseId: row.warehouseId,
+            warehouseName: row.warehouseName,
+            onHand: row.onHand,
+            available: row.available,
+            allocated: row.allocated,
+            reserved: row.reserved,
+            lastSyncAt: row.lastWarehouseSync,
+          });
+        }
+      } else {
+        const { warehouseId, warehouseName, onHand, available, allocated, reserved, lastWarehouseSync, ...productData } = row;
+        acc.push({
+          ...productData,
+          warehouses: warehouseId ? [{
+            warehouseId,
+            warehouseName,
+            onHand,
+            available,
+            allocated,
+            reserved,
+            lastSyncAt: lastWarehouseSync,
+          }] : [],
+        });
+      }
+      return acc;
+    }, [] as any[]);
+
+    return grouped;
+  }
+
+  async getProductsWithWarehouseByThreePL(threePlId: string): Promise<any[]> {
+    const result = await db
+      .select({
+        id: products.id,
+        sku: products.sku,
+        name: products.name,
+        description: products.description,
+        brandId: products.brandId,
+        price: products.price,
+        inventoryCount: products.inventoryCount,
+        shipHeroProductId: products.shipHeroProductId,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+        lastSyncAt: products.lastSyncAt,
+        weight: products.weight,
+        dimensions: products.dimensions,
+        barcode: products.barcode,
+        hsCode: products.hsCode,
+        countryOfOrigin: products.countryOfOrigin,
+        reservedQuantity: products.reservedQuantity,
+        lowStockThreshold: products.lowStockThreshold,
+        brandName: brands.name,
+        // Warehouse data
+        warehouseId: productWarehouse.warehouseId,
+        warehouseName: productWarehouse.warehouseName,
+        onHand: productWarehouse.onHand,
+        available: productWarehouse.available,
+        allocated: productWarehouse.allocated,
+        reserved: productWarehouse.reserved,
+        lastWarehouseSync: productWarehouse.lastSyncAt,
+      })
+      .from(products)
+      .leftJoin(brands, eq(products.brandId, brands.id))
+      .leftJoin(productWarehouse, eq(products.id, productWarehouse.productId))
+      .where(eq(brands.threePlId, threePlId))
+      .orderBy(desc(products.createdAt));
+
+    // Group products with their warehouse data
+    const grouped = result.reduce((acc, row) => {
+      const existing = acc.find(p => p.id === row.id);
+      if (existing) {
+        if (row.warehouseId) {
+          existing.warehouses.push({
+            warehouseId: row.warehouseId,
+            warehouseName: row.warehouseName,
+            onHand: row.onHand,
+            available: row.available,
+            allocated: row.allocated,
+            reserved: row.reserved,
+            lastSyncAt: row.lastWarehouseSync,
+          });
+        }
+      } else {
+        const { warehouseId, warehouseName, onHand, available, allocated, reserved, lastWarehouseSync, ...productData } = row;
+        acc.push({
+          ...productData,
+          warehouses: warehouseId ? [{
+            warehouseId,
+            warehouseName,
+            onHand,
+            available,
+            allocated,
+            reserved,
+            lastSyncAt: lastWarehouseSync,
+          }] : [],
+        });
+      }
+      return acc;
+    }, [] as any[]);
+
+    return grouped;
+  }
+
+  async getWarehousesByBrand(brandId: string): Promise<any[]> {
+    return await db
+      .select({
+        warehouseId: productWarehouse.warehouseId,
+        warehouseName: productWarehouse.warehouseName,
+      })
+      .from(productWarehouse)
+      .leftJoin(products, eq(productWarehouse.productId, products.id))
+      .where(eq(products.brandId, brandId))
+      .groupBy(productWarehouse.warehouseId, productWarehouse.warehouseName)
+      .orderBy(productWarehouse.warehouseName);
+  }
+
+  async getWarehousesByThreePL(threePlId: string): Promise<any[]> {
+    return await db
+      .select({
+        warehouseId: productWarehouse.warehouseId,
+        warehouseName: productWarehouse.warehouseName,
+      })
+      .from(productWarehouse)
+      .leftJoin(products, eq(productWarehouse.productId, products.id))
+      .leftJoin(brands, eq(products.brandId, brands.id))
+      .where(eq(brands.threePlId, threePlId))
+      .groupBy(productWarehouse.warehouseId, productWarehouse.warehouseName)
+      .orderBy(productWarehouse.warehouseName);
   }
 
   // Warehouse inventory operations
