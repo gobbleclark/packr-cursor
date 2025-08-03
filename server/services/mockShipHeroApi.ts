@@ -22,7 +22,7 @@ export class MockShipHeroApiService {
         order_number: "MABE-2025-001",
         shop_name: "Mabē Store",
         fulfillment_status: "shipped",
-        order_date: "2025-01-28T10:00:00Z",
+        order_date: "2025-07-28T10:00:00Z",
         total_price: "89.99",
         subtotal: "79.99", 
         total_discounts: "0.00",
@@ -68,7 +68,7 @@ export class MockShipHeroApiService {
         order_number: "MABE-2025-002", 
         shop_name: "Mabē Store",
         fulfillment_status: "processing",
-        order_date: "2025-01-29T14:30:00Z",
+        order_date: "2025-07-29T14:30:00Z",
         total_price: "159.98",
         subtotal: "145.44",
         total_discounts: "5.00", 
@@ -110,12 +110,91 @@ export class MockShipHeroApiService {
       }
     ];
 
+    // Add more recent orders to simulate a busy Mabē store
+    const additionalOrders = [
+      {
+        id: "gid://ShipHero/Order/12345003",
+        order_number: "MABE-2025-003",
+        shop_name: "Mabē Store",
+        fulfillment_status: "processing",
+        order_date: "2025-07-30T09:15:00Z",
+        total_price: "49.99",
+        subtotal: "39.99",
+        total_discounts: "0.00",
+        total_tax: "10.00",
+        email: "sarah.jones@email.com",
+        profile: { name: "Sarah Jones" },
+        shipping_address: {
+          first_name: "Sarah", last_name: "Jones",
+          address1: "789 Pine Street", address2: "",
+          city: "Seattle", state: "WA", country: "US", zip: "98101",
+          phone: "555-456-7890"
+        },
+        line_items: [{
+          id: "gid://ShipHero/LineItem/67890004",
+          title: "Organic Cotton T-Shirt",
+          quantity: 1,
+          price: "39.99",
+          sku: "MABE-TSHIRT-001",
+          product_id: "gid://ShipHero/Product/11111001"
+        }],
+        shipments: []
+      },
+      {
+        id: "gid://ShipHero/Order/12345004",
+        order_number: "MABE-2025-004", 
+        shop_name: "Mabē Store",
+        fulfillment_status: "shipped",
+        order_date: "2025-07-31T16:22:00Z",
+        total_price: "149.98",
+        subtotal: "139.98",
+        total_discounts: "10.00",
+        total_tax: "10.00",
+        email: "mike.chen@gmail.com",
+        profile: { name: "Mike Chen" },
+        shipping_address: {
+          first_name: "Mike", last_name: "Chen",
+          address1: "456 Oak Avenue", address2: "Suite 200",
+          city: "San Francisco", state: "CA", country: "US", zip: "94102",
+          phone: "555-789-0123"
+        },
+        line_items: [
+          {
+            id: "gid://ShipHero/LineItem/67890005",
+            title: "Eco-Friendly Hoodie",
+            quantity: 1,
+            price: "79.99",
+            sku: "MABE-HOODIE-001",
+            product_id: "gid://ShipHero/Product/11111002"
+          },
+          {
+            id: "gid://ShipHero/LineItem/67890006",
+            title: "Sustainable Jeans", 
+            quantity: 1,
+            price: "69.99",
+            sku: "MABE-JEANS-001",
+            product_id: "gid://ShipHero/Product/11111003"
+          }
+        ],
+        shipments: [{
+          id: "gid://ShipHero/Shipment/99999002",
+          carrier: "FedEx",
+          method: "Ground",
+          tracking_number: "773123456789",
+          tracking_url: "https://www.fedex.com/apps/fedextrack/?tracknumber=773123456789",
+          status: "in_transit"
+        }]
+      }
+    ];
+
+    const allOrders = [...mockOrders, ...additionalOrders];
+    
     // Filter by date if provided
     if (fromDate) {
-      return mockOrders.filter(order => new Date(order.order_date) >= fromDate);
+      return allOrders.filter(order => new Date(order.order_date) >= fromDate);
     }
     
-    return mockOrders;
+    return allOrders;
   }
 
   async getProducts(credentials: ShipHeroCredentials): Promise<any[]> {
