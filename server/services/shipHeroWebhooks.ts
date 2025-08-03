@@ -1,5 +1,5 @@
 import { storage } from '../storage';
-import ShipHeroSyncService from './shipHeroSync';
+import { RealApiSyncService } from './realApiSync';
 
 /**
  * ShipHero Webhook Handler

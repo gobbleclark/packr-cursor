@@ -1,11 +1,10 @@
 import cron from 'node-cron';
 import { IStorage } from '../storage';
-import { ShipHeroService } from './shiphero';
+import { shipHeroApiFixed } from './shipHeroApiFixed';
 
 export class BackgroundJobService {
   constructor(
-    private storage: IStorage,
-    private shipHeroService: ShipHeroService
+    private storage: IStorage
   ) {}
 
   startOrderSync() {
@@ -52,7 +51,8 @@ export class BackgroundJobService {
 
   private async syncBrandOrders(brand: any) {
     try {
-      const orders = await this.shipHeroService.getOrders(brand.shipHeroApiKey);
+      const credentials = { username: brand.shipHeroApiKey, password: brand.shipHeroPassword };
+      const orders = await shipHeroApiFixed.getOrders(credentials, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
       
       for (const shOrder of orders) {
         // Check if order already exists
@@ -75,14 +75,14 @@ export class BackgroundJobService {
         }
       }
       
-      // Check for fulfillment updates
-      const fulfillmentUpdates = await this.shipHeroService.getFulfillmentUpdates(brand.shipHeroApiKey);
-      for (const update of fulfillmentUpdates) {
+      // Check for fulfillment updates using same credentials
+      const shipments = await shipHeroApiFixed.getShipments(credentials, new Date(Date.now() - 1 * 60 * 60 * 1000));
+      for (const shipment of shipments) {
         const orders = await this.storage.getOrdersByBrand(brand.id);
-        const order = orders.find(o => o.shipHeroOrderId === update.order_id);
+        const order = orders.find(o => o.shipHeroOrderId === shipment.order_id);
         
         if (order) {
-          await this.storage.updateOrderStatus(order.id, update.status);
+          await this.storage.updateOrderStatus(order.id, shipment.status);
           // Update tracking number if provided
           // await this.storage.updateOrderTracking(order.id, update.tracking_number);
         }

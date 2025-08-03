@@ -13,11 +13,11 @@ import {
   insertOrderSchema,
   insertProductSchema 
 } from "@shared/schema";
-import { ShipHeroService } from "./services/shiphero";
+import { shipHeroApiFixed } from "./services/shipHeroApiFixed";
 import { TrackstarService } from "./services/trackstar";
 import { BackgroundJobService } from "./services/backgroundJobs";
 import { RealApiSyncService } from "./services/realApiSync";
-import { shipHeroApi } from "./services/shipHeroApi";
+// Removed old shipHeroApi - using only shipHeroApiFixed
 import { sendBrandInvitationEmail } from "./services/emailService";
 import { nanoid } from "nanoid";
 
@@ -38,9 +38,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   // Initialize services
-  const shipHeroService = new ShipHeroService();
+  // Using shipHeroApiFixed for all ShipHero API calls
   const trackstarService = new TrackstarService();
-  const backgroundJobService = new BackgroundJobService(storage, shipHeroService);
+  const backgroundJobService = new BackgroundJobService(storage);
   
   // Start background jobs
   backgroundJobService.startOrderSync();
@@ -681,11 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { address, method } = req.body;
       
-      // Also update in ShipHero
-      const order = await storage.getOrder(id);
-      if (order?.shipHeroOrderId) {
-        await shipHeroService.updateOrderShipping(order.shipHeroOrderId, address, method);
-      }
+      // ShipHero order shipping updates would be handled through webhooks or separate sync
       
       const updatedOrder = await storage.updateOrderShipping(id, address, method);
       res.json(updatedOrder);
@@ -855,7 +851,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user?.brandId) {
         const brand = await storage.getBrand(user.brandId);
         if (brand?.shipHeroApiKey) {
-          const orders = await shipHeroService.getOrders(brand.shipHeroApiKey);
+          const credentials = { username: brand.shipHeroApiKey, password: brand.shipHeroPassword };
+          const orders = await shipHeroApiFixed.getOrders(credentials, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
           // Process and save orders
           res.json({ message: "Orders synced successfully", count: orders.length });
         } else {
@@ -877,7 +874,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user?.brandId) {
         const brand = await storage.getBrand(user.brandId);
         if (brand?.shipHeroApiKey) {
-          const products = await shipHeroService.getInventory(brand.shipHeroApiKey);
+          const credentials = { username: brand.shipHeroApiKey, password: brand.shipHeroPassword };
+          const products = await shipHeroApiFixed.getProducts(credentials);
           // Process and update inventory
           res.json({ message: "Inventory synced successfully", count: products.length });
         } else {
