@@ -8,8 +8,8 @@ export class BackgroundJobService {
   ) {}
 
   startOrderSync() {
-    // Run every 5 minutes
-    cron.schedule('*/5 * * * *', async () => {
+    // Run every 2 minutes
+    cron.schedule('*/2 * * * *', async () => {
       console.log('Starting order sync job...');
       try {
         await this.syncAllBrandOrders();
