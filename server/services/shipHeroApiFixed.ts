@@ -339,10 +339,34 @@ export class ShipHeroApiService {
         return [];
       }
 
-      return data.products.data.edges.map((edge: any) => ({
-        ...edge.node,
-        warehouse_products: edge.node.warehouse_products || [],
-      }));
+      // Filter out kits, digital products, and dropship items for Packr inventory
+      const filteredProducts = data.products.data.edges
+        .map((edge: any) => ({
+          ...edge.node,
+          warehouse_products: edge.node.warehouse_products || [],
+          images: edge.node.images || [],
+          tags: edge.node.tags || [],
+          kit_components: edge.node.kit_components || [],
+        }))
+        .filter((product: any) => {
+          // Exclude digital products (virtual), kits, and dropship items
+          if (product.virtual) {
+            console.log(`🚫 Excluding digital product: ${product.sku} - ${product.name}`);
+            return false;
+          }
+          if (product.kit) {
+            console.log(`🚫 Excluding kit product: ${product.sku} - ${product.name}`);
+            return false;
+          }
+          if (product.dropship) {
+            console.log(`🚫 Excluding dropship product: ${product.sku} - ${product.name}`);
+            return false;
+          }
+          return true;
+        });
+
+      console.log(`✅ Filtered ${data.products.data.edges.length} products down to ${filteredProducts.length} physical inventory items`);
+      return filteredProducts;
       
     } catch (error) {
       console.error(`❌ ShipHero products API failed:`, error);

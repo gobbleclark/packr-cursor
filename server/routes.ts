@@ -1288,6 +1288,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cleanup kit/digital products route
+  app.post('/api/brands/:id/cleanup-products', async (req: any, res) => {
+    try {
+      const { id: brandId } = req.params;
+      console.log(`🧹 Starting product cleanup for brand ${brandId}`);
+      
+      const brand = await storage.getBrand(brandId);
+      if (!brand) {
+        return res.status(404).json({ message: 'Brand not found' });
+      }
+      
+      if (!brand.shipHeroApiKey || !brand.shipHeroPassword) {
+        return res.status(400).json({ message: 'ShipHero credentials not configured for this brand' });
+      }
+      
+      const credentials = {
+        username: brand.shipHeroApiKey,
+        password: brand.shipHeroPassword
+      };
+      
+      const { ProductCleanupService } = await import('./scripts/cleanupKitsAndDigitalProducts');
+      const cleanupService = new ProductCleanupService();
+      await cleanupService.cleanupExistingProducts(brandId, credentials);
+      
+      res.json({
+        message: 'Product cleanup completed successfully',
+        brandName: brand.name
+      });
+      
+    } catch (error) {
+      console.error('Product cleanup error:', error);
+      res.status(500).json({
+        message: 'Product cleanup failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Credit-efficient sync route - NEW SYSTEM
   app.post('/api/brands/:id/sync/credit-efficient', async (req: any, res) => {
     try {
