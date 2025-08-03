@@ -1,7 +1,7 @@
 /**
- * ShipHero API Integration Service
- * Handles real API calls to ShipHero GraphQL API for orders, products, and inventory
- * Uses modern ShipHero GraphQL API with Bearer token authentication
+ * ShipHero API Integration Service - Fixed Implementation  
+ * Uses modern ShipHero GraphQL API with proper Bearer token authentication
+ * https://public-api.shiphero.com/graphql
  */
 
 interface ShipHeroCredentials {
@@ -124,6 +124,8 @@ export class ShipHeroApiService {
     if (cached && cached.expiresAt > Date.now()) {
       return cached.token;
     }
+
+    console.log(`🔐 Requesting new ShipHero access token for ${credentials.username}`);
 
     // Request new access token
     const response = await fetch(`${this.baseUrl}/auth/token`, {
@@ -343,34 +345,51 @@ export class ShipHeroApiService {
       }
     `;
 
-    const data = await this.makeGraphQLRequest(query, {}, credentials);
-    return data.products.edges.map((edge: any) => ({
-      ...edge.node,
-      warehouse_products: edge.node.warehouse_products.edges.map((wp: any) => wp.node),
-    }));
+    try {
+      const data = await this.makeGraphQLRequest(query, {}, credentials);
+      console.log(`✅ ShipHero products API response received, complexity: ${data.products?.complexity || 'N/A'}`);
+      
+      if (!data.products?.data?.edges) {
+        console.log(`⚠️ No products data structure found in response`);
+        return [];
+      }
+
+      return data.products.data.edges.map((edge: any) => ({
+        ...edge.node,
+        warehouse_products: edge.node.warehouse_products?.edges?.map((wp: any) => wp.node) || [],
+      }));
+      
+    } catch (error) {
+      console.error(`❌ ShipHero products API failed:`, error);
+      throw error;
+    }
   }
 
   async getInventory(credentials: ShipHeroCredentials): Promise<any[]> {
     const query = `
       query getInventory {
         products(first: 200) {
-          edges {
-            node {
-              id
-              sku
-              name
-              total_on_hand
-              total_available
-              total_committed
-              total_allocated
-              warehouse_products {
-                edges {
-                  node {
-                    warehouse_id
-                    on_hand
-                    available
-                    allocated
-                    committed
+          request_id
+          complexity
+          data {
+            edges {
+              node {
+                id
+                sku
+                name
+                total_on_hand
+                total_available
+                total_committed
+                total_allocated
+                warehouse_products {
+                  edges {
+                    node {
+                      warehouse_id
+                      on_hand
+                      available
+                      allocated
+                      committed
+                    }
                   }
                 }
               }
@@ -380,11 +399,24 @@ export class ShipHeroApiService {
       }
     `;
 
-    const data = await this.makeGraphQLRequest(query, {}, credentials);
-    return data.products.edges.map((edge: any) => ({
-      ...edge.node,
-      warehouse_products: edge.node.warehouse_products.edges.map((wp: any) => wp.node),
-    }));
+    try {
+      const data = await this.makeGraphQLRequest(query, {}, credentials);
+      console.log(`✅ ShipHero inventory API response received, complexity: ${data.products?.complexity || 'N/A'}`);
+      
+      if (!data.products?.data?.edges) {
+        console.log(`⚠️ No inventory data structure found in response`);
+        return [];
+      }
+
+      return data.products.data.edges.map((edge: any) => ({
+        ...edge.node,
+        warehouse_products: edge.node.warehouse_products?.edges?.map((wp: any) => wp.node) || [],
+      }));
+
+    } catch (error) {
+      console.error(`❌ ShipHero inventory API failed:`, error);
+      throw error;
+    }
   }
 
   async testConnection(credentials: ShipHeroCredentials): Promise<boolean> {
@@ -403,20 +435,11 @@ export class ShipHeroApiService {
       console.log(`✅ ShipHero connection successful - Account ID: ${result.account?.id}`);
       return true;
     } catch (error) {
-      console.error('❌ ShipHero connection test failed:', error);
-      
-      // Log specific error details for debugging
-      if (error.message.includes('ENOTFOUND')) {
-        console.error('Network error: Cannot reach api.shiphero.com');
-      } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
-        console.error('Authentication error: Invalid credentials');
-      } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
-        console.error('Permission error: Account lacks required permissions');
-      }
-      
+      console.error(`❌ ShipHero connection test failed:`, error);
       return false;
     }
   }
 }
 
+// Export a singleton instance
 export const shipHeroApi = new ShipHeroApiService();

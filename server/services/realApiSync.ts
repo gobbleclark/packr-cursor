@@ -4,7 +4,7 @@
  * NO dummy data or mock data whatsoever
  */
 
-import { shipHeroApi } from './shipHeroApi';
+import { shipHeroApi } from './shipHeroApiFixed';
 import { mockShipHeroApi } from './mockShipHeroApi';
 import { trackstarApi } from './trackstarApi';
 import { storage } from '../storage';
