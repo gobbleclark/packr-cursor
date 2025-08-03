@@ -51,44 +51,22 @@ export default function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="relative">
                   <Bell className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-400 text-xs text-white flex items-center justify-center">
-                    3
-                  </span>
+                  {/* Only show notification badge if there are actual notifications */}
+                  {false && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-400 text-xs text-white flex items-center justify-center">
+                      0
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80">
                 <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <div className="max-h-96 overflow-y-auto">
-                  <div className="p-3 hover:bg-gray-50 cursor-pointer border-b">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-red-400 rounded-full mt-2"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Urgent ticket from EcoFlow Brand</p>
-                        <p className="text-xs text-gray-500 mt-1">Order #SF-2024-1847 needs address update</p>
-                        <p className="text-xs text-gray-400 mt-1">2 hours ago</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-3 hover:bg-gray-50 cursor-pointer border-b">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-400 rounded-full mt-2"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Inventory sync completed</p>
-                        <p className="text-xs text-gray-500 mt-1">156 products updated from ShipHero</p>
-                        <p className="text-xs text-gray-400 mt-1">15 minutes ago</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-3 hover:bg-gray-50 cursor-pointer">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-green-400 rounded-full mt-2"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">New brand client added</p>
-                        <p className="text-xs text-gray-500 mt-1">TechGear Co joined your 3PL network</p>
-                        <p className="text-xs text-gray-400 mt-1">1 hour ago</p>
-                      </div>
-                    </div>
+                  <div className="p-6 text-center text-gray-500">
+                    <Bell className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm">No notifications</p>
+                    <p className="text-xs mt-1">You're all caught up!</p>
                   </div>
                 </div>
                 <DropdownMenuSeparator />

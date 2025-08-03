@@ -41,21 +41,21 @@ export default function Sidebar() {
       name: 'Brand Clients',
       href: '/brands',
       icon: Store,
-      badge: '12',
+      badge: null, // Remove dummy data - will be dynamically loaded
       roles: ['threePL', 'admin'],
     },
     {
       name: '3PL Companies',
       href: '/three-pls',
       icon: Building2,
-      badge: '5',
+      badge: null, // Remove dummy data - will be dynamically loaded
       roles: ['admin'],
     },
     {
       name: 'Messages & Tickets',
       href: '/messages',
       icon: MessageSquare,
-      badge: '3',
+      badge: null, // Remove dummy data - will be dynamically loaded
       badgeVariant: 'destructive',
       roles: ['threePL', 'brand', 'admin'],
     },
@@ -63,7 +63,7 @@ export default function Sidebar() {
       name: 'Orders',
       href: '/orders',
       icon: Package,
-      badge: '47',
+      badge: null, // Remove dummy data - will be dynamically loaded
       badgeVariant: 'default',
       roles: ['threePL', 'brand', 'admin'],
     },

@@ -157,7 +157,10 @@ export class DatabaseStorage implements IStorage {
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values({
+        ...userData,
+        role: 'threePL', // Default to 3PL role for signup from landing page
+      })
       .onConflictDoUpdate({
         target: users.id,
         set: {
@@ -201,6 +204,26 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBrandUser(userId: string): Promise<void> {
     await db.delete(users).where(eq(users.id, userId));
+  }
+
+  // New methods for admin dashboard stats
+  async getThreePLsCount(): Promise<number> {
+    const result = await db.select({ count: count() }).from(threePLs);
+    return result[0].count;
+  }
+
+  async getBrandsCount(): Promise<number> {
+    const result = await db.select({ count: count() }).from(brands);
+    return result[0].count;
+  }
+
+  async getActiveUsersCount(): Promise<number> {
+    const result = await db.select({ count: count() }).from(users);
+    return result[0].count;
+  }
+
+  async getRecent3PLs(): Promise<ThreePL[]> {
+    return await db.select().from(threePLs).orderBy(desc(threePLs.createdAt)).limit(5);
   }
 
   // 3PL operations

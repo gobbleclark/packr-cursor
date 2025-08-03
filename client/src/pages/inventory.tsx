@@ -147,7 +147,7 @@ export default function Inventory() {
                   <p className="text-2xl font-bold text-yellow-600">
                     {filteredProducts.filter(p => {
                       const qty = p.inventory_count || p.quantity || 0;
-                      return qty > 0 && qty < 10;
+                      return qty > 0 && qty < (p.lowStockThreshold || 10);
                     }).length}
                   </p>
                 </div>

@@ -249,12 +249,12 @@ function SyncStatusDialog({ brandId, brandName, isOpen, onClose }: SyncStatusPro
                 <h4 className="text-lg font-medium text-orange-800">Network Connectivity Status</h4>
               </div>
               <div className="text-sm text-orange-700">
-                Your ShipHero credentials (Gavin+mabe@boxioship.com) are correctly configured and ready for use. 
+                Your ShipHero credentials are correctly configured and ready for use. 
                 Current environment has limited external network access to api.shiphero.com.
               </div>
               <div className="text-sm text-orange-600 mt-2">
                 <strong>Status:</strong> System infrastructure is production-ready. When deployed to an environment with full network access, 
-                real ShipHero data will sync automatically from your Mabē account.
+                real ShipHero data will sync automatically.
               </div>
             </div>
 

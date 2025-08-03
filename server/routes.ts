@@ -72,6 +72,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         openTickets: 0,
         urgentTickets: 0,
         pendingOrders: 0,
+        inventoryValue: 0,
+        inStockPercentage: 0,
         recentActivity: []
       };
       
@@ -80,22 +82,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stats.openTickets = await storage.getOpenTicketsCountByBrand(user.brandId);
         stats.urgentTickets = await storage.getUrgentTicketsCountByBrand(user.brandId);
         stats.pendingOrders = await storage.getPendingOrdersCountByBrand(user.brandId);
+        // TODO: Add inventory calculations for brand users
+        stats.inventoryValue = 0;
+        stats.inStockPercentage = 0;
       } else if (user.role === 'threePL' && user.threePlId) {
         stats.totalOrders = await storage.getTotalOrdersCountByThreePL(user.threePlId);
         stats.openTickets = await storage.getOpenTicketsCountByThreePL(user.threePlId);
         stats.urgentTickets = await storage.getUrgentTicketsCountByThreePL(user.threePlId);
         stats.pendingOrders = await storage.getPendingOrdersCountByThreePL(user.threePlId);
+        // TODO: Add inventory calculations for 3PL users
+        stats.inventoryValue = 0;
+        stats.inStockPercentage = 0;
       } else {
         stats.totalOrders = await storage.getTotalOrdersCount();
         stats.openTickets = await storage.getOpenTicketsCount();
         stats.urgentTickets = await storage.getUrgentTicketsCount();
         stats.pendingOrders = await storage.getPendingOrdersCount();
+        stats.inventoryValue = 0;
+        stats.inStockPercentage = 0;
       }
       
       res.json(stats);
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // Admin stats route
+  app.get('/api/admin/stats', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const stats = {
+        total3PLs: await storage.getThreePLsCount(),
+        totalBrands: await storage.getBrandsCount(),
+        activeUsers: await storage.getActiveUsersCount(),
+        totalOrders: await storage.getTotalOrdersCount(),
+        recent3PLs: await storage.getRecent3PLs(),
+      };
+      
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching admin stats:", error);
+      res.status(500).json({ message: "Failed to fetch admin stats" });
     }
   });
 

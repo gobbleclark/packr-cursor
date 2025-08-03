@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +9,12 @@ import { Users, Building2, Truck, BarChart3 } from "lucide-react";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  const { data: adminStats, isLoading: statsLoading } = useQuery<any>({
+    queryKey: ['/api/admin/stats'],
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -88,8 +94,8 @@ export default function AdminDashboard() {
                   <Building2 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">12</div>
-                  <p className="text-xs text-muted-foreground">+2 from last month</p>
+                  <div className="text-2xl font-bold">{adminStats?.total3PLs || 0}</div>
+                  <p className="text-xs text-muted-foreground">Active companies</p>
                 </CardContent>
               </Card>
 
@@ -99,8 +105,8 @@ export default function AdminDashboard() {
                   <Truck className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">89</div>
-                  <p className="text-xs text-muted-foreground">+12 from last month</p>
+                  <div className="text-2xl font-bold">{adminStats?.totalBrands || 0}</div>
+                  <p className="text-xs text-muted-foreground">Registered brands</p>
                 </CardContent>
               </Card>
 
@@ -110,19 +116,19 @@ export default function AdminDashboard() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">1,247</div>
-                  <p className="text-xs text-muted-foreground">+89 from last month</p>
+                  <div className="text-2xl font-bold">{adminStats?.activeUsers || 0}</div>
+                  <p className="text-xs text-muted-foreground">Platform users</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Platform Usage</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">94.5%</div>
-                  <p className="text-xs text-muted-foreground">Uptime this month</p>
+                  <div className="text-2xl font-bold">{adminStats?.totalOrders || 0}</div>
+                  <p className="text-xs text-muted-foreground">Platform orders</p>
                 </CardContent>
               </Card>
             </div>
@@ -135,24 +141,25 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium">FastShip Logistics</p>
-                        <p className="text-xs text-gray-500">Registered 2 days ago</p>
-                      </div>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Active
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium">Global Supply Co</p>
-                        <p className="text-xs text-gray-500">Registered 1 week ago</p>
-                      </div>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        Pending
-                      </span>
-                    </div>
+                    {adminStats?.recent3PLs?.length > 0 ? (
+                      adminStats.recent3PLs.map((company: any) => (
+                        <div key={company.id} className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">{company.name}</p>
+                            <p className="text-xs text-gray-500">
+                              Registered {new Date(company.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            company.isActive ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {company.isActive ? 'Active' : 'Pending'}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-center py-4">No recent registrations</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
