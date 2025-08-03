@@ -1288,6 +1288,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Direct database cleanup route - removes digital/kit products based on name patterns
+  app.post('/api/brands/:id/cleanup-products-direct', async (req: any, res) => {
+    try {
+      const { id: brandId } = req.params;
+      console.log(`🧹 Starting direct database cleanup for brand ${brandId}`);
+      
+      const brand = await storage.getBrand(brandId);
+      if (!brand) {
+        return res.status(404).json({ message: 'Brand not found' });
+      }
+      
+      const { DirectDatabaseCleanup } = await import('./scripts/directDatabaseCleanup');
+      const cleanupService = new DirectDatabaseCleanup();
+      const result = await cleanupService.cleanupDigitalAndKitProducts(brandId);
+      
+      res.json({
+        message: 'Direct database cleanup completed successfully',
+        brandName: brand.name,
+        deletedCount: result.deletedCount,
+        deletedProducts: result.deletedProducts.slice(0, 10) // Show first 10 for brevity
+      });
+      
+    } catch (error) {
+      console.error('Direct database cleanup error:', error);
+      res.status(500).json({
+        message: 'Direct database cleanup failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Cleanup kit/digital products route
   app.post('/api/brands/:id/cleanup-products', async (req: any, res) => {
     try {
