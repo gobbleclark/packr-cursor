@@ -191,62 +191,40 @@ export class ShipHeroApiService {
   }
 
   async getOrders(credentials: ShipHeroCredentials, fromDate?: Date): Promise<ShipHeroOrder[]> {
-    const dateFilter = fromDate ? fromDate.toISOString() : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const dateFilter = fromDate ? fromDate.toISOString().split('T')[0] : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     console.log(`🔍 Fetching ShipHero orders from ${dateFilter} with credentials ${credentials.username}`);
     
     const query = `
-      query getOrders($fromDate: String) {
-        orders(date_from: $fromDate, first: 100) {
+      query getOrders($orderDateFrom: String, $orderDateTo: String) {
+        orders(order_date_from: $orderDateFrom, order_date_to: $orderDateTo) {
           request_id
           complexity
-          data {
+          data(first: 20) {
             edges {
               node {
                 id
+                legacy_id
                 order_number
                 shop_name
                 fulfillment_status
                 order_date
                 total_price
-                subtotal
-                total_discounts
-                total_tax
                 email
-                profile {
-                  name
-                }
+                profile
                 shipping_address {
                   first_name
                   last_name
-                  address1
-                  address2
                   city
                   state
-                  country
                   zip
-                  phone
                 }
-                line_items {
+                line_items(first: 5) {
                   edges {
                     node {
                       id
-                      title
-                      quantity
-                      price
                       sku
-                      product_id
-                    }
-                  }
-                }
-                shipments {
-                  edges {
-                    node {
-                      id
-                      carrier
-                      method
-                      tracking_number
-                      tracking_url
-                      status
+                      quantity
+                      product_name
                     }
                   }
                 }
@@ -258,7 +236,10 @@ export class ShipHeroApiService {
     `;
 
     try {
-      const data = await this.makeGraphQLRequest(query, { fromDate: dateFilter }, credentials);
+      const data = await this.makeGraphQLRequest(query, { 
+        orderDateFrom: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],  // Just yesterday
+        orderDateTo: new Date().toISOString().split('T')[0]
+      }, credentials);
       console.log(`✅ ShipHero orders API response received, complexity: ${data.orders?.complexity || 'N/A'}`);
       
       if (!data.orders?.data?.edges) {
@@ -269,7 +250,7 @@ export class ShipHeroApiService {
       return data.orders.data.edges.map((edge: any) => ({
         ...edge.node,
         line_items: edge.node.line_items?.edges?.map((item: any) => item.node) || [],
-        shipments: edge.node.shipments?.edges?.map((shipment: any) => shipment.node) || [],
+        shipments: edge.node.shipments || [],
       }));
       
     } catch (error) {
@@ -282,30 +263,34 @@ export class ShipHeroApiService {
     console.log(`🔍 Fetching ShipHero products with credentials ${credentials.username}`);
     const query = `
       query getProducts {
-        products(first: 200) {
+        products {
           request_id
           complexity
-          data {
+          data(first: 200) {
             edges {
               node {
                 id
+                legacy_id
+                account_id
                 name
                 sku
                 price
                 value
                 barcode
-                country_of_origin
-                customs_description
-                weight
-                height
-                width
-                length
+                country_of_manufacture
+                dimensions {
+                  height
+                  width
+                  length
+                  weight
+                }
+                tariff_code
                 kit
                 kit_build
                 no_air
                 final_sale
                 customs_value
-                customs_description_2
+                customs_description
                 not_owned
                 dropship
                 needs_serial_number
@@ -314,29 +299,29 @@ export class ShipHeroApiService {
                 created_at
                 updated_at
                 product_note
-                sync_inventories
-                tags
-                total_on_hand
-                total_committed
-                total_available
-                total_allocated
-                total_backordered
+                virtual
+                ignore_on_invoice
+                ignore_on_customs
+                active
                 warehouse_products {
-                  edges {
-                    node {
-                      id
-                      warehouse_id
-                      on_hand
-                      allocated
-                      available
-                      committed
-                      backordered
-                      pending
-                      sellable
-                      non_sellable
-                      received
-                    }
-                  }
+                  warehouse_id
+                  on_hand
+                  inventory_bin
+                  inventory_overstock_bin
+                  reserve_inventory
+                  replenishment_level
+                  reorder_amount
+                  reorder_level
+                  custom
+                }
+                images {
+                  src
+                  position
+                }
+                tags
+                kit_components {
+                  sku
+                  quantity
                 }
               }
             }
@@ -356,7 +341,7 @@ export class ShipHeroApiService {
 
       return data.products.data.edges.map((edge: any) => ({
         ...edge.node,
-        warehouse_products: edge.node.warehouse_products?.edges?.map((wp: any) => wp.node) || [],
+        warehouse_products: edge.node.warehouse_products || [],
       }));
       
     } catch (error) {
@@ -368,29 +353,25 @@ export class ShipHeroApiService {
   async getInventory(credentials: ShipHeroCredentials): Promise<any[]> {
     const query = `
       query getInventory {
-        products(first: 200) {
+        products {
           request_id
           complexity
-          data {
+          data(first: 200) {
             edges {
               node {
                 id
                 sku
                 name
-                total_on_hand
-                total_available
-                total_committed
-                total_allocated
                 warehouse_products {
-                  edges {
-                    node {
-                      warehouse_id
-                      on_hand
-                      available
-                      allocated
-                      committed
-                    }
-                  }
+                  warehouse_id
+                  on_hand
+                  inventory_bin
+                  inventory_overstock_bin
+                  reserve_inventory
+                  replenishment_level
+                  reorder_amount
+                  reorder_level
+                  custom
                 }
               }
             }
@@ -410,7 +391,7 @@ export class ShipHeroApiService {
 
       return data.products.data.edges.map((edge: any) => ({
         ...edge.node,
-        warehouse_products: edge.node.warehouse_products?.edges?.map((wp: any) => wp.node) || [],
+        warehouse_products: edge.node.warehouse_products || [],
       }));
 
     } catch (error) {
@@ -424,15 +405,23 @@ export class ShipHeroApiService {
       console.log(`🔍 Testing ShipHero connection for user: ${credentials.username}`);
       const query = `
         query testConnection {
-          account {
-            id
-            email
+          orders {
+            request_id
+            complexity
+            data(first: 1) {
+              edges {
+                node {
+                  id
+                  order_number
+                }
+              }
+            }
           }
         }
       `;
       
       const result = await this.makeGraphQLRequest(query, {}, credentials);
-      console.log(`✅ ShipHero connection successful - Account ID: ${result.account?.id}`);
+      console.log(`✅ ShipHero connection successful - Got ${result.orders?.data?.edges?.length || 0} orders`);
       return true;
     } catch (error) {
       console.error(`❌ ShipHero connection test failed:`, error);
