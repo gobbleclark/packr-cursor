@@ -371,18 +371,22 @@ export class CreditEfficientSyncService {
         }));
         
         for (const order of orders) {
-          await storage.upsertOrder({
-            id: order.id,
-            brandId: brandId,
+          await storage.createOrder({
             orderNumber: order.order_number,
-            shopName: order.shop_name || 'ShipHero',
-            fulfillmentStatus: order.fulfillment_status || 'pending',
-            orderDate: new Date(order.order_date),
-            totalPrice: parseFloat(order.total_price || '0'),
-            customerEmail: order.email,
-            shippingAddress: order.shipping_address ? JSON.stringify(order.shipping_address) : null,
-            lineItems: order.line_items ? JSON.stringify(order.line_items) : null,
-            shipments: order.shipments ? JSON.stringify(order.shipments) : null,
+            brandId: brandId,
+            customerName: order.profile || 'Customer',
+            customerEmail: order.email || '',
+            status: order.fulfillment_status || 'pending',
+            totalAmount: order.total_price || '0',
+            shippingMethod: 'Standard',
+            trackingNumber: null,
+            shipHeroOrderId: order.id,
+            orderItems: order.line_items || [],
+            shippingAddress: order.shipping_address,
+            createdAt: new Date(order.order_date),
+            updatedAt: new Date(),
+            lastSyncAt: new Date(),
+            trackstarOrderId: null
           });
         }
         
@@ -393,14 +397,25 @@ export class CreditEfficientSyncService {
         const products = data.products.data.edges.map((edge: any) => edge.node);
         
         for (const product of products) {
-          await storage.upsertProduct({
-            id: product.id,
+          await storage.createProduct({
+            name: product.name,
             brandId: brandId,
             sku: product.sku,
-            name: product.name,
-            price: parseFloat(product.price || '0'),
-            inventory: product.warehouse_products?.[0]?.on_hand || 0,
-            warehouseProducts: product.warehouse_products ? JSON.stringify(product.warehouse_products) : null,
+            description: product.description || '',
+            price: product.price || '0',
+            inventoryCount: product.warehouse_products?.[0]?.on_hand || 0,
+            weight: '0',
+            dimensions: { length: 0, width: 0, height: 0 },
+            barcode: product.barcode || '',
+            shipHeroProductId: product.id,
+            countryOfOrigin: '',
+            hsCode: '',
+            reservedQuantity: 0,
+            lowStockThreshold: 10,
+            trackstarProductId: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            lastSyncAt: new Date()
           });
         }
         

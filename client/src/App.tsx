@@ -52,6 +52,7 @@ function Router() {
             <Route path="/brands" component={BrandManagementClean} />
             <Route path="/sync-status" component={SyncStatus} />
             <Route path="/webhook-status" component={WebhookStatus} />
+            <Route path="/credit-demo" component={() => import("./pages/credit-efficient-demo").then(m => m.default)} />
             <Route path="/messages" component={Messages} />
             <Route path="/orders" component={Orders} />
             <Route path="/inventory" component={Inventory} />
