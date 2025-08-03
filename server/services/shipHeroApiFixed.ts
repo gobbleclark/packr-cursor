@@ -362,6 +362,25 @@ export class ShipHeroApiService {
             console.log(`🚫 Excluding dropship product: ${product.sku} - ${product.name}`);
             return false;
           }
+          
+          // Additional name-based filtering for services/digital products
+          const name = product.name.toLowerCase();
+          if (name.includes('shipping protection') || 
+              name.includes('recura') ||
+              name.includes('protection plan') ||
+              name.includes('gift card') ||
+              name.includes('covered returns')) {
+            console.log(`🚫 Excluding service/digital product by name: ${product.sku} - ${product.name}`);
+            return false;
+          }
+          
+          // Exclude zero-price service items
+          if ((product.price === '0' || product.price === 0 || product.price === '0.00') && 
+              (name.includes('protection') || name.includes('service') || name.includes('insurance'))) {
+            console.log(`🚫 Excluding zero-price service item: ${product.sku} - ${product.name}`);
+            return false;
+          }
+          
           return true;
         });
 
