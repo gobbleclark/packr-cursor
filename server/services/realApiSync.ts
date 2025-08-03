@@ -7,6 +7,7 @@
 import { shipHeroApi } from './shipHeroApiFixed';
 import { mockShipHeroApi } from './mockShipHeroApi';
 import { trackstarApi } from './trackstarApi';
+import { creditEfficientSync } from './creditEfficientSync';
 import { storage } from '../storage';
 
 interface SyncResult {

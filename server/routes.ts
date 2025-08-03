@@ -1288,6 +1288,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Credit-efficient sync route - NEW SYSTEM
+  app.post('/api/brands/:id/sync/credit-efficient', async (req: any, res) => {
+    try {
+      const { id: brandId } = req.params;
+      console.log(`🎯 Credit-efficient sync for brand ${brandId}`);
+      
+      const brand = await storage.getBrand(brandId);
+      if (!brand) {
+        return res.status(404).json({ message: 'Brand not found' });
+      }
+      
+      if (!brand.shipHeroApiKey || !brand.shipHeroPassword) {
+        return res.status(400).json({ message: 'ShipHero credentials not configured for this brand' });
+      }
+      
+      const credentials = {
+        username: brand.shipHeroApiKey,
+        password: brand.shipHeroPassword
+      };
+      
+      const { creditEfficientSync } = await import('./services/creditEfficientSync');
+      const result = await creditEfficientSync.syncBrandWithCreditManagement(brandId, credentials);
+      
+      res.json({
+        message: 'Credit-efficient sync completed',
+        result,
+        brandName: brand.name
+      });
+      
+    } catch (error) {
+      console.error('Credit-efficient sync error:', error);
+      res.status(500).json({
+        message: 'Credit-efficient sync failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Individual sync endpoints - REAL API INTEGRATION
   app.post('/api/brands/:id/sync/orders', async (req: any, res) => {
     try {
