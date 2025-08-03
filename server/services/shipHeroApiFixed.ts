@@ -260,13 +260,28 @@ export class ShipHeroApiService {
   }
 
   async getProducts(credentials: ShipHeroCredentials): Promise<ShipHeroProduct[]> {
-    console.log(`🔍 Fetching ShipHero products with credentials ${credentials.username}`);
-    const query = `
-      query getProducts {
-        products {
-          request_id
-          complexity
-          data(first: 200) {
+    console.log(`🔍 Fetching ALL ShipHero products with pagination for ${credentials.username}`);
+    
+    let allProducts: any[] = [];
+    let cursor: string | null = null;
+    let pageCount = 0;
+    
+    do {
+      pageCount++;
+      console.log(`📄 Fetching page ${pageCount}${cursor ? ` (cursor: ${cursor.substring(0, 20)}...)` : ' (first page)'}`);
+      
+      const query = `
+        query getProducts($cursor: String) {
+          products {
+            request_id
+            complexity
+            data(first: 200, after: $cursor) {
+            pageInfo {
+              hasNextPage
+              hasPreviousPage
+              startCursor
+              endCursor
+            }
             edges {
               node {
                 id
@@ -330,24 +345,48 @@ export class ShipHeroApiService {
       }
     `;
 
-    try {
-      const data = await this.makeGraphQLRequest(query, {}, credentials);
-      console.log(`✅ ShipHero products API response received, complexity: ${data.products?.complexity || 'N/A'}`);
-      
-      if (!data.products?.data?.edges) {
-        console.log(`⚠️ No products data structure found in response`);
-        return [];
-      }
-
-      // Filter out kits, digital products, and dropship items for Packr inventory
-      const filteredProducts = data.products.data.edges
-        .map((edge: any) => ({
+      try {
+        const data = await this.makeGraphQLRequest(query, { cursor }, credentials);
+        console.log(`✅ Page ${pageCount} received, complexity: ${data.products?.complexity || 'N/A'}`);
+        
+        if (!data.products?.data?.edges) {
+          console.log(`⚠️ No products data structure found in page ${pageCount}`);
+          break;
+        }
+        
+        // Add products from this page
+        const pageProducts = data.products.data.edges.map((edge: any) => ({
           ...edge.node,
           warehouse_products: edge.node.warehouse_products || [],
           images: edge.node.images || [],
           tags: edge.node.tags || [],
           kit_components: edge.node.kit_components || [],
-        }))
+        }));
+        
+        allProducts.push(...pageProducts);
+        console.log(`📦 Page ${pageCount}: Found ${pageProducts.length} products (Total so far: ${allProducts.length})`);
+        
+        // Check if there are more pages
+        const hasNextPage = data.products.data.pageInfo?.hasNextPage;
+        cursor = hasNextPage ? data.products.data.pageInfo?.endCursor : null;
+        
+        if (!hasNextPage) {
+          console.log(`✅ All pages fetched. Total products: ${allProducts.length}`);
+          break;
+        }
+        
+      } catch (error) {
+        console.error(`❌ ShipHero products API failed on page ${pageCount}:`, error);
+        throw error;
+      }
+    } while (cursor && pageCount < 10); // Safety limit
+    
+    // Now filter all collected products
+    console.log(`🔍 Filtering ${allProducts.length} total products from ${pageCount} pages...`);
+    try {
+
+      // Filter out kits, digital products, and dropship items for Packr inventory
+      const filteredProducts = allProducts
         .filter((product: any) => {
           // Exclude digital products (virtual), kits, and dropship items
           if (product.virtual) {
@@ -374,21 +413,40 @@ export class ShipHeroApiService {
             return false;
           }
           
-          // Exclude zero-price service items
+          // Exclude zero-price service items (but allow boxes/packaging)
           if ((product.price === '0' || product.price === 0 || product.price === '0.00') && 
               (name.includes('protection') || name.includes('service') || name.includes('insurance'))) {
             console.log(`🚫 Excluding zero-price service item: ${product.sku} - ${product.name}`);
             return false;
           }
           
+          // Debug: Log all products that pass filtering to see what's actually coming from ShipHero
+          console.log(`✅ ACCEPTING physical product: ${product.sku} - ${product.name} (Price: ${product.price})`);
+          console.log(`📋 Product details: Virtual=${product.virtual}, Kit=${product.kit}, Dropship=${product.dropship}`);
+          
           return true;
         });
 
-      console.log(`✅ Filtered ${data.products.data.edges.length} products down to ${filteredProducts.length} physical inventory items`);
+      console.log(`📊 SHIPHERO API ANALYSIS (ALL PAGES):`);
+      console.log(`   - Total products across all pages: ${allProducts.length}`);
+      console.log(`   - Pages fetched: ${pageCount}`);
+      console.log(`   - Filtered physical products: ${filteredProducts.length}`);
+      
+      // Log the actual non-filtered products to see what Mabē has
+      if (filteredProducts.length > 0) {
+        console.log(`📦 ACTUAL PHYSICAL PRODUCTS IN SHIPHERO:`);
+        filteredProducts.forEach((product: any) => {
+          console.log(`   - ${product.sku}: ${product.name} ($${product.price})`);
+        });
+      } else {
+        console.log(`⚠️ NO PHYSICAL PRODUCTS FOUND - only service/digital items exist in this ShipHero account`);
+        console.log(`💡 This suggests the Mabē account is set up for shipping services rather than physical merchandise`);
+      }
+      
       return filteredProducts;
       
     } catch (error) {
-      console.error(`❌ ShipHero products API failed:`, error);
+      console.error(`❌ ShipHero products filtering failed:`, error);
       throw error;
     }
   }
