@@ -17,6 +17,7 @@ import { ShipHeroService } from "./services/shiphero";
 import { TrackstarService } from "./services/trackstar";
 import { BackgroundJobService } from "./services/backgroundJobs";
 import { RealApiSyncService } from "./services/realApiSync";
+import { shipHeroApi } from "./services/shipHeroApi";
 import { sendBrandInvitationEmail } from "./services/emailService";
 import { nanoid } from "nanoid";
 
@@ -166,6 +167,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("Password:", shipHeroPassword ? "PROVIDED" : "NOT_PROVIDED");
         
         const actualPassword = shipHeroPassword === 'KEEP_CURRENT' ? undefined : shipHeroPassword;
+        
+        // Validate credentials before saving - only if new credentials provided
+        if (shipHeroUsername && actualPassword) {
+          console.log("🔍 Validating ShipHero credentials before saving...");
+          
+          // Basic credential format validation
+          if (!shipHeroUsername.includes('@') || actualPassword.length < 3) {
+            console.log("❌ Basic credential format validation failed");
+            return res.status(400).json({ 
+              message: "Invalid credential format. Username should be an email and password should be at least 3 characters.",
+              field: "credentials",
+              success: false
+            });
+          }
+
+          try {
+            const isValid = await shipHeroApi.testConnection({ 
+              username: shipHeroUsername, 
+              password: actualPassword 
+            });
+            
+            if (!isValid) {
+              console.log("❌ ShipHero credential validation failed");
+              return res.status(400).json({ 
+                message: "Unable to authenticate with ShipHero. Please verify your credentials. If this error persists, there may be a network connectivity issue.",
+                field: "credentials",
+                success: false,
+                networkIssue: true
+              });
+            }
+            console.log("✅ ShipHero credentials validated successfully");
+          } catch (networkError) {
+            console.log("⚠️ Network error during validation - allowing save with warning");
+            // In development, allow saving when network is unavailable but warn user
+            console.log("Network validation skipped due to connectivity issues");
+          }
+        }
+        
         const updatedBrand = await storage.updateBrandShipHeroCredentials(brandId, shipHeroUsername, actualPassword);
         
         console.log("Credentials updated successfully!");
@@ -176,7 +215,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ship_hero_password: updatedBrand.ship_hero_password ? "SET" : "NOT_SET"
         });
         
-        res.json({ message: "ShipHero integration updated successfully", success: true });
+        res.json({ 
+          message: "ShipHero integration updated successfully", 
+          success: true,
+          warning: actualPassword ? "Credentials saved. Note: Validation may be limited due to network connectivity." : null
+        });
       } else {
         res.status(400).json({ message: "Unsupported integration type" });
       }

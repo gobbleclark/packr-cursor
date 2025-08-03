@@ -311,6 +311,7 @@ export class ShipHeroApiService {
 
   async testConnection(credentials: ShipHeroCredentials): Promise<boolean> {
     try {
+      console.log(`🔍 Testing ShipHero connection for user: ${credentials.username}`);
       const query = `
         query testConnection {
           account {
@@ -320,10 +321,21 @@ export class ShipHeroApiService {
         }
       `;
       
-      await this.makeGraphQLRequest(query, {}, credentials);
+      const result = await this.makeGraphQLRequest(query, {}, credentials);
+      console.log(`✅ ShipHero connection successful - Account ID: ${result.account?.id}`);
       return true;
     } catch (error) {
-      console.error('ShipHero connection test failed:', error);
+      console.error('❌ ShipHero connection test failed:', error);
+      
+      // Log specific error details for debugging
+      if (error.message.includes('ENOTFOUND')) {
+        console.error('Network error: Cannot reach api.shiphero.com');
+      } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        console.error('Authentication error: Invalid credentials');
+      } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
+        console.error('Permission error: Account lacks required permissions');
+      }
+      
       return false;
     }
   }
