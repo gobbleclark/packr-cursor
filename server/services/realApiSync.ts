@@ -92,11 +92,21 @@ export class RealApiSyncService {
       
       console.log(`🔍 Using ShipHero credentials: ${credentials.username}`);
 
-      // Test connection first
-      const connectionValid = await shipHeroApi.testConnection(credentials);
-      if (!connectionValid) {
-        result.errors.push('ShipHero API connection failed - please check credentials');
-        return result;
+      // Test connection first with network error handling
+      try {
+        const connectionValid = await shipHeroApi.testConnection(credentials);
+        if (!connectionValid) {
+          result.errors.push('ShipHero API connection failed - please check credentials');
+          return result;
+        }
+      } catch (networkError: any) {
+        if (networkError.message?.includes('ENOTFOUND') || networkError.cause?.code === 'ENOTFOUND') {
+          console.log(`⚠️ Network connectivity issue detected for ${brand.name}`);
+          result.errors.push('Network connectivity issue - ShipHero API unreachable from this environment');
+          return result;
+        }
+        // Re-throw other errors
+        throw networkError;
       }
 
       // Sync Orders (last 7 days)

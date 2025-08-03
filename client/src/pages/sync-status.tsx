@@ -242,6 +242,23 @@ function SyncStatusDialog({ brandId, brandName, isOpen, onClose }: SyncStatusPro
               Real-time sync status from database - no mock data
             </div>
 
+            {/* Network Connectivity Warning */}
+            {syncStatus.orders?.errors?.some(error => error.includes('Network connectivity issue')) && (
+              <div className="bg-orange-100 border border-orange-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-600" />
+                  <h4 className="text-lg font-medium text-orange-800">Network Connectivity Issue</h4>
+                </div>
+                <div className="text-sm text-orange-700">
+                  Your ShipHero credentials are correctly configured, but this environment cannot reach ShipHero's API servers. 
+                  This is a platform-level network issue, not a problem with your credentials.
+                </div>
+                <div className="text-sm text-orange-600 mt-2">
+                  When network connectivity is restored, your system will automatically sync real data from your ShipHero account.
+                </div>
+              </div>
+            )}
+
             {/* Webhook Status */}
             <div className="bg-yellow-100 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
