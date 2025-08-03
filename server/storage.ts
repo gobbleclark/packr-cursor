@@ -64,6 +64,8 @@ export interface IStorage {
   getOrdersByThreePL(threePlId: string): Promise<Order[]>;
   updateOrderStatus(id: string, status: string): Promise<Order>;
   updateOrderShipping(id: string, address: any, method?: string): Promise<Order>;
+  getOrderByShipHeroId?(shipHeroId: string): Promise<Order | undefined>;
+  updateOrder?(id: string, orderData: any): Promise<Order>;
   
   // Product operations
   getProduct(id: string): Promise<Product | undefined>;
@@ -224,6 +226,24 @@ export class DatabaseStorage implements IStorage {
 
   async getRecent3PLs(): Promise<ThreePL[]> {
     return await db.select().from(threePLs).orderBy(desc(threePLs.createdAt)).limit(5);
+  }
+
+  // New order methods for ShipHero integration
+  async getOrderByShipHeroId(shipHeroId: string): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.shipHeroOrderId, shipHeroId));
+    return order;
+  }
+
+  async updateOrder(id: string, orderData: any): Promise<Order> {
+    const [order] = await db
+      .update(orders)
+      .set({
+        ...orderData,
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, id))
+      .returning();
+    return order;
   }
 
   // 3PL operations

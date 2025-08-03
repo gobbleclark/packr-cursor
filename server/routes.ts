@@ -1233,7 +1233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         
         // Use REAL API sync service for initial sync - NO MOCK DATA
-        const realApiSync = new RealApiSyncService(storage);
+        const realApiSync = new RealApiSyncService();
         const apiSyncResult = await realApiSync.syncBrandData(brandId);
         
         const syncResult = {
@@ -1301,7 +1301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📦 Manual orders sync for brand ${brand.name}`);
       
       // Use REAL API sync service
-      const realApiSync = new RealApiSyncService(storage);
+      const realApiSync = new RealApiSyncService();
       const syncResult = await realApiSync.syncBrandData(brandId);
       
       const results = { 
@@ -1332,7 +1332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📊 Manual products sync for brand ${brand.name}`);
       
       // Use REAL API sync service  
-      const realApiSync = new RealApiSyncService(storage);
+      const realApiSync = new RealApiSyncService();
       const syncResult = await realApiSync.syncBrandData(brandId);
       
       const results = { 
