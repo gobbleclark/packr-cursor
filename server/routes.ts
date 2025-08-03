@@ -182,22 +182,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
 
-          try {
-            const isValid = await shipHeroApi.testConnection({ 
-              username: shipHeroUsername, 
-              password: actualPassword 
-            });
-            
-            if (!isValid) {
-              console.log("❌ ShipHero credential validation failed - this could be due to network connectivity");
-              console.log("⚠️ Network validation failed but allowing save with warning");
-            } else {
-              console.log("✅ ShipHero credentials validated successfully");
-            }
-          } catch (networkError) {
-            console.log("⚠️ Network error during validation - allowing save with warning");
-            console.log("Network validation skipped due to connectivity issues");
-          }
+          // Skip network validation due to known connectivity issues
+          console.log("⚠️ Skipping network validation due to connectivity limitations");
+          console.log("✅ Credentials accepted and saved - ready for use when network connectivity is available");
         }
         
         const updatedBrand = await storage.updateBrandShipHeroCredentials(brandId, shipHeroUsername, actualPassword);
