@@ -206,8 +206,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("Updated brand data:", {
           id: updatedBrand.id,
           name: updatedBrand.name,
-          ship_hero_api_key: updatedBrand.ship_hero_api_key,
-          ship_hero_password: updatedBrand.ship_hero_password ? "SET" : "NOT_SET"
+          shipHeroApiKey: updatedBrand.shipHeroApiKey,
+          shipHeroPassword: updatedBrand.shipHeroPassword ? "SET" : "NOT_SET"
         });
         
         res.json({ 

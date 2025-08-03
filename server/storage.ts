@@ -269,17 +269,17 @@ export class DatabaseStorage implements IStorage {
 
     // Update username if provided (can be null to clear)
     if (username !== undefined) {
-      updateData.ship_hero_api_key = username;
+      updateData.shipHeroApiKey = username;
     }
 
     // Update password if provided (can be null to clear, undefined to keep current)
     if (password !== undefined) {
-      updateData.ship_hero_password = password;
+      updateData.shipHeroPassword = password;
     }
 
     // Update user ID if provided
     if (userId !== undefined) {
-      updateData.ship_hero_user_id = userId;
+      updateData.shipHeroUserId = userId;
     }
 
     const [brand] = await db
