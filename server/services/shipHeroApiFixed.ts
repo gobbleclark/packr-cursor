@@ -354,14 +354,37 @@ export class ShipHeroApiService {
           break;
         }
         
-        // Add products from this page
-        const pageProducts = data.products.data.edges.map((edge: any) => ({
-          ...edge.node,
-          warehouse_products: edge.node.warehouse_products || [],
-          images: edge.node.images || [],
-          tags: edge.node.tags || [],
-          kit_components: edge.node.kit_components || [],
-        }));
+        // Add products from this page with calculated inventory totals
+        const pageProducts = data.products.data.edges.map((edge: any) => {
+          const node = edge.node;
+          // Calculate total available inventory across all warehouses
+          const total_available = (node.warehouse_products || []).reduce((total: number, warehouse: any) => {
+            return total + (parseInt(warehouse.on_hand) || 0);
+          }, 0);
+          
+          // Calculate total committed/reserved across all warehouses  
+          const total_committed = (node.warehouse_products || []).reduce((total: number, warehouse: any) => {
+            return total + (parseInt(warehouse.reserve_inventory) || 0);
+          }, 0);
+          
+          return {
+            ...node,
+            warehouse_products: node.warehouse_products || [],
+            images: node.images || [],
+            tags: node.tags || [],
+            kit_components: node.kit_components || [],
+            // Add calculated fields that realApiSync.ts expects
+            total_available,
+            total_committed,
+            // Map dimension fields for compatibility
+            weight: node.dimensions?.weight || '0',
+            length: node.dimensions?.length || '0',
+            width: node.dimensions?.width || '0', 
+            height: node.dimensions?.height || '0',
+            country_of_origin: node.country_of_manufacture || '',
+            customs_description_2: node.tariff_code || '',
+          };
+        });
         
         allProducts.push(...pageProducts);
         console.log(`📦 Page ${pageCount}: Found ${pageProducts.length} products (Total so far: ${allProducts.length})`);
@@ -421,8 +444,8 @@ export class ShipHeroApiService {
           }
           
           // Debug: Log all products that pass filtering to see what's actually coming from ShipHero
-          console.log(`✅ ACCEPTING physical product: ${product.sku} - ${product.name} (Price: ${product.price})`);
-          console.log(`📋 Product details: Virtual=${product.virtual}, Kit=${product.kit}, Dropship=${product.dropship}`);
+          console.log(`✅ ACCEPTING physical product: ${product.sku} - ${product.name} (Price: ${product.price}, Inventory: ${product.total_available})`);
+          console.log(`📋 Product details: Virtual=${product.virtual}, Kit=${product.kit}, Dropship=${product.dropship}, Warehouses: ${product.warehouse_products?.length || 0}`);
           
           return true;
         });
