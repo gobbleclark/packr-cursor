@@ -93,6 +93,11 @@ export const orders = pgTable("orders", {
   shipHeroOrderId: varchar("ship_hero_order_id").unique(),
   trackstarOrderId: varchar("trackstar_order_id").unique(),
   orderItems: jsonb("order_items"),
+  backorderQuantity: integer("backorder_quantity").default(0), // Track backorder quantity for late order tool
+  // Allocation tracking timestamps for late order analysis
+  orderCreatedAt: timestamp("order_created_at"), // When order was created in ShipHero
+  allocatedAt: timestamp("allocated_at"), // When order was allocated in warehouse
+  shippedAt: timestamp("shipped_at"), // When order was shipped
   lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

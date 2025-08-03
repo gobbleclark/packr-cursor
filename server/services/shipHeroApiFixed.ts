@@ -191,40 +191,64 @@ export class ShipHeroApiService {
   }
 
   async getOrders(credentials: ShipHeroCredentials, fromDate?: Date): Promise<ShipHeroOrder[]> {
-    const dateFilter = fromDate ? fromDate.toISOString().split('T')[0] : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    console.log(`🔍 Fetching ShipHero orders from ${dateFilter} with credentials ${credentials.username}`);
+    const fromDateTime = fromDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const toDateTime = new Date();
+    console.log(`🔍 Fetching ShipHero orders from ${fromDateTime.toISOString()} to ${toDateTime.toISOString()} with credentials ${credentials.username}`);
     
-    const query = `
-      query getOrders($orderDateFrom: ISODateTime, $orderDateTo: ISODateTime) {
-        orders(order_date_from: $orderDateFrom, order_date_to: $orderDateTo) {
-          request_id
-          complexity
-          data(first: 20) {
-            edges {
-              node {
-                id
-                legacy_id
-                order_number
-                shop_name
-                fulfillment_status
-                order_date
-                total_price
-                email
-                profile
-                shipping_address {
-                  first_name
-                  last_name
-                  city
-                  state
-                  zip
-                }
-                line_items(first: 5) {
-                  edges {
-                    node {
-                      id
-                      sku
-                      quantity
-                      product_name
+    let allOrders: any[] = [];
+    let cursor: string | null = null;
+    let pageCount = 0;
+
+    do {
+      pageCount++;
+      console.log(`📄 Fetching orders page ${pageCount}${cursor ? ` (cursor: ${cursor})` : ''}...`);
+
+      const query = `
+        query getOrders($orderDateFrom: ISODateTime, $orderDateTo: ISODateTime, $after: String) {
+          orders(order_date_from: $orderDateFrom, order_date_to: $orderDateTo) {
+            request_id
+            complexity
+            data(first: 100, after: $after) {
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              edges {
+                node {
+                  id
+                  legacy_id
+                  order_number
+                  shop_name
+                  fulfillment_status
+                  order_date
+                  total_price
+                  email
+                  profile
+                  allocated_date
+                  shipped_date
+                  shipping_address {
+                    first_name
+                    last_name
+                    address1
+                    address2
+                    city
+                    state
+                    zip
+                    country
+                    phone
+                  }
+                  line_items(first: 20) {
+                    edges {
+                      node {
+                        id
+                        sku
+                        quantity
+                        quantity_allocated
+                        quantity_shipped
+                        backorder_quantity
+                        product_name
+                        price
+                      }
                     }
                   }
                 }
@@ -232,31 +256,59 @@ export class ShipHeroApiService {
             }
           }
         }
-      }
-    `;
+      `;
 
-    try {
-      const data = await this.makeGraphQLRequest(query, { 
-        orderDateFrom: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),  // Full ISO DateTime
-        orderDateTo: new Date().toISOString()  // Full ISO DateTime
-      }, credentials);
-      console.log(`✅ ShipHero orders API response received, complexity: ${data.orders?.complexity || 'N/A'}`);
-      
-      if (!data.orders?.data?.edges) {
-        console.log(`⚠️ No orders data structure found in response`);
-        return [];
-      }
+      try {
+        const data = await this.makeGraphQLRequest(query, { 
+          orderDateFrom: fromDateTime.toISOString(),
+          orderDateTo: toDateTime.toISOString(),
+          after: cursor
+        }, credentials);
+        console.log(`✅ ShipHero orders API page ${pageCount} response received, complexity: ${data.orders?.complexity || 'N/A'}`);
+        
+        if (!data.orders?.data?.edges) {
+          console.log(`⚠️ No orders data structure found in page ${pageCount} response`);
+          break;
+        }
 
-      return data.orders.data.edges.map((edge: any) => ({
-        ...edge.node,
-        line_items: edge.node.line_items?.edges?.map((item: any) => item.node) || [],
-        shipments: edge.node.shipments || [],
-      }));
-      
-    } catch (error) {
-      console.error(`❌ ShipHero orders API failed:`, error);
-      throw error;
-    }
+        const pageOrders = data.orders.data.edges.map((edge: any) => ({
+          ...edge.node,
+          line_items: edge.node.line_items?.edges?.map((item: any) => ({
+            ...item.node,
+            // Calculate total backorder quantity for the order
+            backorder_quantity: item.node.backorder_quantity || 0
+          })) || [],
+          // Calculate total backorder quantity for the entire order
+          total_backorder_quantity: edge.node.line_items?.edges?.reduce((total: number, item: any) => {
+            return total + (item.node.backorder_quantity || 0);
+          }, 0) || 0,
+          shipments: edge.node.shipments || [],
+        }));
+
+        allOrders.push(...pageOrders);
+        console.log(`📦 Orders page ${pageCount}: Found ${pageOrders.length} orders (Total so far: ${allOrders.length})`);
+
+        // Check if there are more pages
+        const hasNextPage = data.orders.data.pageInfo?.hasNextPage;
+        cursor = hasNextPage ? data.orders.data.pageInfo?.endCursor : null;
+        
+        if (!hasNextPage) {
+          console.log(`✅ All order pages fetched. Total orders: ${allOrders.length}`);
+          break;
+        }
+        
+      } catch (error) {
+        console.error(`❌ ShipHero orders API failed on page ${pageCount}:`, error);
+        throw error;
+      }
+    } while (cursor && pageCount < 20); // Safety limit
+
+    console.log(`📊 SHIPHERO ORDERS ANALYSIS:`);
+    console.log(`   - Total orders fetched: ${allOrders.length}`);
+    console.log(`   - Pages fetched: ${pageCount}`);
+    console.log(`   - Date range: ${fromDateTime.toISOString()} to ${toDateTime.toISOString()}`);
+    
+    return allOrders;
   }
 
   async getProducts(credentials: ShipHeroCredentials): Promise<ShipHeroProduct[]> {
@@ -531,6 +583,81 @@ export class ShipHeroApiService {
       console.error(`❌ ShipHero inventory API failed:`, error);
       throw error;
     }
+  }
+
+  async syncWarehouseInventory(credentials: ShipHeroCredentials, storage: any): Promise<void> {
+    console.log(`🏭 Starting warehouse inventory sync for ${credentials.username}`);
+    
+    try {
+      // Get all products for this brand
+      const brandId = 'dce4813e-aeb7-41fe-bb00-a36e314288f3'; // Mabē brand ID - in production get from credentials
+      const products = await storage.getProductsByBrand(brandId);
+      console.log(`📦 Found ${products.length} products to sync warehouse inventory for`);
+
+      let syncedCount = 0;
+      
+      // Get fresh inventory data from ShipHero
+      const inventoryData = await this.getInventory(credentials);
+      console.log(`📊 Received inventory data for ${inventoryData.length} products from ShipHero`);
+
+      for (const product of products) {
+        try {
+          // Find matching inventory data by SKU
+          const inventoryMatch = inventoryData.find(inv => inv.sku === product.sku);
+          
+          if (inventoryMatch && inventoryMatch.warehouse_products) {
+            console.log(`🔄 Syncing warehouse inventory for product ${product.sku} (${inventoryMatch.warehouse_products.length} warehouses)`);
+            
+            // Sync each warehouse's inventory for this product
+            for (const warehouse of inventoryMatch.warehouse_products) {
+              await storage.upsertProductWarehouse({
+                productId: product.id,
+                warehouseId: warehouse.warehouse_id,
+                warehouseName: this.getWarehouseName(warehouse.warehouse_id),
+                onHand: warehouse.on_hand || 0,
+                allocated: warehouse.reserve_inventory || 0,
+                available: (warehouse.on_hand || 0) - (warehouse.reserve_inventory || 0),
+                committed: warehouse.reserve_inventory || 0,
+                reserved: warehouse.reserve_inventory || 0,
+                backordered: 0,
+                pending: 0,
+                sellable: warehouse.on_hand || 0,
+                nonSellable: 0,
+                inventoryBin: warehouse.inventory_bin || '',
+                overstockBin: warehouse.inventory_overstock_bin || '',
+                reorderLevel: warehouse.reorder_level || 0,
+                reorderAmount: warehouse.reorder_amount || 0,
+                replenishmentLevel: warehouse.replenishment_level || 0,
+                lastSyncAt: new Date(),
+              });
+            }
+            
+            syncedCount++;
+            console.log(`✅ Synced warehouse inventory for ${product.sku} (${syncedCount}/${products.length})`);
+          } else {
+            console.log(`⚠️  No warehouse inventory found for product ${product.sku}`);
+          }
+        } catch (error) {
+          console.error(`❌ Failed to sync warehouse inventory for product ${product.sku}:`, error);
+        }
+      }
+
+      console.log(`🎉 Warehouse inventory sync complete! Synced ${syncedCount}/${products.length} products`);
+      
+    } catch (error) {
+      console.error(`❌ Warehouse inventory sync failed:`, error);
+      throw error;
+    }
+  }
+
+  private getWarehouseName(warehouseId: string): string {
+    const warehouseNames: { [key: string]: string } = {
+      'WH001': 'Main Warehouse',
+      'WH002': 'Secondary Warehouse', 
+      'WH003': 'Overflow Warehouse',
+      // Add more warehouse mappings as needed
+    };
+    return warehouseNames[warehouseId] || `Warehouse ${warehouseId}`;
   }
 
   async testConnection(credentials: ShipHeroCredentials): Promise<boolean> {

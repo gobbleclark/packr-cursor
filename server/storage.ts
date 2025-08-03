@@ -974,6 +974,22 @@ export class DatabaseStorage implements IStorage {
     return attachment;
   }
 
+  // Brand operations
+  async getBrand(id: string): Promise<Brand | undefined> {
+    const [brand] = await db.select().from(brands).where(eq(brands.id, id));
+    return brand;
+  }
+
+  // Order update operations
+  async updateOrder(id: string, updateData: any): Promise<Order> {
+    const [order] = await db
+      .update(orders)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(orders.id, id))
+      .returning();
+    return order;
+  }
+
   // Get sync status for a brand
   async getSyncStatus(brandId: string): Promise<any[]> {
     return await db

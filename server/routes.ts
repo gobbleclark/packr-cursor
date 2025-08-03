@@ -1528,6 +1528,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Warehouse inventory sync endpoint
+  app.post('/api/sync/trigger-warehouse-inventory', async (req, res) => {
+    try {
+      console.log('🏭 Manual warehouse inventory sync triggered');
+      const brandId = 'dce4813e-aeb7-41fe-bb00-a36e314288f3'; // Mabē brand
+      const brand = await storage.getBrand(brandId);
+      
+      if (brand && brand.shipHeroApiKey && brand.shipHeroPassword) {
+        const credentials = { username: brand.shipHeroApiKey, password: brand.shipHeroPassword };
+        await shipHeroApiFixed.syncWarehouseInventory(credentials, storage);
+        res.json({ success: true, message: 'Warehouse inventory sync completed' });
+      } else {
+        res.status(400).json({ error: 'Brand not found or missing ShipHero API credentials' });
+      }
+    } catch (error) {
+      console.error('Warehouse inventory sync failed:', error);
+      res.status(500).json({ error: 'Failed to sync warehouse inventory' });
+    }
+  });
+
+  // Orders sync endpoint
+  app.post('/api/sync/trigger-orders', async (req, res) => {
+    try {
+      console.log('📦 Manual order sync triggered');
+      const brandId = 'dce4813e-aeb7-41fe-bb00-a36e314288f3'; // Mabē brand
+      const brand = await storage.getBrand(brandId);
+      
+      if (brand && brand.shipHeroApiKey && brand.shipHeroPassword) {
+        await (backgroundJobService as any).syncBrandOrders(brand);
+        res.json({ success: true, message: 'Order sync completed' });
+      } else {
+        res.status(400).json({ error: 'Brand not found or missing ShipHero API credentials' });
+      }
+    } catch (error) {
+      console.error('Order sync failed:', error);
+      res.status(500).json({ error: 'Failed to sync orders' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
