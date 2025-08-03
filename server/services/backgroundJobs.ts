@@ -104,9 +104,10 @@ export class BackgroundJobService {
     try {
       const credentials = { username: brand.shipHeroApiKey, password: brand.shipHeroPassword };
       
-      // Get the last successful sync time for this brand
+      // Get the last successful sync time for this brand  
       const lastSyncTime = await this.getLastSuccessfulSyncTime(brand.id);
-      const fromDate = lastSyncTime || new Date(Date.now() - 10 * 60 * 1000); // Default to 10 minutes ago if no previous sync
+      // Temporarily use a 1-hour window to avoid credit limit issues during testing
+      const fromDate = new Date(Date.now() - 1 * 60 * 60 * 1000); // 1 hour ago
       
       console.log(`📦 Fetching new orders for ${brand.name} since ${fromDate.toISOString()}...`);
       

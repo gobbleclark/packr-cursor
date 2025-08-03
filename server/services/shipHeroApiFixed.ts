@@ -208,7 +208,7 @@ export class ShipHeroApiService {
           orders(order_date_from: $orderDateFrom, order_date_to: $orderDateTo) {
             request_id
             complexity
-            data(first: 100, after: $after) {
+            data(first: 5, after: $after) {
               pageInfo {
                 hasNextPage
                 endCursor
@@ -224,8 +224,6 @@ export class ShipHeroApiService {
                   total_price
                   email
                   profile
-                  allocated_date
-                  shipped_date
                   shipping_address {
                     first_name
                     last_name
@@ -237,17 +235,12 @@ export class ShipHeroApiService {
                     country
                     phone
                   }
-                  line_items(first: 20) {
+                  line_items(first: 3) {
                     edges {
                       node {
                         id
                         sku
                         quantity
-                        quantity_allocated
-                        quantity_shipped
-                        backorder_quantity
-                        product_name
-                        price
                       }
                     }
                   }
