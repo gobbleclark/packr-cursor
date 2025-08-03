@@ -137,7 +137,7 @@ export const products = pgTable("products", {
   price: decimal("price", { precision: 10, scale: 2 }),
   weight: decimal("weight", { precision: 8, scale: 3 }),
   dimensions: jsonb("dimensions"),
-  inventoryCount: integer("inventory_count").default(0),
+  inventoryCount: integer("inventory_count").default(0), // Total across all warehouses
   reservedQuantity: integer("reserved_quantity").default(0),
   lowStockThreshold: integer("low_stock_threshold").default(10),
   shipHeroProductId: varchar("ship_hero_product_id").unique(),
@@ -149,6 +149,33 @@ export const products = pgTable("products", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Warehouse-specific inventory tracking
+export const productWarehouse = pgTable("product_warehouse", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").references(() => products.id, { onDelete: 'cascade' }).notNull(),
+  warehouseId: varchar("warehouse_id").notNull(), // ShipHero warehouse ID
+  warehouseName: varchar("warehouse_name").notNull(),
+  onHand: integer("on_hand").default(0),
+  allocated: integer("allocated").default(0),
+  available: integer("available").default(0),
+  committed: integer("committed").default(0),
+  reserved: integer("reserved").default(0),
+  backordered: integer("backordered").default(0),
+  pending: integer("pending").default(0),
+  sellable: integer("sellable").default(0),
+  nonSellable: integer("non_sellable").default(0),
+  inventoryBin: varchar("inventory_bin").default(""),
+  overstockBin: varchar("overstock_bin").default(""),
+  reorderLevel: integer("reorder_level").default(0),
+  reorderAmount: integer("reorder_amount").default(0),
+  replenishmentLevel: integer("replenishment_level").default(0),
+  lastSyncAt: timestamp("last_sync_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  // Unique constraint on product-warehouse combination
+  index("product_warehouse_unique").on(table.productId, table.warehouseId),
+]);
 
 // Sync Status Tracking
 export const syncStatus = pgTable("sync_status", {
@@ -247,10 +274,18 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
   tickets: many(tickets),
 }));
 
-export const productsRelations = relations(products, ({ one }) => ({
+export const productsRelations = relations(products, ({ one, many }) => ({
   brand: one(brands, {
     fields: [products.brandId],
     references: [brands.id],
+  }),
+  warehouseInventory: many(productWarehouse),
+}));
+
+export const productWarehouseRelations = relations(productWarehouse, ({ one }) => ({
+  product: one(products, {
+    fields: [productWarehouse.productId],
+    references: [products.id],
   }),
 }));
 
@@ -339,6 +374,11 @@ export const insertProductSchema = createInsertSchema(products).omit({
   updatedAt: true,
 });
 
+export const insertProductWarehouseSchema = createInsertSchema(productWarehouse).omit({
+  id: true,
+  updatedAt: true,
+});
+
 export const insertTicketSchema = createInsertSchema(tickets).omit({
   id: true,
   createdAt: true,
@@ -382,3 +422,6 @@ export type TicketComment = typeof ticketComments.$inferSelect;
 export type InsertTicketComment = z.infer<typeof insertTicketCommentSchema>;
 export type Attachment = typeof attachments.$inferSelect;
 export type InsertAttachment = z.infer<typeof insertAttachmentSchema>;
+
+export type ProductWarehouse = typeof productWarehouse.$inferSelect;
+export type InsertProductWarehouse = z.infer<typeof insertProductWarehouseSchema>;

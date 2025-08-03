@@ -224,26 +224,63 @@ export class RealApiSyncService {
 
         // Check if product already exists to prevent duplicates
         const existingProduct = await storage.getProductByShipHeroId(shipHeroProduct.id);
+        let savedProduct;
+        
         if (!existingProduct) {
           try {
             console.log(`📦 Creating product: ${productData.sku} - ${productData.name}`);
             console.log(`📦 Product data:`, JSON.stringify(productData, null, 2));
-            const createdProduct = await storage.createProduct(productData);
+            savedProduct = await storage.createProduct(productData);
             result.products++;
-            console.log(`✅ Product created successfully with ID: ${createdProduct.id}, SKU: ${productData.sku}`);
+            console.log(`✅ Product created successfully with ID: ${savedProduct.id}, SKU: ${productData.sku}`);
           } catch (error) {
             console.error(`❌ Failed to create product ${productData.sku}:`, error as Error);
             console.error(`❌ Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
             result.errors.push(`Failed to create product ${productData.sku}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            continue; // Skip warehouse sync if product creation failed
           }
         } else {
           try {
-            await storage.updateProduct(existingProduct.id, productData);
+            savedProduct = await storage.updateProduct(existingProduct.id, productData);
             console.log(`🔄 Updated existing product: ${productData.sku}`);
           } catch (error) {
             console.error(`❌ Failed to update product ${productData.sku}:`, error as Error);
             result.errors.push(`Failed to update product ${productData.sku}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            continue; // Skip warehouse sync if product update failed
           }
+        }
+        
+        // Now sync warehouse-specific inventory for this product
+        if (shipHeroProduct.warehouse_products && shipHeroProduct.warehouse_products.length > 0) {
+          console.log(`🏭 Syncing warehouse inventory for ${productData.name} across ${shipHeroProduct.warehouse_products.length} warehouses`);
+          
+          for (const warehouseData of shipHeroProduct.warehouse_products) {
+            try {
+              const warehouseInventoryData = {
+                productId: savedProduct.id,
+                warehouseId: warehouseData.warehouse_id,
+                warehouseName: `Warehouse ${warehouseData.warehouse_id}`, // We'll update this with real names later
+                onHand: parseInt(warehouseData.on_hand) || 0,
+                allocated: parseInt(warehouseData.allocated) || 0,
+                available: parseInt(warehouseData.available) || 0,
+                committed: parseInt(warehouseData.committed) || 0,
+                reserved: parseInt(warehouseData.reserve_inventory) || 0,
+                backordered: parseInt(warehouseData.backordered) || 0,
+                pending: parseInt(warehouseData.pending) || 0,
+                sellable: parseInt(warehouseData.sellable) || 0,
+                nonSellable: parseInt(warehouseData.non_sellable) || 0,
+                lastSyncAt: new Date(),
+              };
+              
+              await storage.upsertProductWarehouse(warehouseInventoryData);
+              console.log(`  ✅ Warehouse ${warehouseData.warehouse_id}: ${warehouseData.on_hand || 0} on hand`);
+            } catch (error) {
+              console.error(`❌ Failed to sync warehouse inventory for product ${productData.sku}, warehouse ${warehouseData.warehouse_id}:`, error);
+              result.errors.push(`Failed to sync warehouse inventory for ${productData.sku}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
+          }
+        } else {
+          console.log(`📦 No warehouse inventory data for product: ${productData.sku}`);
         }
       }
 
@@ -270,7 +307,7 @@ export class RealApiSyncService {
               customerName: shipHeroOrder.profile?.name || `${shipHeroOrder.shipping_address?.first_name} ${shipHeroOrder.shipping_address?.last_name}`.trim(),
               customerEmail: shipHeroOrder.email,
               status: this.mapShipHeroStatus(shipHeroOrder.fulfillment_status),
-              totalAmount: shipHeroOrder.total_price || '0',
+              totalAmount: shipHeroOrder.total_price?.toString() || '0',
               shippingMethod: shipHeroOrder.shipments?.[0]?.method || 'Standard',
               trackingNumber: shipHeroOrder.shipments?.[0]?.tracking_number || null,
               shipHeroOrderId: shipHeroOrder.id,

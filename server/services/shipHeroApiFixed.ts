@@ -354,9 +354,10 @@ export class ShipHeroApiService {
           break;
         }
         
-        // Add products from this page with calculated inventory totals
+        // Add products from this page with calculated inventory totals and warehouse details
         const pageProducts = data.products.data.edges.map((edge: any) => {
           const node = edge.node;
+          
           // Calculate total available inventory across all warehouses
           const total_available = (node.warehouse_products || []).reduce((total: number, warehouse: any) => {
             return total + (parseInt(warehouse.on_hand) || 0);
@@ -366,6 +367,14 @@ export class ShipHeroApiService {
           const total_committed = (node.warehouse_products || []).reduce((total: number, warehouse: any) => {
             return total + (parseInt(warehouse.reserve_inventory) || 0);
           }, 0);
+          
+          // Debug warehouse details for this product
+          if ((node.warehouse_products || []).length > 0) {
+            console.log(`📦 ${node.sku} warehouse breakdown:`);
+            (node.warehouse_products || []).forEach((wh: any) => {
+              console.log(`   - Warehouse ${wh.warehouse_id}: ${wh.on_hand || 0} on hand, ${wh.reserve_inventory || 0} reserved`);
+            });
+          }
           
           return {
             ...node,

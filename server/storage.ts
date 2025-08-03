@@ -26,6 +26,9 @@ import {
   shipments,
   warehouses,
   syncStatus,
+  productWarehouse,
+  type ProductWarehouse,
+  type InsertProductWarehouse,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, like, count, isNull, isNotNull } from "drizzle-orm";
@@ -72,6 +75,11 @@ export interface IStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   getProductsByBrand(brandId: string): Promise<Product[]>;
   updateProductInventory(id: string, count: number): Promise<Product>;
+  
+  // Warehouse inventory operations
+  upsertProductWarehouse(productWarehouse: InsertProductWarehouse): Promise<ProductWarehouse>;
+  getProductWarehouseInventory(productId: string): Promise<ProductWarehouse[]>;
+  getWarehouseInventoryByBrand(brandId: string): Promise<{ product: Product; warehouses: ProductWarehouse[] }[]>;
   
   // Ticket operations
   getTicket(id: string): Promise<Ticket | undefined>;
@@ -602,6 +610,67 @@ export class DatabaseStorage implements IStorage {
       .where(eq(products.id, id))
       .returning();
     return product;
+  }
+
+  // Warehouse inventory operations
+  async upsertProductWarehouse(productWarehouseData: InsertProductWarehouse): Promise<ProductWarehouse> {
+    console.log("🏭 STORAGE: Upserting product warehouse data:", productWarehouseData);
+    
+    try {
+      const [productWarehouseRecord] = await db
+        .insert(productWarehouse)
+        .values(productWarehouseData)
+        .onConflictDoUpdate({
+          target: [productWarehouse.productId, productWarehouse.warehouseId],
+          set: {
+            ...productWarehouseData,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+      
+      console.log("✅ STORAGE: Product warehouse record upserted for product:", productWarehouseRecord.productId);
+      return productWarehouseRecord;
+    } catch (error) {
+      console.error("❌ STORAGE: Product warehouse upsert failed:", error);
+      throw error;
+    }
+  }
+
+  async getProductWarehouseInventory(productId: string): Promise<ProductWarehouse[]> {
+    return await db
+      .select()
+      .from(productWarehouse)
+      .where(eq(productWarehouse.productId, productId));
+  }
+
+  async getWarehouseInventoryByBrand(brandId: string): Promise<{ product: Product; warehouses: ProductWarehouse[] }[]> {
+    // Get all products for this brand with their warehouse inventory
+    const productsWithWarehouses = await db
+      .select({
+        product: products,
+        warehouse: productWarehouse,
+      })
+      .from(products)
+      .leftJoin(productWarehouse, eq(products.id, productWarehouse.productId))
+      .where(eq(products.brandId, brandId));
+
+    // Group by product
+    const grouped = productsWithWarehouses.reduce((acc, row) => {
+      const productId = row.product.id;
+      if (!acc[productId]) {
+        acc[productId] = {
+          product: row.product,
+          warehouses: [],
+        };
+      }
+      if (row.warehouse) {
+        acc[productId].warehouses.push(row.warehouse);
+      }
+      return acc;
+    }, {} as Record<string, { product: Product; warehouses: ProductWarehouse[] }>);
+
+    return Object.values(grouped);
   }
 
   // Ticket operations
