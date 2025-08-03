@@ -64,11 +64,9 @@ export default function StatsCards() {
         </CardContent>
         <div className="bg-gray-50 px-5 py-3">
           <div className="text-sm">
-            <span className="text-green-600 font-medium flex items-center">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +12%
+            <span className="text-gray-600 font-medium">
+              Real-time data
             </span>
-            <span className="text-gray-500"> from last month</span>
           </div>
         </div>
       </Card>
@@ -92,8 +90,9 @@ export default function StatsCards() {
         </CardContent>
         <div className="bg-gray-50 px-5 py-3">
           <div className="text-sm">
-            <span className="text-green-600 font-medium">+2</span>
-            <span className="text-gray-500"> new this month</span>
+            <span className="text-gray-600 font-medium">
+              Active brands
+            </span>
           </div>
         </div>
       </Card>
@@ -117,8 +116,9 @@ export default function StatsCards() {
         </CardContent>
         <div className="bg-gray-50 px-5 py-3">
           <div className="text-sm">
-            <span className="text-red-600 font-medium">{currentStats.urgentTickets}</span>
-            <span className="text-gray-500"> marked urgent</span>
+            <span className="text-gray-600 font-medium">
+              {currentStats.urgentTickets} urgent tickets
+            </span>
           </div>
         </div>
       </Card>
