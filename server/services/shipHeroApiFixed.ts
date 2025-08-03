@@ -195,7 +195,7 @@ export class ShipHeroApiService {
     console.log(`🔍 Fetching ShipHero orders from ${dateFilter} with credentials ${credentials.username}`);
     
     const query = `
-      query getOrders($orderDateFrom: String, $orderDateTo: String) {
+      query getOrders($orderDateFrom: ISODateTime, $orderDateTo: ISODateTime) {
         orders(order_date_from: $orderDateFrom, order_date_to: $orderDateTo) {
           request_id
           complexity
@@ -237,8 +237,8 @@ export class ShipHeroApiService {
 
     try {
       const data = await this.makeGraphQLRequest(query, { 
-        orderDateFrom: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],  // Just yesterday
-        orderDateTo: new Date().toISOString().split('T')[0]
+        orderDateFrom: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),  // Full ISO DateTime
+        orderDateTo: new Date().toISOString()  // Full ISO DateTime
       }, credentials);
       console.log(`✅ ShipHero orders API response received, complexity: ${data.orders?.complexity || 'N/A'}`);
       
