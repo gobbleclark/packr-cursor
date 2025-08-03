@@ -1556,7 +1556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const brand = await storage.getBrand(brandId);
       
       if (brand && brand.shipHeroApiKey && brand.shipHeroPassword) {
-        await (backgroundJobService as any).syncBrandOrders(brand);
+        await (backgroundJobService as any).syncBrandOrdersIncremental(brand);
         res.json({ success: true, message: 'Order sync completed' });
       } else {
         res.status(400).json({ error: 'Brand not found or missing ShipHero API credentials' });

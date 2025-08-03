@@ -57,7 +57,7 @@ Preferred communication style: Simple, everyday language.
 - **Replit Auth**: OpenID Connect provider for user authentication
 
 ## Third-Party APIs
-- **ShipHero API**: Complete integration with comprehensive webhook support for real-time data synchronization (orders, shipments, inventory, products, returns) including intelligent rate limiting and HMAC security. **CRITICAL**: Currently experiencing 401 authentication failures - requires valid API credentials from user.
+- **ShipHero API**: Complete integration with comprehensive webhook support for real-time data synchronization (orders, shipments, inventory, products, returns) including intelligent rate limiting and HMAC security. **ARCHITECTURE UPDATE**: Implemented intelligent 2-tier sync system - incremental sync every 2 minutes (only new orders since last sync) + hourly 24-hour integrity check to prevent data gaps. **CRITICAL**: Currently experiencing 401 authentication failures - requires valid API credentials from user.
 - **Trackstar API**: Universal WMS API platform for connecting to multiple fulfillment providers.
 - **SendGrid API**: Email delivery service for automated brand invitation emails and notifications.
 
