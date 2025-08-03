@@ -565,3 +565,4 @@ export class ShipHeroApiService {
 
 // Export a singleton instance
 export const shipHeroApi = new ShipHeroApiService();
+export const shipHeroApiFixed = new ShipHeroApiService();

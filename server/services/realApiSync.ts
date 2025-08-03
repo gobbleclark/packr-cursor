@@ -4,7 +4,7 @@
  * NO dummy data or mock data whatsoever
  */
 
-import { shipHeroApi } from './shipHeroApiFixed';
+import { shipHeroApiFixed as shipHeroApi } from './shipHeroApiFixed';
 import { mockShipHeroApi } from './mockShipHeroApi';
 import { trackstarApi } from './trackstarApi';
 import { creditEfficientSync } from './creditEfficientSync';
@@ -426,7 +426,7 @@ export class RealApiSyncService {
           customerName: trackstarOrder.customerName,
           customerEmail: trackstarOrder.customerEmail,
           status: this.mapTrackstarStatus(trackstarOrder.status),
-          totalAmount: trackstarOrder.totalAmount,
+          totalAmount: trackstarOrder.totalAmount?.toString() || '0',
           shippingMethod: trackstarOrder.shippingMethod,
           trackingNumber: trackstarOrder.trackingNumber || null,
           orderItems: trackstarOrder.items,
