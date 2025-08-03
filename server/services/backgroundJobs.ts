@@ -146,7 +146,7 @@ export class BackgroundJobService {
     }
   }
 
-  // Common order processing logic
+  // Enhanced order processing logic with comprehensive change detection
   private async processOrderBatch(brand: any, orders: any[], syncType: string) {
     let newOrdersCount = 0;
     let updatedOrdersCount = 0;
@@ -154,45 +154,84 @@ export class BackgroundJobService {
     for (const shOrder of orders) {
       try {
         // Check if order already exists
-        const existingOrders = await this.storage.getOrdersByBrand(brand.id);
-        const existingOrder = existingOrders.find(o => o.shipHeroOrderId === shOrder.id);
+        const existingOrder = await this.storage.getOrderByShipHeroId?.(shOrder.id);
         
         if (!existingOrder) {
-          // Create new order with allocation tracking
-          await this.storage.createOrder({
+          // Create new order with comprehensive data
+          const orderData = {
             orderNumber: shOrder.order_number,
             brandId: brand.id,
-            customerName: shOrder.shipping_address?.first_name + ' ' + shOrder.shipping_address?.last_name,
-            customerEmail: shOrder.email,
+            customerName: `${shOrder.shipping_address?.first_name || ''} ${shOrder.shipping_address?.last_name || ''}`.trim(),
+            customerEmail: shOrder.email || '',
             shippingAddress: shOrder.shipping_address,
-            status: (shOrder.fulfillment_status === 'shipped' || shOrder.fulfillment_status === 'delivered' || 
-                     shOrder.fulfillment_status === 'cancelled' || shOrder.fulfillment_status === 'processing') 
-                     ? shOrder.fulfillment_status : 'pending',
-            totalAmount: shOrder.total_price?.toString() || '0',
-            orderItems: shOrder.line_items,
+            status: shOrder.fulfillment_status || 'pending',
+            totalAmount: shOrder.total_price || '0.00',
+            orderItems: shOrder.line_items?.map((item: any) => ({
+              id: item.id,
+              sku: item.sku,
+              quantity: item.quantity,
+              quantityAllocated: item.quantity_allocated || 0,
+              quantityShipped: item.quantity_shipped || 0,
+              backorder_quantity: item.backorder_quantity || 0,
+              productName: item.product_name || '',
+              price: item.price || '0.00',
+              fulfillmentStatus: item.fulfillment_status || 'pending'
+            })) || [],
             shipHeroOrderId: shOrder.id,
-            backorderQuantity: (shOrder as any).total_backorder_quantity || 0,
-            orderCreatedAt: shOrder.order_date ? new Date(shOrder.order_date) : new Date(),
-            allocatedAt: (shOrder as any).allocated_date ? new Date((shOrder as any).allocated_date) : null,
-            shippedAt: (shOrder as any).shipped_date ? new Date((shOrder as any).shipped_date) : null,
-            lastSyncAt: new Date(),
-          });
+            backorderQuantity: shOrder.total_backorder_quantity || 0,
+            orderCreatedAt: new Date(shOrder.order_date),
+            allocatedAt: shOrder.allocated_date ? new Date(shOrder.allocated_date) : null,
+            shippedAt: shOrder.shipped_date ? new Date(shOrder.shipped_date) : null,
+            priorityFlag: shOrder.priority_flag || false,
+            tags: shOrder.tags || [],
+            lastSyncAt: new Date()
+          };
+          
+          await this.storage.createOrder(orderData);
           newOrdersCount++;
+          console.log(`➕ Created new order ${shOrder.order_number}`);
         } else {
-          // Update existing order with latest allocation info
-          await this.storage.updateOrder?.(existingOrder.id, {
-            status: (shOrder.fulfillment_status === 'shipped' || shOrder.fulfillment_status === 'delivered' || 
-                     shOrder.fulfillment_status === 'cancelled' || shOrder.fulfillment_status === 'processing') 
-                     ? shOrder.fulfillment_status : existingOrder.status,
-            backorderQuantity: (shOrder as any).total_backorder_quantity || 0,
-            allocatedAt: (shOrder as any).allocated_date ? new Date((shOrder as any).allocated_date) : existingOrder.allocatedAt,
-            shippedAt: (shOrder as any).shipped_date ? new Date((shOrder as any).shipped_date) : existingOrder.shippedAt,
-            lastSyncAt: new Date(),
-          });
-          updatedOrdersCount++;
+          // Comprehensive change detection for existing orders
+          const currentStatus = shOrder.fulfillment_status || 'pending';
+          const currentBackorder = shOrder.total_backorder_quantity || 0;
+          
+          // Check for any changes in key fields
+          const hasChanges = (
+            existingOrder.status !== currentStatus ||
+            existingOrder.totalAmount !== shOrder.total_price ||
+            existingOrder.backorderQuantity !== currentBackorder
+          );
+          
+          // Simple line item change detection
+          const hasLineItemChanges = JSON.stringify(existingOrder.orderItems) !== JSON.stringify(shOrder.line_items);
+          
+          if (hasChanges || hasLineItemChanges) {
+            const updatedOrder = {
+              ...existingOrder,
+              status: currentStatus,
+              totalAmount: shOrder.total_price || existingOrder.totalAmount,
+              backorderQuantity: currentBackorder,
+              orderItems: shOrder.line_items?.map((item: any) => ({
+                id: item.id,
+                sku: item.sku,
+                quantity: item.quantity,
+                quantityAllocated: item.quantity_allocated || 0,
+                quantityShipped: item.quantity_shipped || 0,
+                backorder_quantity: item.backorder_quantity || 0,
+                productName: item.product_name || '',
+                price: item.price || '0.00',
+                fulfillmentStatus: item.fulfillment_status || 'pending'
+              })) || existingOrder.orderItems,
+              lastSyncAt: new Date()
+            };
+            
+            await this.storage.updateOrder?.(existingOrder.id, updatedOrder);
+            updatedOrdersCount++;
+            console.log(`🔄 Updated order ${shOrder.order_number} - Changes: ${hasChanges ? 'status/hold/priority' : ''} ${hasLineItemChanges ? 'line-items' : ''}`);
+          }
         }
-      } catch (orderError) {
-        console.error(`❌ Failed to process order ${shOrder.id} in ${syncType}:`, orderError);
+      } catch (error) {
+        console.error(`❌ Failed to process order ${shOrder.order_number}:`, error);
       }
     }
     

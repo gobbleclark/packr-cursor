@@ -224,6 +224,11 @@ export class ShipHeroApiService {
                   total_price
                   email
                   profile
+                  hold_until_date
+                  required_ship_date
+                  priority_flag
+                  tags
+                  updated_at
                   shipping_address {
                     first_name
                     last_name
@@ -241,6 +246,12 @@ export class ShipHeroApiService {
                         id
                         sku
                         quantity
+                        quantity_allocated
+                        quantity_shipped
+                        backorder_quantity
+                        product_name
+                        price
+                        fulfillment_status
                       }
                     }
                   }
