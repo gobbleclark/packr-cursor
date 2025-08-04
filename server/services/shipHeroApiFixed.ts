@@ -229,6 +229,10 @@ export class ShipHeroApiService {
                   priority_flag
                   tags
                   updated_at
+                  flagged_operator_hold
+                  flagged_payment_hold
+                  flagged_address_hold
+                  flagged_fraud_hold
                   shipping_address {
                     first_name
                     last_name
