@@ -30,7 +30,7 @@ async function getShipHeroToken(username, password) {
   return await response.json();
 }
 
-async function fetchSpecificOrder(accessToken, legacyId) {
+async function fetchSpecificOrder(accessToken, orderNumber) {
   const query = `
     query getOrder($legacyId: String!) {
       order(legacy_id: $legacyId) {
@@ -76,6 +76,8 @@ async function fetchSpecificOrder(accessToken, legacyId) {
               fulfillment_status
             }
           }
+            }
+          }
         }
       }
     }
@@ -89,7 +91,7 @@ async function fetchSpecificOrder(accessToken, legacyId) {
     },
     body: JSON.stringify({
       query,
-      variables: { legacyId: legacyId.toString() }
+      variables: { orderNumber: orderNumber }
     })
   });
 
@@ -98,24 +100,24 @@ async function fetchSpecificOrder(accessToken, legacyId) {
 
 async function debugSpecificOrder() {
   try {
-    console.log('🔍 Debugging ShipHero order 650411765...');
+    console.log('🔍 Debugging ShipHero order MO1253...');
     
     const credentials = brandCredentials['dce4813e-aeb7-41fe-bb00-a36e314288f3'];
     const tokenResponse = await getShipHeroToken(credentials.username, credentials.password);
     
     console.log('✅ Got ShipHero token');
     
-    const orderResponse = await fetchSpecificOrder(tokenResponse.access_token, 650411765);
+    const orderResponse = await fetchSpecificOrder(tokenResponse.access_token, 'MO1253');
     
     if (orderResponse.errors) {
       console.error('❌ GraphQL errors:', orderResponse.errors);
       return;
     }
     
-    const order = orderResponse.data?.order;
+    const order = orderResponse.data?.orders?.data?.edges?.[0]?.node;
     
     if (!order) {
-      console.log('❌ Order 650411765 not found in ShipHero');
+      console.log('❌ Order MO1253 not found in ShipHero');
       return;
     }
     
