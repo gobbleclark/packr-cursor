@@ -34,7 +34,7 @@ import {
   type InsertProductWarehouse,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, like, count, isNull, isNotNull, gte, lte, lt } from "drizzle-orm";
+import { eq, desc, and, or, like, count, isNull, isNotNull, gte, lte, lt, ne, inArray, asc } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
