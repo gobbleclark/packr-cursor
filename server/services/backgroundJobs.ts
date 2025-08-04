@@ -2,6 +2,25 @@ import cron from 'node-cron';
 import { IStorage } from '../storage';
 import { shipHeroApiFixed } from './shipHeroApiFixed';
 
+// Helper function to map ShipHero status to our enum
+function mapShipHeroStatus(shipHeroStatus: string): string {
+  const statusMap: { [key: string]: string } = {
+    'fulfilled': 'fulfilled',
+    'unfulfilled': 'unfulfilled', 
+    'partially_fulfilled': 'partially_fulfilled',
+    'pending': 'pending',
+    'processing': 'processing',
+    'shipped': 'shipped',
+    'delivered': 'delivered',
+    'cancelled': 'cancelled',
+    'allocated': 'allocated',
+    'on_hold': 'on_hold',
+    'Urgent': 'pending', // Map unknown statuses to pending
+  };
+  
+  return statusMap[shipHeroStatus] || 'pending';
+}
+
 export class BackgroundJobService {
   constructor(
     private storage: IStorage
@@ -164,7 +183,7 @@ export class BackgroundJobService {
             customerName: `${shOrder.shipping_address?.first_name || ''} ${shOrder.shipping_address?.last_name || ''}`.trim(),
             customerEmail: shOrder.email || '',
             shippingAddress: shOrder.shipping_address,
-            status: shOrder.fulfillment_status || 'pending',
+            status: mapShipHeroStatus(shOrder.fulfillment_status),
             totalAmount: shOrder.total_price || '0.00',
             orderItems: shOrder.line_items?.map((item: any) => ({
               id: item.id,
@@ -193,7 +212,7 @@ export class BackgroundJobService {
           console.log(`➕ Created new order ${shOrder.order_number}`);
         } else {
           // Comprehensive change detection for existing orders
-          const currentStatus = shOrder.fulfillment_status || 'pending';
+          const currentStatus = mapShipHeroStatus(shOrder.fulfillment_status);
           const currentBackorder = shOrder.total_backorder_quantity || 0;
           
           // Check for any changes in key fields

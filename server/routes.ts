@@ -21,6 +21,25 @@ import { RealApiSyncService } from "./services/realApiSync";
 import { sendBrandInvitationEmail } from "./services/emailService";
 import { nanoid } from "nanoid";
 
+// Helper function to map ShipHero status to our enum
+function mapShipHeroStatus(shipHeroStatus: string): string {
+  const statusMap: { [key: string]: string } = {
+    'fulfilled': 'fulfilled',
+    'unfulfilled': 'unfulfilled', 
+    'partially_fulfilled': 'partially_fulfilled',
+    'pending': 'pending',
+    'processing': 'processing',
+    'shipped': 'shipped',
+    'delivered': 'delivered',
+    'cancelled': 'cancelled',
+    'allocated': 'allocated',
+    'on_hold': 'on_hold',
+    'Urgent': 'pending', // Map unknown statuses to pending
+  };
+  
+  return statusMap[shipHeroStatus] || 'pending';
+}
+
 // Configure multer for file uploads
 const upload = multer({
   dest: 'uploads/',
@@ -1599,7 +1618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 customerName: `${shOrder.shipping_address?.first_name || ''} ${shOrder.shipping_address?.last_name || ''}`.trim(),
                 customerEmail: shOrder.email || '',
                 shippingAddress: shOrder.shipping_address,
-                status: shOrder.fulfillment_status || 'pending',
+                status: mapShipHeroStatus(shOrder.fulfillment_status),
                 totalAmount: shOrder.total_price || '0.00',
                 orderItems: shOrder.line_items?.map((item: any) => ({
                   id: item.id,
@@ -1621,7 +1640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Update existing order
               const updatedOrder = {
                 ...existingOrder,
-                status: shOrder.fulfillment_status || existingOrder.status,
+                status: mapShipHeroStatus(shOrder.fulfillment_status) || existingOrder.status,
                 backorderQuantity: shOrder.total_backorder_quantity || existingOrder.backorderQuantity,
                 lastSyncAt: new Date()
               };
