@@ -1109,6 +1109,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Complete reimport with new comprehensive schema fields
+  app.post("/api/orders/reimport-comprehensive", isAuthenticated, async (req: any, res) => {
+    try {
+      console.log('🔄 Starting comprehensive order reimport with new schema fields...');
+      const brandId = 'dce4813e-aeb7-41fe-bb00-a36e314288f3'; // Mabē brand
+      
+      // Use the new comprehensive sync from shipHeroApiFixed
+      const result = await shipHeroApiFixed.syncHistoricalOrders(brandId, 365); // 1 year
+      
+      res.json({ 
+        success: true, 
+        message: `Comprehensive reimport completed: ${result.newOrders} new, ${result.updatedOrders} updated`,
+        ...result
+      });
+    } catch (error) {
+      console.error('Comprehensive reimport failed:', error);
+      res.status(500).json({ error: 'Failed to reimport orders with new schema' });
+    }
+  });
+
+  // Internal endpoint to trigger comprehensive schema update for existing orders
+  app.post("/api/orders/update-schema-fields", async (req: any, res) => {
+    try {
+      console.log('🔄 Starting schema field update for existing orders...');
+      const brandId = 'dce4813e-aeb7-41fe-bb00-a36e314288f3'; // Mabē brand
+      
+      // Trigger a 30-day comprehensive sync to update existing orders with new fields
+      const result = await shipHeroApiFixed.syncHistoricalOrders(brandId, 30);
+      
+      console.log(`✅ Schema update completed: ${result.newOrders} new, ${result.updatedOrders} updated`);
+      
+      res.json({ 
+        success: true, 
+        message: `Schema field update completed: ${result.updatedOrders} orders updated with comprehensive fields`,
+        ...result
+      });
+    } catch (error) {
+      console.error('Schema field update failed:', error);
+      res.status(500).json({ error: 'Failed to update schema fields' });
+    }
+  });
+
   // Historical sync endpoint for 30-day data reconciliation
   app.post("/api/orders/sync-historical", isAuthenticated, async (req: any, res) => {
     try {
