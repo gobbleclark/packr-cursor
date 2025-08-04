@@ -525,24 +525,26 @@ export class DatabaseStorage implements IStorage {
       .from(orders)
       .where(fulfilledWhere);
 
-    // Unfulfilled orders (pending, processing, unfulfilled)
+    // Unfulfilled orders (pending, processing, unfulfilled) - NO DATE FILTERING
     let unfulfilledWhere = or(eq(orders.status, 'unfulfilled'), eq(orders.status, 'pending'), eq(orders.status, 'processing'));
     if (brandFilter) {
       unfulfilledWhere = and(brandFilter, unfulfilledWhere);
     }
-    if (dateFilter.length > 0) {
-      unfulfilledWhere = and(and(...dateFilter), unfulfilledWhere);
-    }
+    // Note: Intentionally NOT applying date filter to unfulfilled orders
     const [unfulfilledOrdersResult] = await db
       .select({ count: count() })
       .from(orders)
       .where(unfulfilledWhere);
 
-    // Orders on hold
+    // Orders on hold - NO DATE FILTERING (current status)
+    let ordersOnHoldWhere = eq(orders.status, 'on_hold');
+    if (brandFilter) {
+      ordersOnHoldWhere = and(brandFilter, ordersOnHoldWhere);
+    }
     const [ordersOnHoldResult] = await db
       .select({ count: count() })
       .from(orders)
-      .where(and(finalOrderFilter, eq(orders.status, 'on_hold')));
+      .where(ordersOnHoldWhere);
 
     // Open tickets
     const [openTicketsResult] = await db
