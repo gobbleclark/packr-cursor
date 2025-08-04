@@ -76,7 +76,7 @@ export default function Dashboard() {
                 </div>
                 <div className="mt-4 flex md:mt-0 md:ml-4 space-x-6">
                   <DateFilter onDateRangeChange={handleDateRangeChange} />
-                  <BrandFilter onBrandChange={handleBrandChange} userRole={user?.role} />
+                  <BrandFilter onBrandChange={handleBrandChange} userRole={user?.role || undefined} />
                 </div>
               </div>
             </div>

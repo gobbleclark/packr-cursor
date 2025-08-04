@@ -512,18 +512,18 @@ export class DatabaseStorage implements IStorage {
       .from(orders)
       .where(finalOrderFilter);
 
-    // Shipped orders (fulfilled, shipped, delivered)
-    let shippedWhere = or(eq(orders.status, 'shipped'), eq(orders.status, 'delivered'), eq(orders.status, 'fulfilled'));
+    // Fulfilled orders (fulfilled, shipped, delivered)
+    let fulfilledWhere = or(eq(orders.status, 'fulfilled'), eq(orders.status, 'shipped'), eq(orders.status, 'delivered'));
     if (brandFilter) {
-      shippedWhere = and(brandFilter, shippedWhere);
+      fulfilledWhere = and(brandFilter, fulfilledWhere);
     }
     if (dateFilter.length > 0) {
-      shippedWhere = and(and(...dateFilter), shippedWhere);
+      fulfilledWhere = and(and(...dateFilter), fulfilledWhere);
     }
-    const [shippedOrdersResult] = await db
+    const [fulfilledOrdersResult] = await db
       .select({ count: count() })
       .from(orders)
-      .where(shippedWhere);
+      .where(fulfilledWhere);
 
     // Unfulfilled orders (pending, processing, unfulfilled)
     let unfulfilledWhere = or(eq(orders.status, 'unfulfilled'), eq(orders.status, 'pending'), eq(orders.status, 'processing'));
@@ -587,7 +587,7 @@ export class DatabaseStorage implements IStorage {
 
     console.log("📊 DASHBOARD STATS DEBUG:");
     console.log("Total Orders:", totalOrdersResult?.count || 0);  
-    console.log("Shipped Orders:", shippedOrdersResult?.count || 0);
+    console.log("Fulfilled Orders:", fulfilledOrdersResult?.count || 0);
     console.log("Unfulfilled Orders:", unfulfilledOrdersResult?.count || 0);
     console.log("Orders on Hold:", ordersOnHoldResult?.count || 0);
     console.log("Date range:", JSON.stringify(dateRange));
@@ -597,7 +597,7 @@ export class DatabaseStorage implements IStorage {
 
     return {
       totalOrders: totalOrdersResult?.count || 0,
-      shippedOrders: shippedOrdersResult?.count || 0,
+      shippedOrders: fulfilledOrdersResult?.count || 0,
       unfulfilledOrders: unfulfilledOrdersResult?.count || 0,
       ordersOnHold: ordersOnHoldResult?.count || 0,
       openTickets: openTicketsResult?.count || 0,

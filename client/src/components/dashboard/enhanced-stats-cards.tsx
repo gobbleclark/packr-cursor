@@ -53,12 +53,12 @@ export default function EnhancedStatsCards({ startDate, endDate, brandId }: Enha
 
   const cards = [
     {
-      title: "Shipped Orders",
+      title: "Fulfilled Orders",
       value: stats?.shippedOrders || 0,
       icon: PackageCheck,
       color: "text-green-600",
       bgColor: "bg-green-50",
-      description: "Fulfilled & delivered"
+      description: "Completed & delivered"
     },
     {
       title: "Unfulfilled Orders",
