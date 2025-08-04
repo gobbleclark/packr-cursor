@@ -2,6 +2,8 @@
 
 This is a comprehensive 3PL (Third-Party Logistics) management SaaS platform built with React and Express.js. The application enables 3PL companies to manage their brand clients through a complete invitation workflow, handle support tickets, track orders, manage inventory, and integrate with both ShipHero and Trackstar APIs for universal WMS connectivity. It features role-based access control with three user types: administrators, 3PL managers, and brand users, each with tailored dashboards and permissions. The platform aims to provide a unified solution for 3PL operations, enhancing efficiency and client management.
 
+**LATEST UPDATE (Aug 4, 2025)**: Enhanced dashboard with comprehensive date filtering and 8 detailed metrics cards displaying real-time data from 2,083+ authentic ShipHero orders. Features split order metrics (shipped vs unfulfilled), inventory alerts, and flexible date ranges.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -38,8 +40,11 @@ Preferred communication style: Simple, everyday language.
 - **Role-Based Access**: Three distinct user roles (admin, 3PL manager, brand user) with tailored permissions
 
 ## API Integration
-- **ShipHero Service**: Dedicated service for ShipHero API integration
-- **Background Synchronization**: Automated order and inventory syncing
+- **ShipHero Service**: Dedicated service for ShipHero API integration with 2,083+ orders successfully synced
+- **Background Synchronization**: Automated order and inventory syncing (2-minute incremental + hourly integrity checks)
+- **Enhanced Dashboard**: Real-time metrics with date filtering (30-day default, 7-day, yesterday, today, custom ranges)
+- **Order Status Breakdown**: Shipped vs unfulfilled order tracking with hold order monitoring
+- **Inventory Alerts**: Low stock and out-of-stock product monitoring
 - **File Storage**: Local file system storage for ticket attachments (with plans for cloud migration)
 
 ## Development Tooling
