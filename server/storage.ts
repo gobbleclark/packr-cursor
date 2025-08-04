@@ -448,20 +448,30 @@ export class DatabaseStorage implements IStorage {
       .where(finalOrderFilter);
 
     // Shipped orders (fulfilled, shipped, delivered)
-    const shippedStatusCondition = or(eq(orders.status, 'shipped'), eq(orders.status, 'delivered'), eq(orders.status, 'fulfilled'));
-    const shippedFilters = [brandFilter, ...dateFilter, shippedStatusCondition].filter(Boolean);
+    let shippedWhere = or(eq(orders.status, 'shipped'), eq(orders.status, 'delivered'), eq(orders.status, 'fulfilled'));
+    if (brandFilter) {
+      shippedWhere = and(brandFilter, shippedWhere);
+    }
+    if (dateFilter.length > 0) {
+      shippedWhere = and(and(...dateFilter), shippedWhere);
+    }
     const [shippedOrdersResult] = await db
       .select({ count: count() })
       .from(orders)
-      .where(shippedFilters.length > 0 ? and(...shippedFilters) : shippedStatusCondition);
+      .where(shippedWhere);
 
     // Unfulfilled orders (pending, processing, unfulfilled)
-    const unfulfilledStatusCondition = or(eq(orders.status, 'unfulfilled'), eq(orders.status, 'pending'), eq(orders.status, 'processing'));
-    const unfulfilledFilters = [brandFilter, ...dateFilter, unfulfilledStatusCondition].filter(Boolean);
+    let unfulfilledWhere = or(eq(orders.status, 'unfulfilled'), eq(orders.status, 'pending'), eq(orders.status, 'processing'));
+    if (brandFilter) {
+      unfulfilledWhere = and(brandFilter, unfulfilledWhere);
+    }
+    if (dateFilter.length > 0) {
+      unfulfilledWhere = and(and(...dateFilter), unfulfilledWhere);
+    }
     const [unfulfilledOrdersResult] = await db
       .select({ count: count() })
       .from(orders)
-      .where(unfulfilledFilters.length > 0 ? and(...unfulfilledFilters) : unfulfilledStatusCondition);
+      .where(unfulfilledWhere);
 
     // Orders on hold
     const [ordersOnHoldResult] = await db
@@ -509,6 +519,14 @@ export class DatabaseStorage implements IStorage {
         productBrandFilter,
         eq(products.inventoryCount, 0)
       ));
+
+    console.log("📊 DASHBOARD STATS DEBUG:");
+    console.log("Total Orders:", totalOrdersResult?.count || 0);
+    console.log("Shipped Orders:", shippedOrdersResult?.count || 0);
+    console.log("Unfulfilled Orders:", unfulfilledOrdersResult?.count || 0);
+    console.log("Orders on Hold:", ordersOnHoldResult?.count || 0);
+    console.log("Date range:", dateRange);
+    console.log("Brand filter applied:", !!brandFilter);
 
     return {
       totalOrders: totalOrdersResult?.count || 0,
