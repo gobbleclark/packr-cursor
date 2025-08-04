@@ -537,13 +537,16 @@ export class DatabaseStorage implements IStorage {
       .from(orders)
       .where(unfulfilledWhere);
 
-    // Orders on hold - NOT fulfilled AND have any hold condition
+    // Orders on hold - NOT fulfilled AND have operator hold conditions
+    // Look for: status='on_hold', fulfillment_status contains 'hold'/'operator', or hold_until_date set
     let ordersOnHoldWhere = and(
       ne(orders.status, 'fulfilled'), // Not fulfilled
       or(
         eq(orders.status, 'on_hold'),
         isNotNull(orders.holdUntilDate),
-        // Add more hold conditions as needed
+        like(orders.fulfillmentStatus, '%hold%'),
+        like(orders.fulfillmentStatus, '%operator%'),
+        like(orders.fulfillmentStatus, '%Operator%')
       )
     );
     if (brandFilter) {
