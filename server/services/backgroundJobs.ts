@@ -46,6 +46,16 @@ export class BackgroundJobService {
         console.error('Order integrity check failed:', error);
       }
     });
+
+    // One-time comprehensive historical sync - run 2 minutes after startup
+    setTimeout(async () => {
+      console.log('🔄 Starting one-time comprehensive historical sync (120 days)...');
+      try {
+        await this.syncHistoricalOrdersOneTime();
+      } catch (error) {
+        console.error('❌ Historical sync failed:', error);
+      }
+    }, 120000); // Wait 2 minutes after startup to let initial sync stabilize
   }
 
   startInventorySync() {
@@ -115,6 +125,109 @@ export class BackgroundJobService {
       }
     } catch (error) {
       console.error('❌ Failed to sync brand inventory:', error);
+    }
+  }
+
+  // One-time comprehensive historical sync to capture missing unfulfilled orders
+  private async syncHistoricalOrdersOneTime() {
+    console.log('🔄 COMPREHENSIVE HISTORICAL SYNC - Capturing missing unfulfilled orders...');
+    
+    try {
+      const brandId = 'dce4813e-aeb7-41fe-bb00-a36e314288f3';
+      const brand = await this.storage.getBrand(brandId);
+      
+      if (!brand || !brand.shipHeroApiKey || !brand.shipHeroPassword) {
+        console.log('⚠️ Mabē brand or credentials not found for historical sync');
+        return;
+      }
+
+      console.log(`📊 Historical sync for brand: ${brand.name}`);
+      const credentials = { username: brand.shipHeroApiKey, password: brand.shipHeroPassword };
+      
+      // Fetch orders going back 120 days to capture all historical unfulfilled orders
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 120);
+      
+      console.log(`📅 Historical range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      console.log(`🎯 Target: Capture ~450 missing unfulfilled orders`);
+      
+      // Use our existing API service but with extended date range
+      const orders = await shipHeroApiFixed.getOrders(credentials, startDate, endDate);
+      console.log(`📦 Retrieved ${orders.length} historical orders from ShipHero`);
+      
+      // Process only orders that don't exist in our database
+      let newOrders = 0;
+      let skippedExisting = 0;
+      let unfulfilledFound = 0;
+      
+      for (const order of orders) {
+        try {
+          // Check if order already exists
+          const existingOrder = await this.storage.getOrderByShipHeroId(order.shipHeroOrderId || order.id);
+          
+          if (existingOrder) {
+            skippedExisting++;
+            continue;
+          }
+          
+          // Map the order data
+          const mappedStatus = mapShipHeroStatus(order.fulfillment_status);
+          if (['pending', 'unfulfilled', 'processing'].includes(mappedStatus)) {
+            unfulfilledFound++;
+          }
+          
+          const orderData = {
+            orderNumber: order.order_number,
+            brandId: brand.id,
+            customerName: order.profile?.name || null,
+            customerEmail: order.email || null,
+            shippingAddress: order.shipping_address || {},
+            status: mappedStatus,
+            totalAmount: order.total_price || "0.00",
+            orderItems: order.line_items?.map((item: any) => ({
+              id: item.id,
+              sku: item.sku,
+              quantity: item.quantity,
+              quantityAllocated: item.quantity_allocated || 0,
+              quantityShipped: item.quantity_shipped || 0,
+              backorder_quantity: item.backorder_quantity || 0,
+              productName: item.title,
+              price: item.price,
+              fulfillmentStatus: item.fulfillment_status || 'pending'
+            })) || [],
+            shipHeroOrderId: order.id,
+            backorderQuantity: order.total_backorder_quantity || 0,
+            orderCreatedAt: new Date(order.order_date),
+            allocatedAt: order.allocated_at ? new Date(order.allocated_at) : null,
+            shippedAt: order.shipped_at ? new Date(order.shipped_at) : null,
+            priorityFlag: order.priority_flag || false,
+            tags: order.tags || [],
+            lastSyncAt: new Date()
+          };
+          
+          await this.storage.createOrder(orderData);
+          newOrders++;
+          
+          if (newOrders % 50 === 0) {
+            console.log(`📊 Historical sync progress: ${newOrders} new orders, ${unfulfilledFound} unfulfilled found`);
+          }
+          
+        } catch (error) {
+          console.error(`❌ Error processing historical order ${order.order_number}:`, error);
+        }
+      }
+      
+      console.log(`✅ HISTORICAL SYNC COMPLETE!`);
+      console.log(`📊 Summary:`);
+      console.log(`   - Total orders processed: ${orders.length}`);
+      console.log(`   - New orders added: ${newOrders}`);
+      console.log(`   - Existing orders skipped: ${skippedExisting}`);
+      console.log(`   - Unfulfilled orders found: ${unfulfilledFound}`);
+      console.log(`🎯 Expected result: Dashboard should now show ~${570 + unfulfilledFound} unfulfilled orders`);
+      
+    } catch (error) {
+      console.error('❌ Historical sync failed:', error);
     }
   }
 

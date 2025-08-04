@@ -3,7 +3,7 @@
  * Fetches ALL ShipHero orders going back 120 days to capture missing unfulfilled orders
  */
 
-const https = require('https');
+import https from 'https';
 
 async function makeShipHeroGraphQLRequest(query, variables, credentials) {
   return new Promise((resolve, reject) => {
