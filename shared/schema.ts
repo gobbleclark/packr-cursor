@@ -99,11 +99,7 @@ export const orders = pgTable("orders", {
   allocatedAt: timestamp("allocated_at"), // When order was allocated in warehouse
   shippedAt: timestamp("shipped_at"), // When order was shipped
   lastSyncAt: timestamp("last_sync_at"),
-  // Critical hold flags for order management - these are more important than hold_until_date
-  flaggedOperatorHold: boolean("flagged_operator_hold").default(false),
-  flaggedPaymentHold: boolean("flagged_payment_hold").default(false), 
-  flaggedAddressHold: boolean("flagged_address_hold").default(false),
-  flaggedFraudHold: boolean("flagged_fraud_hold").default(false),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

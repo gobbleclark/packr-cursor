@@ -183,11 +183,37 @@ export class ShipHeroApiService {
     const data = await response.json();
     
     if (data.errors) {
-      console.error(`❌ ShipHero GraphQL errors:`, data.errors);
+      console.log('❌ ShipHero GraphQL errors:', data.errors);
+      
+      // Check for credit limit error (code 30)
+      const creditError = data.errors.find((error: any) => error.code === 30);
+      if (creditError) {
+        const waitTime = this.parseWaitTime(creditError.time_remaining);
+        console.log(`⏳ Credit limit reached. Waiting ${waitTime}ms before retry...`);
+        await this.delay(waitTime);
+        // Retry the same request
+        return this.makeGraphQLRequest(query, variables, credentials);
+      }
+      
       throw new Error(`ShipHero GraphQL errors: ${JSON.stringify(data.errors)}`);
     }
 
     return data.data;
+  }
+
+  // Helper methods for credit management
+  private parseWaitTime(timeString: string): number {
+    // Parse "X seconds" format and add buffer
+    const match = timeString.match(/(\d+)\s*seconds?/i);
+    if (match) {
+      const seconds = parseInt(match[1]);
+      return (seconds + 2) * 1000; // Add 2 second buffer
+    }
+    return 10000; // Default 10 second wait
+  }
+
+  private async delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   async getOrders(credentials: ShipHeroCredentials, fromDate?: Date): Promise<ShipHeroOrder[]> {
