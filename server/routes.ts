@@ -79,50 +79,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dashboard stats
+  // Dashboard stats with date range support
   app.get('/api/dashboard/stats', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.claims?.sub;
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      const { startDate, endDate, brandId } = req.query;
+      
+      // Parse date range if provided
+      let dateRange;
+      if (startDate && endDate) {
+        dateRange = {
+          start: new Date(startDate as string),
+          end: new Date(endDate as string)
+        };
       }
       
-      let stats = {
-        totalOrders: 0,
-        openTickets: 0,
-        urgentTickets: 0,
-        pendingOrders: 0,
-        inventoryValue: 0,
-        inStockPercentage: 0,
-        recentActivity: []
-      };
-      
-      if (user.role === 'brand' && user.brandId) {
-        stats.totalOrders = await storage.getTotalOrdersCountByBrand(user.brandId);
-        stats.openTickets = await storage.getOpenTicketsCountByBrand(user.brandId);
-        stats.urgentTickets = await storage.getUrgentTicketsCountByBrand(user.brandId);
-        stats.pendingOrders = await storage.getPendingOrdersCountByBrand(user.brandId);
-        // TODO: Add inventory calculations for brand users
-        stats.inventoryValue = 0;
-        stats.inStockPercentage = 0;
-      } else if (user.role === 'threePL' && user.threePlId) {
-        stats.totalOrders = await storage.getTotalOrdersCountByThreePL(user.threePlId);
-        stats.openTickets = await storage.getOpenTicketsCountByThreePL(user.threePlId);
-        stats.urgentTickets = await storage.getUrgentTicketsCountByThreePL(user.threePlId);
-        stats.pendingOrders = await storage.getPendingOrdersCountByThreePL(user.threePlId);
-        // TODO: Add inventory calculations for 3PL users
-        stats.inventoryValue = 0;
-        stats.inStockPercentage = 0;
-      } else {
-        stats.totalOrders = await storage.getTotalOrdersCount();
-        stats.openTickets = await storage.getOpenTicketsCount();
-        stats.urgentTickets = await storage.getUrgentTicketsCount();
-        stats.pendingOrders = await storage.getPendingOrdersCount();
-        stats.inventoryValue = 0;
-        stats.inStockPercentage = 0;
-      }
-      
+      // Use the comprehensive dashboard stats method
+      const stats = await storage.getDashboardStatsWithDateRange(userId, dateRange, brandId as string);
       res.json(stats);
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
