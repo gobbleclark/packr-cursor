@@ -1084,6 +1084,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Historical sync endpoint for 30-day data reconciliation
+  app.post("/api/orders/sync-historical", isAuthenticated, async (req: any, res) => {
+    try {
+      const { brandId, days = 30 } = req.body;
+      const userId = req.user?.claims?.sub;
+      
+      console.log(`🔄 Starting ${days}-day historical sync for brand ${brandId}`);
+      
+      // Get brand details
+      const brand = await storage.getBrand(brandId);
+      if (!brand) {
+        return res.status(404).json({ error: "Brand not found" });
+      }
+      
+      if (!brand.shipHeroUsername || !brand.shipHeroPassword) {
+        return res.status(400).json({ error: "ShipHero credentials not configured for brand" });
+      }
+      
+      const credentials = {
+        username: brand.shipHeroUsername,
+        password: brand.shipHeroPassword
+      };
+      
+      // Calculate date range
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      
+      console.log(`📅 Sync range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      
+      // Import ShipHero service
+      const ShipHeroService = require('./services/shipHeroApiFixed');
+      const shipHeroService = new ShipHeroService();
+      
+      // Fetch orders with smart credit management
+      const orders = await shipHeroService.getOrders(startDate, endDate, credentials);
+      console.log(`📦 Retrieved ${orders.length} orders from ShipHero`);
+      
+      // Process orders
+      let newOrders = 0;
+      let updatedOrders = 0;
+      const statusCounts: { [key: string]: number } = {};
+      
+      for (const shipHeroOrder of orders) {
+        try {
+          // Map status
+          const mappedStatus = mapShipHeroStatus(shipHeroOrder.fulfillment_status);
+          statusCounts[mappedStatus] = (statusCounts[mappedStatus] || 0) + 1;
+          
+          // Check if order exists
+          const existingOrder = await storage.getOrderByShipHeroId(shipHeroOrder.id);
+          
+          const orderData = {
+            orderNumber: shipHeroOrder.order_number,
+            brandId: brand.id,
+            customerName: shipHeroOrder.profile?.name || null,
+            customerEmail: shipHeroOrder.email || null,
+            shippingAddress: shipHeroOrder.shipping_address || {},
+            status: mappedStatus,
+            totalAmount: shipHeroOrder.total_price || "0.00",
+            orderItems: shipHeroOrder.line_items?.map((item: any) => ({
+              id: item.id,
+              sku: item.sku,
+              quantity: item.quantity,
+              quantityAllocated: item.quantity_allocated || 0,
+              quantityShipped: item.quantity_shipped || 0,
+              backorder_quantity: item.backorder_quantity || 0,
+              productName: item.title,
+              price: item.price,
+              fulfillmentStatus: item.fulfillment_status || 'pending'
+            })) || [],
+            shipHeroOrderId: shipHeroOrder.id,
+            backorderQuantity: shipHeroOrder.total_backorder_quantity || 0,
+            orderCreatedAt: new Date(shipHeroOrder.order_date),
+            allocatedAt: shipHeroOrder.allocated_at ? new Date(shipHeroOrder.allocated_at) : null,
+            shippedAt: shipHeroOrder.shipped_at ? new Date(shipHeroOrder.shipped_at) : null,
+            priorityFlag: shipHeroOrder.priority_flag || false,
+            tags: shipHeroOrder.tags || [],
+            lastSyncAt: new Date()
+          };
+          
+          if (existingOrder) {
+            await storage.updateOrder(existingOrder.id, orderData);
+            updatedOrders++;
+          } else {
+            await storage.createOrder(orderData);
+            newOrders++;
+          }
+          
+        } catch (error) {
+          console.error(`❌ Error processing order ${shipHeroOrder.order_number}:`, error.message);
+        }
+      }
+      
+      console.log(`✅ Historical sync complete: ${newOrders} new, ${updatedOrders} updated`);
+      
+      res.json({
+        success: true,
+        summary: {
+          totalProcessed: orders.length,
+          newOrders,
+          updatedOrders,
+          statusCounts,
+          dateRange: { startDate, endDate }
+        }
+      });
+      
+    } catch (error) {
+      console.error('❌ Historical sync failed:', error);
+      res.status(500).json({ error: "Historical sync failed", details: error.message });
+    }
+  });
+
   // ShipHero Webhook Endpoints - Real-time data synchronization
   app.post('/api/webhooks/shiphero/:brandId', async (req, res) => {
     try {
