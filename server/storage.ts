@@ -448,20 +448,20 @@ export class DatabaseStorage implements IStorage {
       .where(finalOrderFilter);
 
     // Shipped orders (fulfilled, shipped, delivered)
-    const shippedFilters = [brandFilter, ...dateFilter].filter(Boolean);
-    const shippedFilter = shippedFilters.length > 0 ? and(...shippedFilters) : undefined;
+    const shippedStatusCondition = or(eq(orders.status, 'shipped'), eq(orders.status, 'delivered'), eq(orders.status, 'fulfilled'));
+    const shippedFilters = [brandFilter, ...dateFilter, shippedStatusCondition].filter(Boolean);
     const [shippedOrdersResult] = await db
       .select({ count: count() })
       .from(orders)
-      .where(and(shippedFilter, or(eq(orders.status, 'shipped'), eq(orders.status, 'delivered'), eq(orders.status, 'fulfilled'))));
+      .where(shippedFilters.length > 0 ? and(...shippedFilters) : shippedStatusCondition);
 
     // Unfulfilled orders (pending, processing, unfulfilled)
-    const unfulfilledFilters = [brandFilter, ...dateFilter].filter(Boolean);
-    const unfulfilledFilter = unfulfilledFilters.length > 0 ? and(...unfulfilledFilters) : undefined;
+    const unfulfilledStatusCondition = or(eq(orders.status, 'unfulfilled'), eq(orders.status, 'pending'), eq(orders.status, 'processing'));
+    const unfulfilledFilters = [brandFilter, ...dateFilter, unfulfilledStatusCondition].filter(Boolean);
     const [unfulfilledOrdersResult] = await db
       .select({ count: count() })
       .from(orders)
-      .where(and(unfulfilledFilter, or(eq(orders.status, 'unfulfilled'), eq(orders.status, 'pending'), eq(orders.status, 'processing'))));
+      .where(unfulfilledFilters.length > 0 ? and(...unfulfilledFilters) : unfulfilledStatusCondition);
 
     // Orders on hold
     const [ordersOnHoldResult] = await db
