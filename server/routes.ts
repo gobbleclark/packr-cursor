@@ -941,17 +941,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let orders = [];
       
       if (user.role === 'brand' && user.brandId) {
-        // Brand users see only their own orders
-        orders = await storage.getOrdersByBrand(user.brandId);
+        // Brand users see only their own orders with normalized line items
+        orders = await storage.getOrdersByBrandWithItems?.(user.brandId) || await storage.getOrdersByBrand(user.brandId);
       } else if (user.role === 'threePL' && user.threePlId) {
-        // 3PL users see orders from all their brands
-        orders = await storage.getOrdersByThreePL(user.threePlId);
+        // 3PL users see orders from all their brands with normalized line items
+        orders = await storage.getOrdersByThreePLWithItems?.(user.threePlId) || await storage.getOrdersByThreePL(user.threePlId);
       } else {
-        // Admin users see all orders
-        orders = await storage.getAllOrders();
+        // Admin users see all orders with normalized line items
+        orders = await storage.getOrdersWithItems?.() || await storage.getAllOrders();
       }
       
-      res.json(orders);
+      // Transform orders to maintain backward compatibility while using normalized data
+      const transformedOrders = orders.map(order => {
+        // If we have normalized order items, use those; otherwise fall back to legacy JSON
+        if ('orderItemsNormalized' in order && order.orderItemsNormalized) {
+          return {
+            ...order,
+            orderItems: order.orderItemsNormalized.map(item => ({
+              id: item.shipHeroLineItemId || item.id,
+              sku: item.sku,
+              productName: item.productName,
+              quantity: item.quantity,
+              quantityAllocated: item.quantityAllocated,
+              quantityShipped: item.quantityShipped,
+              backorderQuantity: item.backorderQuantity,
+              price: (item.unitPrice || 0).toString(),
+              fulfillmentStatus: item.fulfillmentStatus,
+              warehouseId: item.warehouseId
+            }))
+          };
+        }
+        return order;
+      });
+      
+      res.json(transformedOrders);
     } catch (error) {
       console.error("Error fetching orders:", error);
       res.status(500).json({ message: "Failed to fetch orders" });

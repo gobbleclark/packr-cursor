@@ -92,8 +92,9 @@ export const orders = pgTable("orders", {
   trackingNumber: varchar("tracking_number"),
   shipHeroOrderId: varchar("ship_hero_order_id").unique(),
   trackstarOrderId: varchar("trackstar_order_id").unique(),
-  orderItems: jsonb("order_items"),
   backorderQuantity: integer("backorder_quantity").default(0), // Track backorder quantity for late order tool
+  priorityFlag: boolean("priority_flag").default(false),
+  tags: jsonb("tags").default('[]'),
   // Allocation tracking timestamps for late order analysis
   orderCreatedAt: timestamp("order_created_at"), // When order was created in ShipHero
   allocatedAt: timestamp("allocated_at"), // When order was allocated in warehouse
@@ -103,6 +104,33 @@ export const orders = pgTable("orders", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Order Items (line items for each order)
+export const orderItems = pgTable("order_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  productId: varchar("product_id").references(() => products.id), // Optional FK to products table
+  shipHeroLineItemId: varchar("ship_hero_line_item_id"), // External system ID
+  sku: varchar("sku").notNull(),
+  productName: varchar("product_name").notNull(),
+  quantity: integer("quantity").notNull(),
+  quantityAllocated: integer("quantity_allocated").default(0),
+  quantityShipped: integer("quantity_shipped").default(0),
+  backorderQuantity: integer("backorder_quantity").default(0),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 4 }),
+  totalPrice: decimal("total_price", { precision: 10, scale: 2 }),
+  fulfillmentStatus: varchar("fulfillment_status").default('pending'),
+  warehouseId: varchar("warehouse_id"), // Which warehouse this item is allocated from
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  // Index for faster order queries
+  index("order_items_order_id_idx").on(table.orderId),
+  // Index for SKU-based analytics
+  index("order_items_sku_idx").on(table.sku),
+  // Index for product analytics
+  index("order_items_product_id_idx").on(table.productId),
+]);
 
 // Shipments
 export const shipments = pgTable("shipments", {
@@ -277,7 +305,19 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
     fields: [orders.brandId],
     references: [brands.id],
   }),
+  orderItems: many(orderItems),
   tickets: many(tickets),
+}));
+
+export const orderItemsRelations = relations(orderItems, ({ one }) => ({
+  order: one(orders, {
+    fields: [orderItems.orderId],
+    references: [orders.id],
+  }),
+  product: one(products, {
+    fields: [orderItems.productId],
+    references: [products.id],
+  }),
 }));
 
 export const productsRelations = relations(products, ({ one, many }) => ({
@@ -285,6 +325,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
     fields: [products.brandId],
     references: [brands.id],
   }),
+  orderItems: many(orderItems),
   warehouseInventory: many(productWarehouse),
 }));
 
@@ -374,6 +415,12 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
   updatedAt: true,
 });
 
+export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertProductSchema = createInsertSchema(products).omit({
   id: true,
   createdAt: true,
@@ -420,6 +467,8 @@ export type Brand = typeof brands.$inferSelect;
 export type InsertBrand = z.infer<typeof insertBrandSchema>;
 export type Order = typeof orders.$inferSelect;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
+export type OrderItem = typeof orderItems.$inferSelect;
+export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Ticket = typeof tickets.$inferSelect;

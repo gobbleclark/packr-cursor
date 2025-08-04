@@ -3,6 +3,7 @@ import {
   threePLs,
   brands,
   orders,
+  orderItems,
   products,
   tickets,
   ticketComments,
@@ -15,6 +16,8 @@ import {
   type InsertBrand,
   type Order,
   type InsertOrder,
+  type OrderItem,
+  type InsertOrderItem,
   type Product,
   type InsertProduct,
   type Ticket,
@@ -69,6 +72,12 @@ export interface IStorage {
   updateOrderShipping(id: string, address: any, method?: string): Promise<Order>;
   getOrderByShipHeroId?(shipHeroId: string): Promise<Order | undefined>;
   updateOrder?(id: string, orderData: any): Promise<Order>;
+  
+  // Order item operations with normalized table
+  getOrderWithItems?(id: string): Promise<Order & { orderItemsNormalized?: OrderItem[] } | undefined>;
+  getOrdersWithItems?(filters?: { brandId?: string; threePlId?: string; limit?: number }): Promise<(Order & { orderItemsNormalized?: OrderItem[] })[]>;
+  getOrdersByBrandWithItems?(brandId: string): Promise<(Order & { orderItemsNormalized?: OrderItem[] })[]>;
+  getOrdersByThreePLWithItems?(threePlId: string): Promise<(Order & { orderItemsNormalized?: OrderItem[] })[]>;
   
   // Product operations
   getProduct(id: string): Promise<Product | undefined>;
@@ -559,12 +568,92 @@ export class DatabaseStorage implements IStorage {
     return order;
   }
 
+  // Get order with its line items from the normalized table
+  async getOrderWithItems(id: string): Promise<Order & { orderItemsNormalized?: OrderItem[] } | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    if (!order) return undefined;
+
+    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
+    
+    return {
+      ...order,
+      orderItemsNormalized: items
+    };
+  }
+
+  // Get orders with their line items (for better performance on listing pages)
+  async getOrdersWithItems(filters?: { brandId?: string; threePlId?: string; limit?: number }): Promise<(Order & { orderItemsNormalized?: OrderItem[] })[]> {
+    let query = db.select().from(orders);
+    
+    if (filters?.brandId) {
+      query = query.where(eq(orders.brandId, filters.brandId));
+    } else if (filters?.threePlId) {
+      query = query
+        .leftJoin(brands, eq(orders.brandId, brands.id))
+        .where(eq(brands.threePlId, filters.threePlId));
+    }
+    
+    query = query.orderBy(desc(orders.createdAt));
+    
+    if (filters?.limit) {
+      query = query.limit(filters.limit);
+    }
+    
+    const ordersResult = await query;
+    
+    // Get all order items for these orders
+    const orderIds = ordersResult.map(o => o.id);
+    const allItems = orderIds.length > 0 
+      ? await db.select().from(orderItems).where(or(...orderIds.map(id => eq(orderItems.orderId, id))))
+      : [];
+    
+    // Group items by order ID
+    const itemsByOrder = allItems.reduce((acc, item) => {
+      if (!acc[item.orderId]) acc[item.orderId] = [];
+      acc[item.orderId].push(item);
+      return acc;
+    }, {} as Record<string, OrderItem[]>);
+    
+    return ordersResult.map(order => ({
+      ...order,
+      orderItemsNormalized: itemsByOrder[order.id] || []
+    }));
+  }
+
   async createOrder(orderData: InsertOrder): Promise<Order> {
     console.log("🔍 STORAGE: Creating order with data:", JSON.stringify(orderData, null, 2));
     
     try {
-      const [order] = await db.insert(orders).values(orderData).returning();
+      // Extract orderItems from orderData (if it exists as legacy JSON)
+      const { orderItems: legacyOrderItems, ...orderDataWithoutItems } = orderData;
+      
+      // Create the order first
+      const [order] = await db.insert(orders).values(orderDataWithoutItems).returning();
       console.log("✅ STORAGE: Order created with ID:", order.id);
+      
+      // If there are legacy order items in JSON format, save them to the order_items table
+      if (legacyOrderItems && Array.isArray(legacyOrderItems)) {
+        const orderItemsToInsert = legacyOrderItems.map((item: any) => ({
+          orderId: order.id,
+          shipHeroLineItemId: item.id || null,
+          sku: item.sku || '',
+          productName: item.productName || item.title || item.name || 'Unknown Product',
+          quantity: parseInt(item.quantity) || 1,
+          quantityAllocated: parseInt(item.quantityAllocated) || parseInt(item.quantity_allocated) || 0,
+          quantityShipped: parseInt(item.quantityShipped) || parseInt(item.quantity_shipped) || 0,
+          backorderQuantity: parseInt(item.backorderQuantity) || parseInt(item.backorder_quantity) || 0,
+          unitPrice: parseFloat(item.price) || 0,
+          totalPrice: (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1),
+          fulfillmentStatus: item.fulfillmentStatus || item.fulfillment_status || 'pending',
+          warehouseId: item.warehouseId || null
+        }));
+        
+        if (orderItemsToInsert.length > 0) {
+          await db.insert(orderItems).values(orderItemsToInsert);
+          console.log(`✅ STORAGE: Created ${orderItemsToInsert.length} order items for order ${order.id}`);
+        }
+      }
+      
       return order;
     } catch (error) {
       console.error("❌ STORAGE: Order creation failed:", error);
@@ -579,6 +668,11 @@ export class DatabaseStorage implements IStorage {
       .from(orders)
       .where(eq(orders.brandId, brandId))
       .orderBy(desc(orders.createdAt));
+  }
+
+  // Get brand orders with normalized items  
+  async getOrdersByBrandWithItems(brandId: string): Promise<(Order & { orderItemsNormalized?: OrderItem[] })[]> {
+    return this.getOrdersWithItems({ brandId });
   }
 
   async getOrdersByThreePL(threePlId: string): Promise<Order[]> {
@@ -605,6 +699,11 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(brands, eq(orders.brandId, brands.id))
       .where(eq(brands.threePlId, threePlId))
       .orderBy(desc(orders.createdAt));
+  }
+
+  // Get 3PL orders with normalized items
+  async getOrdersByThreePLWithItems(threePlId: string): Promise<(Order & { orderItemsNormalized?: OrderItem[] })[]> {
+    return this.getOrdersWithItems({ threePlId });
   }
 
   async getAllOrders(): Promise<Order[]> {
