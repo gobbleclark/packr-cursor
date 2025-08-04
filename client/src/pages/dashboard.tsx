@@ -10,8 +10,15 @@ import RecentActivity from "@/components/dashboard/recent-activity";
 export default function Dashboard() {
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading } = useAuth();
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  // Set default to last 30 days
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return date.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
   const [selectedBrand, setSelectedBrand] = useState("all");
 
   const handleDateRangeChange = (start: string, end: string) => {
@@ -77,13 +84,11 @@ export default function Dashboard() {
 
           {/* Dashboard Content */}
           <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            {startDate && endDate && (
-              <EnhancedStatsCards 
-                startDate={startDate} 
-                endDate={endDate} 
-                brandId={selectedBrand !== "all" ? selectedBrand : undefined}
-              />
-            )}
+            <EnhancedStatsCards 
+              startDate={startDate} 
+              endDate={endDate} 
+              brandId={selectedBrand !== "all" ? selectedBrand : undefined}
+            />
             <div className="mt-8">
               <RecentActivity />
             </div>
