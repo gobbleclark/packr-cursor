@@ -521,12 +521,14 @@ export class DatabaseStorage implements IStorage {
       ));
 
     console.log("📊 DASHBOARD STATS DEBUG:");
-    console.log("Total Orders:", totalOrdersResult?.count || 0);
+    console.log("Total Orders:", totalOrdersResult?.count || 0);  
     console.log("Shipped Orders:", shippedOrdersResult?.count || 0);
     console.log("Unfulfilled Orders:", unfulfilledOrdersResult?.count || 0);
     console.log("Orders on Hold:", ordersOnHoldResult?.count || 0);
-    console.log("Date range:", dateRange);
+    console.log("Date range:", JSON.stringify(dateRange));
     console.log("Brand filter applied:", !!brandFilter);
+    console.log("User role:", user?.role);
+    console.log("User brand ID:", user?.brandId);
 
     return {
       totalOrders: totalOrdersResult?.count || 0,
