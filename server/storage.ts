@@ -525,8 +525,9 @@ export class DatabaseStorage implements IStorage {
       .from(orders)
       .where(fulfilledWhere);
 
-    // Unfulfilled orders (pending, processing, unfulfilled) - NO DATE FILTERING
-    let unfulfilledWhere = or(eq(orders.status, 'unfulfilled'), eq(orders.status, 'pending'), eq(orders.status, 'processing'));
+    // Unfulfilled orders - All orders that are NOT fulfilled (per ShipHero logic)
+    // ShipHero: All shipped orders have status='fulfilled', unfulfilled orders have various statuses
+    let unfulfilledWhere = ne(orders.status, 'fulfilled');
     if (brandFilter) {
       unfulfilledWhere = and(brandFilter, unfulfilledWhere);
     }
@@ -536,8 +537,15 @@ export class DatabaseStorage implements IStorage {
       .from(orders)
       .where(unfulfilledWhere);
 
-    // Orders on hold - NO DATE FILTERING (current status)
-    let ordersOnHoldWhere = eq(orders.status, 'on_hold');
+    // Orders on hold - NOT fulfilled AND have any hold condition
+    let ordersOnHoldWhere = and(
+      ne(orders.status, 'fulfilled'), // Not fulfilled
+      or(
+        eq(orders.status, 'on_hold'),
+        isNotNull(orders.holdUntilDate),
+        // Add more hold conditions as needed
+      )
+    );
     if (brandFilter) {
       ordersOnHoldWhere = and(brandFilter, ordersOnHoldWhere);
     }
