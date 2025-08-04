@@ -166,6 +166,48 @@ export class DatabaseStorage implements IStorage {
       ));
   }
 
+  // Shipment operations
+  async getShipmentByShipHeroId(shipHeroShipmentId: string): Promise<Shipment | undefined> {
+    const [shipment] = await db
+      .select()
+      .from(shipments)
+      .where(eq(shipments.shipHeroShipmentId, shipHeroShipmentId));
+    return shipment;
+  }
+
+  async createShipment(shipmentData: InsertShipment): Promise<Shipment> {
+    const [shipment] = await db
+      .insert(shipments)
+      .values(shipmentData)
+      .returning();
+    return shipment;
+  }
+
+  async updateShipment(id: string, shipmentData: Partial<InsertShipment>): Promise<Shipment> {
+    const [shipment] = await db
+      .update(shipments)
+      .set({ ...shipmentData, updatedAt: new Date() })
+      .where(eq(shipments.id, id))
+      .returning();
+    return shipment;
+  }
+
+  async getShipmentsByOrder(orderId: string): Promise<Shipment[]> {
+    return await db
+      .select()
+      .from(shipments)
+      .where(eq(shipments.orderId, orderId))
+      .orderBy(desc(shipments.createdAt));
+  }
+
+  async getShipmentsByBrand(brandId: string): Promise<Shipment[]> {
+    return await db
+      .select()
+      .from(shipments)
+      .where(eq(shipments.brandId, brandId))
+      .orderBy(desc(shipments.createdAt));
+  }
+
   async updateProduct(id: string, productData: any): Promise<Product> {
     const [product] = await db.update(products).set(productData).where(eq(products.id, id)).returning();
     return product;

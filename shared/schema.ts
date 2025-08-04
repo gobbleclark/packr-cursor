@@ -516,3 +516,12 @@ export type InsertAttachment = z.infer<typeof insertAttachmentSchema>;
 
 export type ProductWarehouse = typeof productWarehouse.$inferSelect;
 export type InsertProductWarehouse = z.infer<typeof insertProductWarehouseSchema>;
+
+export const insertShipmentSchema = createInsertSchema(shipments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Shipment = typeof shipments.$inferSelect;
+export type InsertShipment = z.infer<typeof insertShipmentSchema>;

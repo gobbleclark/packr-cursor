@@ -140,6 +140,50 @@ export class ShipHeroWebhookService {
   }
 
   /**
+   * Subscribe to shipments webhook - creates shipment records in shipments table
+   */
+  async subscribeToShipmentsWebhook(credentials: ShipHeroCredentials, webhookUrl: string): Promise<any> {
+    console.log(`🔗 Subscribing to ShipHero shipments webhook: ${webhookUrl}`);
+    
+    const mutation = `
+      mutation createWebhook($data: WebhookCreateInput!) {
+        webhook_create(data: $data) {
+          request_id
+          complexity
+          webhook {
+            id
+            name
+            url
+            resource_type
+            webhook_events
+            active
+            created_at
+          }
+        }
+      }
+    `;
+
+    const variables = {
+      data: {
+        name: "Shipments Webhook",
+        url: webhookUrl,
+        resource_type: "shipment",
+        webhook_events: ["shipment.created", "shipment.updated", "shipment.shipped", "shipment.delivered"],
+        active: true
+      }
+    };
+
+    try {
+      const result = await this.makeGraphQLRequest(mutation, variables, credentials);
+      console.log('✅ Shipments webhook created:', result.webhook_create?.webhook);
+      return result.webhook_create?.webhook;
+    } catch (error) {
+      console.error('❌ Failed to create shipments webhook:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Subscribe to general order status webhook
    */
   async subscribeToOrderWebhook(credentials: ShipHeroCredentials, webhookUrl: string): Promise<any> {
@@ -268,6 +312,18 @@ export class ShipHeroWebhookService {
         await this.subscribeToAllocationWebhook(credentials, allocationWebhookUrl);
       } else {
         console.log('✅ Allocation webhook already exists');
+      }
+      
+      // Check if shipments webhook already exists
+      const shipmentsWebhookUrl = `${baseUrl}/api/webhooks/shiphero/shipments`;
+      const existingShipmentsWebhook = existingWebhooks.find(w => 
+        w.url === shipmentsWebhookUrl || w.webhook_events?.includes('shipment.created')
+      );
+      
+      if (!existingShipmentsWebhook) {
+        await this.subscribeToShipmentsWebhook(credentials, shipmentsWebhookUrl);
+      } else {
+        console.log('✅ Shipments webhook already exists');
       }
       
       // Check if order webhook already exists

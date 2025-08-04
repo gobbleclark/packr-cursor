@@ -1928,6 +1928,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ShipHero Shipments Webhook - Creates shipment records in shipments table
+  app.post('/api/webhooks/shiphero/shipments', express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+      console.log('🚢 ShipHero shipments webhook received');
+      
+      const webhookData = JSON.parse(req.body.toString());
+      console.log('📦 Shipments webhook data:', JSON.stringify(webhookData, null, 2));
+      
+      // Expected ShipHero shipments webhook structure:
+      // {
+      //   "resource_type": "shipment",
+      //   "resource_id": "shipment_id",
+      //   "data": {
+      //     "id": "shipment_id",
+      //     "order_id": "order_id",
+      //     "tracking_number": "1234567890",
+      //     "carrier": "UPS",
+      //     "service": "Ground",
+      //     "status": "shipped",
+      //     "shipped_at": "2025-08-04T12:00:00Z",
+      //     "estimated_delivery": "2025-08-06T17:00:00Z"
+      //   }
+      // }
+      
+      if (webhookData.resource_type === 'shipment' && webhookData.data) {
+        const shipmentData = webhookData.data;
+        const shipHeroShipmentId = shipmentData.id;
+        const shipHeroOrderId = shipmentData.order_id;
+        
+        console.log(`🚢 Shipment ${shipHeroShipmentId} for order ${shipHeroOrderId}: ${shipmentData.status}`);
+        
+        // Find the order in our database
+        const existingOrder = await storage.getOrderByShipHeroId(shipHeroOrderId);
+        
+        if (existingOrder) {
+          // Check if shipment already exists
+          const existingShipment = await storage.getShipmentByShipHeroId?.(shipHeroShipmentId);
+          
+          if (!existingShipment) {
+            // Create new shipment record
+            const newShipment = {
+              orderId: existingOrder.id,
+              brandId: existingOrder.brandId,
+              shipHeroShipmentId: shipHeroShipmentId,
+              trackingNumber: shipmentData.tracking_number,
+              carrier: shipmentData.carrier,
+              service: shipmentData.service,
+              status: shipmentData.status,
+              shippedAt: shipmentData.shipped_at ? new Date(shipmentData.shipped_at) : null,
+              estimatedDelivery: shipmentData.estimated_delivery ? new Date(shipmentData.estimated_delivery) : null,
+              actualDelivery: shipmentData.delivered_at ? new Date(shipmentData.delivered_at) : null
+            };
+            
+            await storage.createShipment(newShipment);
+            console.log(`✅ Created shipment record for ${shipmentData.tracking_number}`);
+            
+            // Also update the order with shipment info if it was shipped
+            if (shipmentData.status === 'shipped' && shipmentData.shipped_at) {
+              const updatedOrder = {
+                ...existingOrder,
+                status: 'shipped',
+                shippedAt: new Date(shipmentData.shipped_at),
+                trackingNumber: shipmentData.tracking_number,
+                lastSyncAt: new Date()
+              };
+              await storage.updateOrder(existingOrder.id, updatedOrder);
+              console.log(`✅ Updated order ${existingOrder.orderNumber} status to shipped`);
+            }
+            
+          } else {
+            // Update existing shipment
+            const updatedShipment = {
+              ...existingShipment,
+              status: shipmentData.status,
+              trackingNumber: shipmentData.tracking_number || existingShipment.trackingNumber,
+              shippedAt: shipmentData.shipped_at ? new Date(shipmentData.shipped_at) : existingShipment.shippedAt,
+              estimatedDelivery: shipmentData.estimated_delivery ? new Date(shipmentData.estimated_delivery) : existingShipment.estimatedDelivery,
+              actualDelivery: shipmentData.delivered_at ? new Date(shipmentData.delivered_at) : existingShipment.actualDelivery,
+              updatedAt: new Date()
+            };
+            
+            await storage.updateShipment(existingShipment.id, updatedShipment);
+            console.log(`✅ Updated shipment ${shipmentData.tracking_number}`);
+          }
+          
+          res.status(200).json({ success: true, message: 'Shipment processed' });
+        } else {
+          console.log(`⚠️ Order ${shipHeroOrderId} not found in database for shipment ${shipHeroShipmentId}`);
+          res.status(404).json({ error: 'Order not found' });
+        }
+      } else {
+        console.log(`⚠️ Unexpected webhook resource type: ${webhookData.resource_type}`);
+        res.status(400).json({ error: 'Unexpected webhook type' });
+      }
+      
+    } catch (error) {
+      console.error('❌ ShipHero shipments webhook error:', error);
+      res.status(500).json({ error: 'Failed to process shipments webhook' });
+    }
+  });
+
   // Setup ShipHero Webhooks endpoint
   app.post('/api/setup-webhooks', isAuthenticated, async (req, res) => {
     try {
