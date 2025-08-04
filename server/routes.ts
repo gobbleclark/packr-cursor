@@ -1001,42 +1001,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dashboard stats route
+  // Dashboard stats route with date filtering
   app.get('/api/dashboard/stats', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       
-      let stats = {
-        totalOrders: 0,
-        openTickets: 0,
-        urgentTickets: 0,
-        pendingOrders: 0,
-        recentActivity: []
-      };
+      // Parse date range from query parameters
+      const { startDate, endDate } = req.query;
+      let dateRange: { start?: Date; end?: Date } = {};
       
-      if (user?.role === 'brand' && user.brandId) {
-        // Brand-specific stats
-        stats.totalOrders = await storage.getTotalOrdersCountByBrand(user.brandId);
-        stats.openTickets = await storage.getOpenTicketsCountByBrand(user.brandId);
-        stats.urgentTickets = await storage.getUrgentTicketsCountByBrand(user.brandId);
-        stats.pendingOrders = await storage.getPendingOrdersCountByBrand(user.brandId);
-      } else if (user?.role === 'threePL' && user.threePlId) {
-        // 3PL consolidated stats across all brands
-        stats.totalOrders = await storage.getTotalOrdersCountByThreePL(user.threePlId);
-        stats.openTickets = await storage.getOpenTicketsCountByThreePL(user.threePlId);
-        stats.urgentTickets = await storage.getUrgentTicketsCountByThreePL(user.threePlId);
-        stats.pendingOrders = await storage.getPendingOrdersCountByThreePL(user.threePlId);
-      } else {
-        // Admin stats - overall system stats
-        stats.totalOrders = await storage.getTotalOrdersCount();
-        stats.openTickets = await storage.getOpenTicketsCount();
-        stats.urgentTickets = await storage.getUrgentTicketsCount();
-        stats.pendingOrders = await storage.getPendingOrdersCount();
+      if (startDate && endDate) {
+        dateRange.start = new Date(startDate as string);
+        dateRange.end = new Date(endDate as string);
       }
+      
+      const stats = await storage.getDashboardStatsWithDateRange(userId, dateRange);
       
       res.json(stats);
     } catch (error) {
+      console.error("Dashboard stats error:", error);
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
     }
   });

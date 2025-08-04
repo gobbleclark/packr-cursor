@@ -1,13 +1,21 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import StatsCards from "@/components/dashboard/stats-cards";
+import DateFilter from "@/components/dashboard/date-filter";
+import EnhancedStatsCards from "@/components/dashboard/enhanced-stats-cards";
 import RecentActivity from "@/components/dashboard/recent-activity";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const handleDateRangeChange = (start: string, end: string) => {
+    setStartDate(start);
+    setEndDate(end);
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -54,20 +62,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="mt-4 flex md:mt-0 md:ml-4">
-                  <button 
-                    type="button" 
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  >
-                    <i className="fas fa-download -ml-1 mr-2"></i>
-                    Export Report
-                  </button>
-                  <button 
-                    type="button" 
-                    className="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  >
-                    <i className="fas fa-plus -ml-1 mr-2"></i>
-                    Add Brand Client
-                  </button>
+                  <DateFilter onDateRangeChange={handleDateRangeChange} />
                 </div>
               </div>
             </div>
@@ -75,7 +70,9 @@ export default function Dashboard() {
 
           {/* Dashboard Content */}
           <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            <StatsCards />
+            {startDate && endDate && (
+              <EnhancedStatsCards startDate={startDate} endDate={endDate} />
+            )}
             <div className="mt-8">
               <RecentActivity />
             </div>

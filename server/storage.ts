@@ -31,7 +31,7 @@ import {
   type InsertProductWarehouse,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, like, count, isNull, isNotNull } from "drizzle-orm";
+import { eq, desc, and, or, like, count, isNull, isNotNull, gte, lte, lt } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -389,11 +389,20 @@ export class DatabaseStorage implements IStorage {
     return brand;
   }
 
-  async getDashboardStats(userId: string): Promise<any> {
+  async getDashboardStatsWithDateRange(userId: string, dateRange?: { start?: Date; end?: Date }): Promise<any> {
     const user = await this.getUser(userId);
     
     if (!user) {
-      return { totalOrders: 0, openTickets: 0, urgentTickets: 0, lowInventoryItems: 0 };
+      return { 
+        totalOrders: 0, 
+        shippedOrders: 0,
+        unfulfilledOrders: 0,
+        ordersOnHold: 0,
+        openTickets: 0, 
+        urgentTickets: 0, 
+        lowStockProducts: 0,
+        outOfStockProducts: 0
+      };
     }
 
     let brandFilter = user.brandId ? eq(orders.brandId, user.brandId) : undefined;
@@ -412,11 +421,43 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
+    // Add date filtering
+    const dateFilter = [];
+    if (dateRange?.start) {
+      dateFilter.push(gte(orders.orderCreatedAt, dateRange.start));
+    }
+    if (dateRange?.end) {
+      dateFilter.push(lte(orders.orderCreatedAt, dateRange.end));
+    }
+
+    const orderFilters = [brandFilter, ...dateFilter].filter(Boolean);
+    const finalOrderFilter = orderFilters.length > 0 ? and(...orderFilters) : undefined;
+
+    // Total orders
     const [totalOrdersResult] = await db
       .select({ count: count() })
       .from(orders)
-      .where(brandFilter);
+      .where(finalOrderFilter);
 
+    // Shipped orders
+    const [shippedOrdersResult] = await db
+      .select({ count: count() })
+      .from(orders)
+      .where(and(finalOrderFilter, or(eq(orders.status, 'shipped'), eq(orders.status, 'delivered'), eq(orders.status, 'fulfilled'))));
+
+    // Unfulfilled orders
+    const [unfulfilledOrdersResult] = await db
+      .select({ count: count() })
+      .from(orders)
+      .where(and(finalOrderFilter, or(eq(orders.status, 'unfulfilled'), eq(orders.status, 'pending'), eq(orders.status, 'processing'))));
+
+    // Orders on hold
+    const [ordersOnHoldResult] = await db
+      .select({ count: count() })
+      .from(orders)
+      .where(and(finalOrderFilter, eq(orders.status, 'on_hold')));
+
+    // Open tickets
     const [openTicketsResult] = await db
       .select({ count: count() })
       .from(tickets)
@@ -425,6 +466,7 @@ export class DatabaseStorage implements IStorage {
         eq(tickets.status, 'open')
       ));
 
+    // Urgent tickets
     const [urgentTicketsResult] = await db
       .select({ count: count() })
       .from(tickets)
@@ -434,20 +476,37 @@ export class DatabaseStorage implements IStorage {
         eq(tickets.status, 'open')
       ));
 
-    const [lowInventoryResult] = await db
+    // Low stock products (inventory < 10 or custom threshold)
+    const [lowStockResult] = await db
       .select({ count: count() })
       .from(products)
       .where(and(
         productBrandFilter,
-        // Consider items with inventory < 10 as low stock
-        // Note: This is a simplified version, you might want to add a lowStockThreshold field
+        // Use lowStockThreshold if available, otherwise default to 10
+        or(
+          and(isNotNull(products.lowStockThreshold), lt(products.inventoryCount, products.lowStockThreshold)),
+          and(isNull(products.lowStockThreshold), lt(products.inventoryCount, 10))
+        )
+      ));
+
+    // Out of stock products
+    const [outOfStockResult] = await db
+      .select({ count: count() })
+      .from(products)
+      .where(and(
+        productBrandFilter,
+        eq(products.inventoryCount, 0)
       ));
 
     return {
       totalOrders: totalOrdersResult?.count || 0,
+      shippedOrders: shippedOrdersResult?.count || 0,
+      unfulfilledOrders: unfulfilledOrdersResult?.count || 0,
+      ordersOnHold: ordersOnHoldResult?.count || 0,
       openTickets: openTicketsResult?.count || 0,
       urgentTickets: urgentTicketsResult?.count || 0,
-      lowInventoryItems: lowInventoryResult?.count || 0,
+      lowStockProducts: lowStockResult?.count || 0,
+      outOfStockProducts: outOfStockResult?.count || 0,
     };
   }
 
