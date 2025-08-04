@@ -1007,8 +1007,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.claims?.sub;
       const user = await storage.getUser(userId);
       
-      // Parse date range from query parameters
-      const { startDate, endDate } = req.query;
+      // Parse date range and brand filter from query parameters
+      const { startDate, endDate, brandId } = req.query;
       let dateRange: { start?: Date; end?: Date } = {};
       
       if (startDate && endDate) {
@@ -1016,7 +1016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dateRange.end = new Date(endDate as string);
       }
       
-      const stats = await storage.getDashboardStatsWithDateRange(userId, dateRange);
+      const stats = await storage.getDashboardStatsWithDateRange(userId, dateRange, brandId as string);
       
       res.json(stats);
     } catch (error) {

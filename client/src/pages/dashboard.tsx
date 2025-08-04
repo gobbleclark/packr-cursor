@@ -3,18 +3,24 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import DateFilter from "@/components/dashboard/date-filter";
+import BrandFilter from "@/components/dashboard/brand-filter";
 import EnhancedStatsCards from "@/components/dashboard/enhanced-stats-cards";
 import RecentActivity from "@/components/dashboard/recent-activity";
 
 export default function Dashboard() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [selectedBrand, setSelectedBrand] = useState("all");
 
   const handleDateRangeChange = (start: string, end: string) => {
     setStartDate(start);
     setEndDate(end);
+  };
+
+  const handleBrandChange = (brandId: string) => {
+    setSelectedBrand(brandId);
   };
 
   useEffect(() => {
@@ -61,8 +67,9 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
-                <div className="mt-4 flex md:mt-0 md:ml-4">
+                <div className="mt-4 flex md:mt-0 md:ml-4 space-x-6">
                   <DateFilter onDateRangeChange={handleDateRangeChange} />
+                  <BrandFilter onBrandChange={handleBrandChange} userRole={user?.role} />
                 </div>
               </div>
             </div>
@@ -71,7 +78,11 @@ export default function Dashboard() {
           {/* Dashboard Content */}
           <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
             {startDate && endDate && (
-              <EnhancedStatsCards startDate={startDate} endDate={endDate} />
+              <EnhancedStatsCards 
+                startDate={startDate} 
+                endDate={endDate} 
+                brandId={selectedBrand !== "all" ? selectedBrand : undefined}
+              />
             )}
             <div className="mt-8">
               <RecentActivity />

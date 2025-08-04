@@ -389,7 +389,7 @@ export class DatabaseStorage implements IStorage {
     return brand;
   }
 
-  async getDashboardStatsWithDateRange(userId: string, dateRange?: { start?: Date; end?: Date }): Promise<any> {
+  async getDashboardStatsWithDateRange(userId: string, dateRange?: { start?: Date; end?: Date }, brandId?: string): Promise<any> {
     const user = await this.getUser(userId);
     
     if (!user) {
@@ -409,15 +409,23 @@ export class DatabaseStorage implements IStorage {
     let ticketBrandFilter = user.brandId ? eq(tickets.brandId, user.brandId) : undefined;
     let productBrandFilter = user.brandId ? eq(products.brandId, user.brandId) : undefined;
 
-    // If user is a 3PL, get stats for all their brands
+    // Handle brand filtering for 3PL users
     if (user.role === 'threePL' && user.threePlId) {
-      const threePlBrands = await this.getBrandsByThreePL(user.threePlId);
-      const brandIds = threePlBrands.map(b => b.id);
-      
-      if (brandIds.length > 0) {
-        brandFilter = or(...brandIds.map(id => eq(orders.brandId, id)));
-        ticketBrandFilter = or(...brandIds.map(id => eq(tickets.brandId, id)));
-        productBrandFilter = or(...brandIds.map(id => eq(products.brandId, id)));
+      if (brandId && brandId !== 'all') {
+        // Filter by specific brand
+        brandFilter = eq(orders.brandId, brandId);
+        ticketBrandFilter = eq(tickets.brandId, brandId);
+        productBrandFilter = eq(products.brandId, brandId);
+      } else {
+        // Show all brands for this 3PL
+        const threePlBrands = await this.getBrandsByThreePL(user.threePlId);
+        const brandIds = threePlBrands.map(b => b.id);
+        
+        if (brandIds.length > 0) {
+          brandFilter = or(...brandIds.map(id => eq(orders.brandId, id)));
+          ticketBrandFilter = or(...brandIds.map(id => eq(tickets.brandId, id)));
+          productBrandFilter = or(...brandIds.map(id => eq(products.brandId, id)));
+        }
       }
     }
 
@@ -439,17 +447,21 @@ export class DatabaseStorage implements IStorage {
       .from(orders)
       .where(finalOrderFilter);
 
-    // Shipped orders
+    // Shipped orders (fulfilled, shipped, delivered)
+    const shippedFilters = [brandFilter, ...dateFilter].filter(Boolean);
+    const shippedFilter = shippedFilters.length > 0 ? and(...shippedFilters) : undefined;
     const [shippedOrdersResult] = await db
       .select({ count: count() })
       .from(orders)
-      .where(and(finalOrderFilter, or(eq(orders.status, 'shipped'), eq(orders.status, 'delivered'), eq(orders.status, 'fulfilled'))));
+      .where(and(shippedFilter, or(eq(orders.status, 'shipped'), eq(orders.status, 'delivered'), eq(orders.status, 'fulfilled'))));
 
-    // Unfulfilled orders
+    // Unfulfilled orders (pending, processing, unfulfilled)
+    const unfulfilledFilters = [brandFilter, ...dateFilter].filter(Boolean);
+    const unfulfilledFilter = unfulfilledFilters.length > 0 ? and(...unfulfilledFilters) : undefined;
     const [unfulfilledOrdersResult] = await db
       .select({ count: count() })
       .from(orders)
-      .where(and(finalOrderFilter, or(eq(orders.status, 'unfulfilled'), eq(orders.status, 'pending'), eq(orders.status, 'processing'))));
+      .where(and(unfulfilledFilter, or(eq(orders.status, 'unfulfilled'), eq(orders.status, 'pending'), eq(orders.status, 'processing'))));
 
     // Orders on hold
     const [ordersOnHoldResult] = await db

@@ -17,13 +17,15 @@ import {
 interface EnhancedStatsCardsProps {
   startDate: string;
   endDate: string;
+  brandId?: string;
 }
 
-export default function EnhancedStatsCards({ startDate, endDate }: EnhancedStatsCardsProps) {
+export default function EnhancedStatsCards({ startDate, endDate, brandId }: EnhancedStatsCardsProps) {
   const { data: stats, isLoading } = useQuery({
-    queryKey: ["/api/dashboard/stats", startDate, endDate],
+    queryKey: ["/api/dashboard/stats", startDate, endDate, brandId],
     queryFn: async () => {
       const params = new URLSearchParams({ startDate, endDate });
+      if (brandId) params.append('brandId', brandId);
       const response = await fetch(`/api/dashboard/stats?${params}`);
       if (!response.ok) throw new Error("Failed to fetch stats");
       return response.json();
@@ -33,7 +35,7 @@ export default function EnhancedStatsCards({ startDate, endDate }: EnhancedStats
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
           <Card key={i} className="animate-pulse">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <div className="h-4 bg-gray-200 rounded w-20"></div>
@@ -50,14 +52,6 @@ export default function EnhancedStatsCards({ startDate, endDate }: EnhancedStats
   }
 
   const cards = [
-    {
-      title: "Total Orders",
-      value: stats?.totalOrders || 0,
-      icon: Package,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
-      description: "All orders in period"
-    },
     {
       title: "Shipped Orders",
       value: stats?.shippedOrders || 0,
