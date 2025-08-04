@@ -1,342 +1,294 @@
-import { storage } from '../storage';
-import { RealApiSyncService } from './realApiSync';
-
 /**
- * ShipHero Webhook Handler
- * Processes real-time webhooks for immediate data synchronization
+ * ShipHero Webhook Management Service
+ * Handles subscription and management of ShipHero webhooks for real-time data updates
  */
 
-interface WebhookEvent {
-  id: string;
-  event: string;
-  data: any;
-  created_at: string;
+interface ShipHeroCredentials {
+  username: string;
+  password: string;
+}
+
+interface ShipHeroTokenResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: string;
 }
 
 export class ShipHeroWebhookService {
-  
-  // All available ShipHero webhook events
-  static readonly WEBHOOK_EVENTS = {
-    // Order events
-    ORDER_CREATED: 'order.created',
-    ORDER_UPDATED: 'order.updated',
-    ORDER_CANCELED: 'order.canceled',
-    ORDER_ALLOCATED: 'order.allocated',
-    ORDER_PACKED: 'order.packed',
-    ORDER_SHIPPED: 'order.shipped',
-    ORDER_DELIVERED: 'order.delivered',
-    
-    // Shipment events
-    SHIPMENT_CREATED: 'shipment.created',
-    SHIPMENT_UPDATED: 'shipment.updated',
-    SHIPMENT_SHIPPED: 'shipment.shipped',
-    SHIPMENT_DELIVERED: 'shipment.delivered',
-    SHIPMENT_EXCEPTION: 'shipment.exception',
-    SHIPMENT_RETURNED: 'shipment.returned',
-    
-    // Inventory events
-    INVENTORY_UPDATED: 'inventory.updated',
-    INVENTORY_ALLOCATED: 'inventory.allocated',
-    INVENTORY_DEALLOCATED: 'inventory.deallocated',
-    INVENTORY_RESERVED: 'inventory.reserved',
-    INVENTORY_UNRESERVED: 'inventory.unreserved',
-    INVENTORY_RECEIVED: 'inventory.received',
-    INVENTORY_ADJUSTED: 'inventory.adjusted',
-    
-    // Product events
-    PRODUCT_CREATED: 'product.created',
-    PRODUCT_UPDATED: 'product.updated',
-    PRODUCT_DELETED: 'product.deleted',
-    
-    // Returns events
-    RETURN_CREATED: 'return.created',
-    RETURN_UPDATED: 'return.updated',
-    RETURN_PROCESSED: 'return.processed'
-  };
+  private baseUrl = 'https://public-api.shiphero.com';
+  private tokenCache: Map<string, { token: string; expiresAt: number }> = new Map();
 
-  async processWebhook(brandId: string, webhookEvent: WebhookEvent): Promise<void> {
-    const brand = await storage.getBrand(brandId);
-    if (!brand || !brand.shipHeroApiKey) {
-      console.error(`Brand ${brandId} not found or missing credentials`);
-      return;
+  /**
+   * Get access token using username/password authentication
+   * Caches tokens to avoid repeated auth requests
+   */
+  private async getAccessToken(credentials: ShipHeroCredentials): Promise<string> {
+    const cacheKey = credentials.username;
+    const cached = this.tokenCache.get(cacheKey);
+    
+    if (cached && cached.expiresAt > Date.now() + 5 * 60 * 1000) { // 5 min buffer
+      return cached.token;
     }
 
-    console.log(`Processing webhook: ${webhookEvent.event} for brand ${brand.name}`);
+    console.log(`🔐 Requesting new ShipHero access token for ${credentials.username}`);
+    
+    const response = await fetch(`${this.baseUrl}/auth`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: credentials.username,
+        password: credentials.password,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ ShipHero auth failed: ${response.status} ${response.statusText}`, errorText);
+      throw new Error(`ShipHero authentication failed: ${response.status}`);
+    }
+
+    const data: ShipHeroTokenResponse = await response.json();
+    console.log(`✅ ShipHero token obtained for ${credentials.username}, expires in ${data.expires_in} seconds`);
+    
+    this.tokenCache.set(cacheKey, {
+      token: data.access_token,
+      expiresAt: Date.now() + (data.expires_in * 1000) - 60000, // 1 min buffer
+    });
+
+    return data.access_token;
+  }
+
+  /**
+   * Make GraphQL request to ShipHero API
+   */
+  private async makeGraphQLRequest(query: string, variables: any, credentials: ShipHeroCredentials): Promise<any> {
+    const token = await this.getAccessToken(credentials);
+    
+    const response = await fetch(`${this.baseUrl}/graphql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        query,
+        variables,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ ShipHero GraphQL request failed: ${response.status}`, errorText);
+      throw new Error(`ShipHero API request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.errors && data.errors.length > 0) {
+      console.error('❌ ShipHero GraphQL errors:', data.errors);
+      throw new Error(`ShipHero GraphQL errors: ${JSON.stringify(data.errors)}`);
+    }
+
+    return data.data;
+  }
+
+  /**
+   * Subscribe to ShipHero allocation webhook
+   */
+  async subscribeToAllocationWebhook(credentials: ShipHeroCredentials, webhookUrl: string): Promise<any> {
+    console.log(`🔗 Subscribing to ShipHero allocation webhook: ${webhookUrl}`);
+    
+    const mutation = `
+      mutation createWebhook($data: WebhookCreateInput!) {
+        webhook_create(data: $data) {
+          request_id
+          complexity
+          webhook {
+            id
+            name
+            url
+            resource_type
+            webhook_events
+            active
+            created_at
+          }
+        }
+      }
+    `;
+
+    const variables = {
+      data: {
+        name: "Order Allocation Webhook",
+        url: webhookUrl,
+        resource_type: "order",
+        webhook_events: ["allocation", "order.allocated", "order.status_changed"],
+        active: true
+      }
+    };
 
     try {
-      switch (webhookEvent.event) {
-        // Order webhooks - highest priority
-        case this.WEBHOOK_EVENTS.ORDER_CREATED:
-        case this.WEBHOOK_EVENTS.ORDER_UPDATED:
-          await this.handleOrderWebhook(brand, webhookEvent);
-          break;
-
-        case this.WEBHOOK_EVENTS.ORDER_SHIPPED:
-        case this.WEBHOOK_EVENTS.ORDER_DELIVERED:
-          await this.handleOrderStatusWebhook(brand, webhookEvent);
-          break;
-
-        // Shipment webhooks - critical for tracking
-        case this.WEBHOOK_EVENTS.SHIPMENT_CREATED:
-        case this.WEBHOOK_EVENTS.SHIPMENT_UPDATED:
-        case this.WEBHOOK_EVENTS.SHIPMENT_SHIPPED:
-        case this.WEBHOOK_EVENTS.SHIPMENT_DELIVERED:
-        case this.WEBHOOK_EVENTS.SHIPMENT_EXCEPTION:
-          await this.handleShipmentWebhook(brand, webhookEvent);
-          break;
-
-        // Inventory webhooks - real-time stock updates
-        case this.WEBHOOK_EVENTS.INVENTORY_UPDATED:
-        case this.WEBHOOK_EVENTS.INVENTORY_ALLOCATED:
-        case this.WEBHOOK_EVENTS.INVENTORY_DEALLOCATED:
-        case this.WEBHOOK_EVENTS.INVENTORY_RECEIVED:
-        case this.WEBHOOK_EVENTS.INVENTORY_ADJUSTED:
-          await this.handleInventoryWebhook(brand, webhookEvent);
-          break;
-
-        // Product webhooks
-        case this.WEBHOOK_EVENTS.PRODUCT_CREATED:
-        case this.WEBHOOK_EVENTS.PRODUCT_UPDATED:
-          await this.handleProductWebhook(brand, webhookEvent);
-          break;
-
-        default:
-          console.log(`Unhandled webhook event: ${webhookEvent.event}`);
-      }
-
-      // Log successful webhook processing
-      console.log(`✅ Successfully processed ${webhookEvent.event} for brand ${brand.name}`);
-
+      const result = await this.makeGraphQLRequest(mutation, variables, credentials);
+      console.log('✅ Allocation webhook created:', result.webhook_create?.webhook);
+      return result.webhook_create?.webhook;
     } catch (error) {
-      console.error(`❌ Failed to process webhook ${webhookEvent.event} for brand ${brand.name}:`, error);
-      
-      // Store failed webhook for retry
-      await this.logFailedWebhook(brandId, webhookEvent, error.message);
+      console.error('❌ Failed to create allocation webhook:', error);
+      throw error;
     }
   }
 
-  private async handleOrderWebhook(brand: any, webhookEvent: WebhookEvent): Promise<void> {
-    const orderData = webhookEvent.data;
+  /**
+   * Subscribe to general order status webhook
+   */
+  async subscribeToOrderWebhook(credentials: ShipHeroCredentials, webhookUrl: string): Promise<any> {
+    console.log(`🔗 Subscribing to ShipHero order webhook: ${webhookUrl}`);
     
-    // Check if order already exists
-    const existingOrder = await storage.getOrderByShipHeroId(orderData.id);
-    
-    const orderPayload = {
-      orderNumber: orderData.order_number,
-      brandId: brand.id,
-      customerName: `${orderData.shipping_address?.first_name || ''} ${orderData.shipping_address?.last_name || ''}`.trim(),
-      customerEmail: orderData.email,
-      shippingAddress: orderData.shipping_address,
-      billingAddress: orderData.billing_address,
-      status: this.mapOrderStatus(orderData.fulfillment_status),
-      totalAmount: parseFloat(orderData.subtotal || '0'),
-      shippingMethod: orderData.shipping_method?.name,
-      trackingNumber: orderData.tracking_number,
-      shipHeroOrderId: orderData.id,
-      orderItems: orderData.line_items || [],
-      lastSyncAt: new Date(),
-      createdAt: new Date(orderData.created_at),
-      updatedAt: new Date()
+    const mutation = `
+      mutation createWebhook($data: WebhookCreateInput!) {
+        webhook_create(data: $data) {
+          request_id
+          complexity
+          webhook {
+            id
+            name
+            url
+            resource_type
+            webhook_events
+            active
+            created_at
+          }
+        }
+      }
+    `;
+
+    const variables = {
+      data: {
+        name: "Order Status Webhook",
+        url: webhookUrl,
+        resource_type: "order",
+        webhook_events: ["order.created", "order.updated", "order.shipped", "order.fulfilled", "order.cancelled"],
+        active: true
+      }
     };
 
-    if (existingOrder) {
-      await storage.updateOrder(existingOrder.id, orderPayload);
-      console.log(`📦 Updated order ${orderData.order_number} via webhook`);
-    } else {
-      await storage.createOrder(orderPayload);
-      console.log(`📦 Created order ${orderData.order_number} via webhook`);
+    try {
+      const result = await this.makeGraphQLRequest(mutation, variables, credentials);
+      console.log('✅ Order webhook created:', result.webhook_create?.webhook);
+      return result.webhook_create?.webhook;
+    } catch (error) {
+      console.error('❌ Failed to create order webhook:', error);
+      throw error;
     }
   }
 
-  private async handleOrderStatusWebhook(brand: any, webhookEvent: WebhookEvent): Promise<void> {
-    const orderData = webhookEvent.data;
-    const existingOrder = await storage.getOrderByShipHeroId(orderData.id);
+  /**
+   * List existing webhooks
+   */
+  async listWebhooks(credentials: ShipHeroCredentials): Promise<any[]> {
+    console.log('📋 Fetching existing ShipHero webhooks');
     
-    if (existingOrder) {
-      await storage.updateOrder(existingOrder.id, {
-        status: webhookEvent.event.includes('shipped') ? 'shipped' : 'delivered',
-        trackingNumber: orderData.tracking_number,
-        updatedAt: new Date(),
-        lastSyncAt: new Date()
-      });
+    const query = `
+      query getWebhooks {
+        webhooks {
+          request_id
+          complexity
+          data {
+            edges {
+              node {
+                id
+                name
+                url
+                resource_type
+                webhook_events
+                active
+                created_at
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    try {
+      const result = await this.makeGraphQLRequest(query, {}, credentials);
+      const webhooks = result.webhooks?.data?.edges?.map((edge: any) => edge.node) || [];
+      console.log(`📋 Found ${webhooks.length} existing webhooks`);
+      return webhooks;
+    } catch (error) {
+      console.error('❌ Failed to list webhooks:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a webhook
+   */
+  async deleteWebhook(credentials: ShipHeroCredentials, webhookId: string): Promise<boolean> {
+    console.log(`🗑️ Deleting ShipHero webhook: ${webhookId}`);
+    
+    const mutation = `
+      mutation deleteWebhook($id: String!) {
+        webhook_delete(data: { id: $id }) {
+          request_id
+          complexity
+          ok
+        }
+      }
+    `;
+
+    try {
+      const result = await this.makeGraphQLRequest(mutation, { id: webhookId }, credentials);
+      console.log('✅ Webhook deleted successfully');
+      return result.webhook_delete?.ok || false;
+    } catch (error) {
+      console.error('❌ Failed to delete webhook:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Setup all required webhooks for a brand
+   */
+  async setupWebhooksForBrand(credentials: ShipHeroCredentials, baseUrl: string): Promise<void> {
+    console.log(`🔄 Setting up ShipHero webhooks for ${credentials.username}`);
+    
+    try {
+      // List existing webhooks first
+      const existingWebhooks = await this.listWebhooks(credentials);
       
-      console.log(`📦 Updated order ${orderData.order_number} status to ${webhookEvent.event}`);
-    }
-  }
-
-  private async handleShipmentWebhook(brand: any, webhookEvent: WebhookEvent): Promise<void> {
-    const shipmentData = webhookEvent.data;
-    
-    // Find the corresponding order
-    const order = await storage.getOrderByShipHeroId(shipmentData.order_id);
-    if (!order) {
-      console.error(`Order not found for shipment ${shipmentData.id}`);
-      return;
-    }
-
-    const existingShipment = await storage.getShipmentByShipHeroId(shipmentData.id);
-    
-    const shipmentPayload = {
-      orderId: order.id,
-      brandId: brand.id,
-      shipHeroShipmentId: shipmentData.id,
-      trackingNumber: shipmentData.tracking_number,
-      carrier: shipmentData.carrier,
-      service: shipmentData.service,
-      status: this.mapShipmentStatus(webhookEvent.event),
-      shippedAt: shipmentData.shipped_date ? new Date(shipmentData.shipped_date) : null,
-      estimatedDelivery: shipmentData.estimated_delivery_date ? new Date(shipmentData.estimated_delivery_date) : null,
-      actualDelivery: shipmentData.delivered_date ? new Date(shipmentData.delivered_date) : null,
-      createdAt: new Date(shipmentData.created_at || Date.now()),
-      updatedAt: new Date()
-    };
-
-    if (existingShipment) {
-      await storage.updateShipment(existingShipment.id, shipmentPayload);
-      console.log(`🚚 Updated shipment ${shipmentData.id} via webhook`);
-    } else {
-      await storage.createShipment(shipmentPayload);
-      console.log(`🚚 Created shipment ${shipmentData.id} via webhook`);
-    }
-
-    // Update order tracking if shipment is shipped
-    if (webhookEvent.event === this.WEBHOOK_EVENTS.SHIPMENT_SHIPPED) {
-      await storage.updateOrder(order.id, {
-        status: 'shipped',
-        trackingNumber: shipmentData.tracking_number,
-        updatedAt: new Date()
-      });
-    }
-  }
-
-  private async handleInventoryWebhook(brand: any, webhookEvent: WebhookEvent): Promise<void> {
-    const inventoryData = webhookEvent.data;
-    
-    // Find product by SKU
-    const products = await storage.getProductsByBrand(brand.id);
-    const product = products.find(p => p.sku === inventoryData.sku);
-    
-    if (!product) {
-      console.error(`Product not found for SKU ${inventoryData.sku}`);
-      return;
-    }
-
-    // Update inventory levels immediately
-    await storage.updateProductInventory(product.id, {
-      quantity: inventoryData.available_quantity || 0,
-      reservedQuantity: inventoryData.allocated_quantity || 0,
-      lastSyncAt: new Date(),
-      updatedAt: new Date()
-    });
-
-    console.log(`📊 Updated inventory for ${inventoryData.sku}: ${inventoryData.available_quantity} available`);
-  }
-
-  private async handleProductWebhook(brand: any, webhookEvent: WebhookEvent): Promise<void> {
-    const productData = webhookEvent.data;
-    
-    const existingProduct = await storage.getProductByShipHeroId(productData.id);
-    
-    const productPayload = {
-      sku: productData.sku,
-      name: productData.name,
-      description: productData.description,
-      brandId: brand.id,
-      price: parseFloat(productData.price || '0'),
-      weight: parseFloat(productData.weight || '0'),
-      dimensions: productData.dimensions,
-      shipHeroProductId: productData.id,
-      barcode: productData.barcode,
-      hsCode: productData.hs_code,
-      countryOfOrigin: productData.country_of_origin,
-      lastSyncAt: new Date(),
-      createdAt: new Date(productData.created_at || Date.now()),
-      updatedAt: new Date()
-    };
-
-    if (existingProduct) {
-      await storage.updateProduct(existingProduct.id, productPayload);
-      console.log(`📦 Updated product ${productData.sku} via webhook`);
-    } else {
-      await storage.createProduct(productPayload);
-      console.log(`📦 Created product ${productData.sku} via webhook`);
-    }
-  }
-
-  private async logFailedWebhook(brandId: string, webhookEvent: WebhookEvent, error: string): Promise<void> {
-    // Store failed webhook for retry later
-    console.error(`Failed webhook logged for brand ${brandId}:`, {
-      event: webhookEvent.event,
-      id: webhookEvent.id,
-      error
-    });
-  }
-
-  private mapOrderStatus(shipHeroStatus: string): string {
-    const statusMap: { [key: string]: string } = {
-      'pending': 'pending',
-      'submitted': 'processing',
-      'processing': 'processing',
-      'shipped': 'shipped',
-      'delivered': 'delivered',
-      'cancelled': 'cancelled',
-      'exception': 'pending'
-    };
-    return statusMap[shipHeroStatus] || 'pending';
-  }
-
-  private mapShipmentStatus(eventType: string): string {
-    if (eventType.includes('shipped')) return 'shipped';
-    if (eventType.includes('delivered')) return 'delivered';
-    if (eventType.includes('exception')) return 'exception';
-    if (eventType.includes('returned')) return 'returned';
-    return 'pending';
-  }
-
-  // Setup webhook URLs for a brand
-  async setupWebhooksForBrand(brandId: string): Promise<string[]> {
-    const brand = await storage.getBrand(brandId);
-    if (!brand || !brand.shipHeroApiKey) {
-      throw new Error('Brand not found or missing credentials');
-    }
-
-    const webhookUrl = `${process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000'}/api/webhooks/shiphero/${brandId}`;
-    
-    // List of all webhooks to register
-    const webhooksToRegister = [
-      // Critical order events
-      this.WEBHOOK_EVENTS.ORDER_CREATED,
-      this.WEBHOOK_EVENTS.ORDER_UPDATED,
-      this.WEBHOOK_EVENTS.ORDER_SHIPPED,
-      this.WEBHOOK_EVENTS.ORDER_DELIVERED,
+      // Check if allocation webhook already exists
+      const allocationWebhookUrl = `${baseUrl}/api/webhooks/shiphero/allocation`;
+      const existingAllocationWebhook = existingWebhooks.find(w => 
+        w.url === allocationWebhookUrl || w.webhook_events?.includes('allocation')
+      );
       
-      // Shipment tracking events
-      this.WEBHOOK_EVENTS.SHIPMENT_CREATED,
-      this.WEBHOOK_EVENTS.SHIPMENT_UPDATED,
-      this.WEBHOOK_EVENTS.SHIPMENT_SHIPPED,
-      this.WEBHOOK_EVENTS.SHIPMENT_DELIVERED,
-      this.WEBHOOK_EVENTS.SHIPMENT_EXCEPTION,
+      if (!existingAllocationWebhook) {
+        await this.subscribeToAllocationWebhook(credentials, allocationWebhookUrl);
+      } else {
+        console.log('✅ Allocation webhook already exists');
+      }
       
-      // Real-time inventory updates
-      this.WEBHOOK_EVENTS.INVENTORY_UPDATED,
-      this.WEBHOOK_EVENTS.INVENTORY_ALLOCATED,
-      this.WEBHOOK_EVENTS.INVENTORY_DEALLOCATED,
-      this.WEBHOOK_EVENTS.INVENTORY_RECEIVED,
-      this.WEBHOOK_EVENTS.INVENTORY_ADJUSTED,
+      // Check if order webhook already exists
+      const orderWebhookUrl = `${baseUrl}/api/webhooks/shiphero/order`;
+      const existingOrderWebhook = existingWebhooks.find(w => 
+        w.url === orderWebhookUrl || w.webhook_events?.includes('order.updated')
+      );
       
-      // Product changes
-      this.WEBHOOK_EVENTS.PRODUCT_CREATED,
-      this.WEBHOOK_EVENTS.PRODUCT_UPDATED
-    ];
-
-    console.log(`Setting up ${webhooksToRegister.length} webhooks for brand ${brand.name}`);
-    console.log(`Webhook URL: ${webhookUrl}`);
-
-    // In production, you would make API calls to ShipHero to register these webhooks
-    // For now, return the list of webhooks that should be registered
-    return webhooksToRegister;
+      if (!existingOrderWebhook) {
+        await this.subscribeToOrderWebhook(credentials, orderWebhookUrl);
+      } else {
+        console.log('✅ Order webhook already exists');
+      }
+      
+      console.log('🎉 Webhook setup completed successfully');
+      
+    } catch (error) {
+      console.error('❌ Webhook setup failed:', error);
+      throw error;
+    }
   }
 }
 
 export const shipHeroWebhookService = new ShipHeroWebhookService();
-export default ShipHeroWebhookService;

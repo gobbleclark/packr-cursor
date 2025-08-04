@@ -1,4 +1,5 @@
 import type { Express, Request } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
 import path from "path";
@@ -14,6 +15,7 @@ import {
   insertProductSchema 
 } from "@shared/schema";
 import { shipHeroApiFixed } from "./services/shipHeroApiFixed";
+import { shipHeroWebhookService } from "./services/shipHeroWebhooks";
 import { TrackstarService } from "./services/trackstar";
 import { BackgroundJobService } from "./services/backgroundJobs";
 import { RealApiSyncService } from "./services/realApiSync";
@@ -1792,6 +1794,194 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('7-day order sync failed:', error);
       res.status(500).json({ error: 'Failed to sync 7-day orders' });
+    }
+  });
+
+  // ShipHero Allocation Webhook - Called when inventory is allocated to orders
+  app.post('/api/webhooks/shiphero/allocation', express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+      console.log('🔗 ShipHero allocation webhook received');
+      
+      // Verify webhook signature if needed (ShipHero supports HMAC verification)
+      const webhookData = JSON.parse(req.body.toString());
+      console.log('📦 Allocation webhook data:', JSON.stringify(webhookData, null, 2));
+      
+      // Expected ShipHero allocation webhook structure:
+      // {
+      //   "resource_type": "order",
+      //   "resource_id": "order_id",
+      //   "resource_url": "...",
+      //   "webhook_url": "...",
+      //   "created_date": "2025-08-04T12:00:00Z",
+      //   "data": {
+      //     "id": "order_id",
+      //     "order_number": "#12345",
+      //     "fulfillment_status": "allocated",
+      //     "allocated_at": "2025-08-04T12:00:00Z",
+      //     "line_items": [...]
+      //   }
+      // }
+      
+      if (webhookData.resource_type === 'order' && webhookData.data) {
+        const orderData = webhookData.data;
+        const shipHeroOrderId = orderData.id;
+        const allocatedAt = orderData.allocated_at;
+        
+        if (shipHeroOrderId && allocatedAt) {
+          console.log(`🎯 Allocation detected for order ${orderData.order_number} (${shipHeroOrderId}) at ${allocatedAt}`);
+          
+          // Find the order in our database
+          const existingOrder = await storage.getOrderByShipHeroId(shipHeroOrderId);
+          
+          if (existingOrder) {
+            // Update the order with allocation timestamp
+            const updatedOrder = {
+              ...existingOrder,
+              allocatedAt: new Date(allocatedAt),
+              fulfillmentStatus: orderData.fulfillment_status || existingOrder.fulfillmentStatus,
+              status: mapShipHeroStatus(orderData.fulfillment_status) || existingOrder.status,
+              lastSyncAt: new Date()
+            };
+            
+            await storage.updateOrder(existingOrder.id, updatedOrder);
+            
+            // Update line items allocation quantities if provided
+            if (orderData.line_items && orderData.line_items.length > 0) {
+              for (const lineItem of orderData.line_items) {
+                await storage.updateOrderItemAllocation(existingOrder.id, lineItem.sku, {
+                  quantityAllocated: lineItem.quantity_allocated || 0,
+                  fulfillmentStatus: lineItem.fulfillment_status || 'allocated'
+                });
+              }
+            }
+            
+            console.log(`✅ Updated order ${orderData.order_number} with allocation timestamp: ${allocatedAt}`);
+            res.status(200).json({ success: true, message: 'Allocation processed' });
+          } else {
+            console.log(`⚠️ Order ${orderData.order_number} (${shipHeroOrderId}) not found in database`);
+            res.status(404).json({ error: 'Order not found' });
+          }
+        } else {
+          console.log('⚠️ Missing required allocation data (order ID or timestamp)');
+          res.status(400).json({ error: 'Missing allocation data' });
+        }
+      } else {
+        console.log(`⚠️ Unexpected webhook resource type: ${webhookData.resource_type}`);
+        res.status(400).json({ error: 'Unexpected webhook type' });
+      }
+      
+    } catch (error) {
+      console.error('❌ ShipHero allocation webhook error:', error);
+      res.status(500).json({ error: 'Failed to process allocation webhook' });
+    }
+  });
+
+  // ShipHero General Order Webhook - For order status changes
+  app.post('/api/webhooks/shiphero/order', express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+      console.log('🔗 ShipHero order webhook received');
+      
+      const webhookData = JSON.parse(req.body.toString());
+      console.log('📦 Order webhook data:', JSON.stringify(webhookData, null, 2));
+      
+      if (webhookData.resource_type === 'order' && webhookData.data) {
+        const orderData = webhookData.data;
+        const shipHeroOrderId = orderData.id;
+        
+        console.log(`🔄 Order update for ${orderData.order_number} (${shipHeroOrderId}): ${orderData.fulfillment_status}`);
+        
+        // Find the order in our database
+        const existingOrder = await storage.getOrderByShipHeroId(shipHeroOrderId);
+        
+        if (existingOrder) {
+          // Update order with new status and timestamps
+          const updatedOrder = {
+            ...existingOrder,
+            fulfillmentStatus: orderData.fulfillment_status || existingOrder.fulfillmentStatus,
+            status: mapShipHeroStatus(orderData.fulfillment_status) || existingOrder.status,
+            // Update specific timestamps based on status
+            allocatedAt: orderData.allocated_at ? new Date(orderData.allocated_at) : existingOrder.allocatedAt,
+            packedAt: orderData.packed_at ? new Date(orderData.packed_at) : existingOrder.packedAt,
+            shippedAt: orderData.shipped_at ? new Date(orderData.shipped_at) : existingOrder.shippedAt,
+            deliveredAt: orderData.delivered_at ? new Date(orderData.delivered_at) : existingOrder.deliveredAt,
+            cancelledAt: orderData.cancelled_at ? new Date(orderData.cancelled_at) : existingOrder.cancelledAt,
+            trackingNumber: orderData.tracking_number || existingOrder.trackingNumber,
+            lastSyncAt: new Date()
+          };
+          
+          await storage.updateOrder(existingOrder.id, updatedOrder);
+          console.log(`✅ Updated order ${orderData.order_number} status: ${orderData.fulfillment_status}`);
+          
+          res.status(200).json({ success: true, message: 'Order update processed' });
+        } else {
+          console.log(`⚠️ Order ${orderData.order_number} (${shipHeroOrderId}) not found in database`);
+          res.status(404).json({ error: 'Order not found' });
+        }
+      } else {
+        console.log(`⚠️ Unexpected webhook resource type: ${webhookData.resource_type}`);
+        res.status(400).json({ error: 'Unexpected webhook type' });
+      }
+      
+    } catch (error) {
+      console.error('❌ ShipHero order webhook error:', error);
+      res.status(500).json({ error: 'Failed to process order webhook' });
+    }
+  });
+
+  // Setup ShipHero Webhooks endpoint
+  app.post('/api/setup-webhooks', isAuthenticated, async (req, res) => {
+    try {
+      console.log('🔗 Setting up ShipHero webhooks');
+      const brandId = 'dce4813e-aeb7-41fe-bb00-a36e314288f3'; // Mabē brand
+      const brand = await storage.getBrand(brandId);
+      
+      if (brand && brand.shipHeroApiKey && brand.shipHeroPassword) {
+        const credentials = { username: brand.shipHeroApiKey, password: brand.shipHeroPassword };
+        const baseUrl = `https://${req.hostname}`;
+        
+        // List existing webhooks first
+        const existingWebhooks = await shipHeroWebhookService.listWebhooks(credentials);
+        console.log(`📋 Found ${existingWebhooks.length} existing webhooks:`, existingWebhooks);
+        
+        // Setup webhooks
+        await shipHeroWebhookService.setupWebhooksForBrand(credentials, baseUrl);
+        
+        res.json({ 
+          success: true, 
+          message: 'Webhooks setup completed',
+          existingWebhooks: existingWebhooks.length,
+          baseUrl
+        });
+      } else {
+        res.status(400).json({ error: 'Brand not found or missing ShipHero API credentials' });
+      }
+    } catch (error) {
+      console.error('Webhook setup failed:', error);
+      res.status(500).json({ error: 'Failed to setup webhooks' });
+    }
+  });
+
+  // List ShipHero Webhooks endpoint
+  app.get('/api/webhooks/list', isAuthenticated, async (req, res) => {
+    try {
+      const brandId = 'dce4813e-aeb7-41fe-bb00-a36e314288f3'; // Mabē brand
+      const brand = await storage.getBrand(brandId);
+      
+      if (brand && brand.shipHeroApiKey && brand.shipHeroPassword) {
+        const credentials = { username: brand.shipHeroApiKey, password: brand.shipHeroPassword };
+        const webhooks = await shipHeroWebhookService.listWebhooks(credentials);
+        
+        res.json({ 
+          success: true, 
+          webhooks,
+          count: webhooks.length
+        });
+      } else {
+        res.status(400).json({ error: 'Brand not found or missing ShipHero API credentials' });
+      }
+    } catch (error) {
+      console.error('List webhooks failed:', error);
+      res.status(500).json({ error: 'Failed to list webhooks' });
     }
   });
 

@@ -289,7 +289,7 @@ export class BackgroundJobService {
         const existingOrder = await this.storage.getOrderByShipHeroId?.(shOrder.id);
         
         if (!existingOrder) {
-          // Create new order with comprehensive data
+          // Create new order with comprehensive ShipHero data
           const orderData = {
             orderNumber: shOrder.order_number,
             brandId: brand.id,
@@ -298,6 +298,33 @@ export class BackgroundJobService {
             shippingAddress: shOrder.shipping_address,
             status: mapShipHeroStatus(shOrder.fulfillment_status),
             totalAmount: shOrder.total_price || '0.00',
+            
+            // All ShipHero-specific fields
+            shipHeroOrderId: shOrder.id,
+            shipHeroLegacyId: shOrder.legacy_id,
+            shopName: shOrder.shop_name,
+            fulfillmentStatus: shOrder.fulfillment_status,
+            subtotal: shOrder.subtotal || (parseFloat(shOrder.total_price || '0') * 0.9).toString(), // Estimate if not provided
+            totalTax: shOrder.total_tax || '0.00',
+            totalShipping: shOrder.total_shipping || '0.00', 
+            totalDiscounts: shOrder.total_discounts || '0.00',
+            profile: shOrder.profile || null,
+            holdUntilDate: shOrder.hold_until_date ? new Date(shOrder.hold_until_date) : null,
+            requiredShipDate: shOrder.required_ship_date ? new Date(shOrder.required_ship_date) : null,
+            priorityFlag: shOrder.priority_flag || false,
+            tags: shOrder.tags || [],
+            
+            // Additional tracking fields
+            orderSource: shOrder.shop_name || 'unknown', // Use shop_name as source
+            orderCurrency: 'USD', // Default to USD, could be extracted from order data
+            warehouse: shOrder.warehouse || null,
+            orderDate: new Date(shOrder.order_date),
+            
+            // Calculate total quantity from line items
+            totalQuantity: shOrder.line_items?.reduce((total: number, item: any) => total + (item.quantity || 0), 0) || 0,
+            backorderQuantity: shOrder.total_backorder_quantity || 0,
+            
+            // Line items mapping
             orderItems: shOrder.line_items?.map((item: any) => ({
               id: item.id,
               sku: item.sku,
@@ -309,14 +336,15 @@ export class BackgroundJobService {
               price: item.price || '0.00',
               fulfillmentStatus: item.fulfillment_status || 'pending'
             })) || [],
-            shipHeroOrderId: shOrder.id,
-            backorderQuantity: shOrder.total_backorder_quantity || 0,
+            
+            // Timestamp tracking
             orderCreatedAt: new Date(shOrder.order_date),
-            allocatedAt: shOrder.allocated_date ? new Date(shOrder.allocated_date) : null,
-            shippedAt: shOrder.shipped_date ? new Date(shOrder.shipped_date) : null,
-            priorityFlag: shOrder.priority_flag || false,
-            tags: shOrder.tags || [],
-
+            allocatedAt: null, // Will be set by allocation webhook
+            packedAt: null,
+            shippedAt: null,
+            deliveredAt: null,
+            cancelledAt: null,
+            shipHeroUpdatedAt: shOrder.updated_at ? new Date(shOrder.updated_at) : null,
             lastSyncAt: new Date()
           };
           

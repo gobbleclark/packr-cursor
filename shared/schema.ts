@@ -90,15 +90,51 @@ export const orders = pgTable("orders", {
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }),
   shippingMethod: varchar("shipping_method"),
   trackingNumber: varchar("tracking_number"),
+  
+  // ShipHero-specific fields
   shipHeroOrderId: varchar("ship_hero_order_id").unique(),
-  trackstarOrderId: varchar("trackstar_order_id").unique(),
-  backorderQuantity: integer("backorder_quantity").default(0), // Track backorder quantity for late order tool
+  shipHeroLegacyId: varchar("ship_hero_legacy_id"), // ShipHero legacy_id field
+  shopName: varchar("shop_name"), // ShipHero shop_name field
+  fulfillmentStatus: varchar("fulfillment_status"), // ShipHero fulfillment_status
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }), // Order subtotal before tax/shipping
+  totalTax: decimal("total_tax", { precision: 10, scale: 2 }), // Tax amount
+  totalShipping: decimal("total_shipping", { precision: 10, scale: 2 }), // Shipping cost
+  totalDiscounts: decimal("total_discounts", { precision: 10, scale: 2 }), // Total discounts
+  profile: jsonb("profile"), // ShipHero customer profile data
+  holdUntilDate: timestamp("hold_until_date"), // ShipHero hold_until_date
+  requiredShipDate: timestamp("required_ship_date"), // ShipHero required_ship_date
   priorityFlag: boolean("priority_flag").default(false),
   tags: jsonb("tags").default('[]'),
+  
+  // Additional ShipHero tracking fields
+  orderSource: varchar("order_source"), // Where the order originated (Shopify, WooCommerce, etc.)
+  orderCurrency: varchar("order_currency").default('USD'), // Order currency
+  warehouse: varchar("warehouse"), // Primary warehouse for fulfillment
+  shippingCarrier: varchar("shipping_carrier"), // Carrier used for shipping
+  shippingService: varchar("shipping_service"), // Specific shipping service
+  insuranceValue: decimal("insurance_value", { precision: 10, scale: 2 }), // Insurance amount
+  fraudHold: boolean("fraud_hold").default(false), // If order is on fraud hold
+  addressValidated: boolean("address_validated").default(false), // If address was validated
+  
+  // External system IDs
+  trackstarOrderId: varchar("trackstar_order_id").unique(),
+  externalOrderId: varchar("external_order_id"), // Original order ID from source system
+  
+  // Quantity tracking for analytics
+  backorderQuantity: integer("backorder_quantity").default(0), // Track backorder quantity for late order tool
+  totalQuantity: integer("total_quantity").default(0), // Total items in order
+  
   // Allocation tracking timestamps for late order analysis
   orderCreatedAt: timestamp("order_created_at"), // When order was created in ShipHero
-  allocatedAt: timestamp("allocated_at"), // When order was allocated in warehouse
+  orderDate: timestamp("order_date"), // ShipHero order_date field
+  allocatedAt: timestamp("allocated_at"), // When order was allocated in warehouse - updated by webhook
+  packedAt: timestamp("packed_at"), // When order was packed
   shippedAt: timestamp("shipped_at"), // When order was shipped
+  deliveredAt: timestamp("delivered_at"), // When order was delivered
+  cancelledAt: timestamp("cancelled_at"), // When order was cancelled
+  
+  // ShipHero sync tracking
+  shipHeroUpdatedAt: timestamp("ship_hero_updated_at"), // ShipHero updated_at field
   lastSyncAt: timestamp("last_sync_at"),
 
   createdAt: timestamp("created_at").defaultNow(),

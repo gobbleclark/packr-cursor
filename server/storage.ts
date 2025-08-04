@@ -152,6 +152,20 @@ export class DatabaseStorage implements IStorage {
     return order;
   }
 
+  async updateOrderItemAllocation(orderId: string, sku: string, allocationData: { quantityAllocated: number, fulfillmentStatus: string }): Promise<void> {
+    await db
+      .update(orderItems)
+      .set({
+        quantityAllocated: allocationData.quantityAllocated,
+        fulfillmentStatus: allocationData.fulfillmentStatus,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(orderItems.orderId, orderId),
+        eq(orderItems.sku, sku)
+      ));
+  }
+
   async updateProduct(id: string, productData: any): Promise<Product> {
     const [product] = await db.update(products).set(productData).where(eq(products.id, id)).returning();
     return product;

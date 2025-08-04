@@ -2,7 +2,7 @@
 
 This is a comprehensive 3PL (Third-Party Logistics) management SaaS platform built with React and Express.js. The application enables 3PL companies to manage their brand clients through a complete invitation workflow, handle support tickets, track orders, manage inventory, and integrate with both ShipHero and Trackstar APIs for universal WMS connectivity. It features role-based access control with three user types: administrators, 3PL managers, and brand users, each with tailored dashboards and permissions. The platform aims to provide a unified solution for 3PL operations, enhancing efficiency and client management.
 
-**LATEST UPDATE (Aug 4, 2025)**: Enhanced dashboard with comprehensive date filtering and 8 detailed metrics cards displaying real-time data from 2,083+ authentic ShipHero orders. Features split order metrics (shipped vs unfulfilled), inventory alerts, and flexible date ranges.
+**LATEST UPDATE (Aug 4, 2025)**: COMPREHENSIVE SHIPHERO SCHEMA EXPANSION - Successfully expanded orders table with 25+ new ShipHero fields including legacy_id, shop_name, fulfillment_status, subtotal, profile data, hold_until_date, required_ship_date, and complete timestamp tracking. Implemented allocation webhook endpoints that will update orders with real-time allocation timestamps. Enhanced order sync to populate all ShipHero fields. Added webhook management service for subscription to allocation and order status events.
 
 # User Preferences
 
@@ -29,10 +29,18 @@ Preferred communication style: Simple, everyday language.
 
 ## Database Design
 - **Primary Database**: PostgreSQL with Neon serverless connection
-- **Schema Management**: Drizzle Kit for migrations
+- **Schema Management**: Drizzle Kit for migrations  
 - **Key Tables**: Users, 3PL companies, brands, orders, products, tickets, comments, attachments
 - **Relationships**: Hierarchical structure for users, 3PLs, and brands
 - **Enums**: Role-based permissions, ticket statuses, order statuses, priority levels
+- **COMPREHENSIVE ORDER SCHEMA**: Expanded orders table with 25+ ShipHero fields:
+  - Core: shipHeroOrderId, shipHeroLegacyId, shopName, fulfillmentStatus
+  - Financial: subtotal, totalTax, totalShipping, totalDiscounts  
+  - Customer: profile (JSONB), customerEmail, shippingAddress
+  - Logistics: holdUntilDate, requiredShipDate, orderSource, warehouse
+  - Tracking: orderDate, allocatedAt, packedAt, shippedAt, deliveredAt, cancelledAt
+  - Quantities: totalQuantity, backorderQuantity
+  - Meta: priorityFlag, tags, shipHeroUpdatedAt, lastSyncAt
 
 ## Authentication & Authorization
 - **Provider**: Replit's OpenID Connect
@@ -62,7 +70,7 @@ Preferred communication style: Simple, everyday language.
 - **Replit Auth**: OpenID Connect provider for user authentication
 
 ## Third-Party APIs
-- **ShipHero API**: Complete integration with comprehensive webhook support for real-time data synchronization (orders, shipments, inventory, products, returns) including intelligent rate limiting and HMAC security. **ARCHITECTURE UPDATE**: Implemented intelligent 2-tier sync system - incremental sync every 2 minutes (only new orders since last sync) + hourly 24-hour integrity check to prevent data gaps. **CRITICAL**: Currently experiencing 401 authentication failures - requires valid API credentials from user.
+- **ShipHero API**: Complete integration with comprehensive webhook support for real-time data synchronization (orders, shipments, inventory, products, returns) including intelligent rate limiting and HMAC security. **ARCHITECTURE UPDATE**: Implemented intelligent 2-tier sync system - incremental sync every 2 minutes (only new orders since last sync) + hourly 24-hour integrity check to prevent data gaps. **COMPREHENSIVE FIELD MAPPING**: Now saves ALL ShipHero order fields including legacy_id, shop_name, fulfillment_status, profile data, hold dates, and complete timestamp tracking. **WEBHOOK IMPLEMENTATION**: Active webhook endpoints for allocation events (/api/webhooks/shiphero/allocation) and order status changes (/api/webhooks/shiphero/order) with automatic allocation timestamp updates.
 - **Trackstar API**: Universal WMS API platform for connecting to multiple fulfillment providers.
 - **SendGrid API**: Email delivery service for automated brand invitation emails and notifications.
 
