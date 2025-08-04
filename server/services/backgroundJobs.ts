@@ -184,10 +184,7 @@ export class BackgroundJobService {
             shippedAt: shOrder.shipped_date ? new Date(shOrder.shipped_date) : null,
             priorityFlag: shOrder.priority_flag || false,
             tags: shOrder.tags || [],
-            flaggedOperatorHold: shOrder.flagged_operator_hold || false,
-            flaggedPaymentHold: shOrder.flagged_payment_hold || false,
-            flaggedAddressHold: shOrder.flagged_address_hold || false,
-            flaggedFraudHold: shOrder.flagged_fraud_hold || false,
+
             lastSyncAt: new Date()
           };
           
@@ -199,15 +196,11 @@ export class BackgroundJobService {
           const currentStatus = shOrder.fulfillment_status || 'pending';
           const currentBackorder = shOrder.total_backorder_quantity || 0;
           
-          // Check for any changes in key fields including critical hold flags
+          // Check for any changes in key fields
           const hasChanges = (
             existingOrder.status !== currentStatus ||
             existingOrder.totalAmount !== shOrder.total_price ||
-            existingOrder.backorderQuantity !== currentBackorder ||
-            (existingOrder.flaggedOperatorHold || false) !== (shOrder.flagged_operator_hold || false) ||
-            (existingOrder.flaggedPaymentHold || false) !== (shOrder.flagged_payment_hold || false) ||
-            (existingOrder.flaggedAddressHold || false) !== (shOrder.flagged_address_hold || false) ||
-            (existingOrder.flaggedFraudHold || false) !== (shOrder.flagged_fraud_hold || false)
+            existingOrder.backorderQuantity !== currentBackorder
           );
           
           // Simple line item change detection
@@ -219,10 +212,7 @@ export class BackgroundJobService {
               status: currentStatus,
               totalAmount: shOrder.total_price || existingOrder.totalAmount,
               backorderQuantity: currentBackorder,
-              flaggedOperatorHold: shOrder.flagged_operator_hold || false,
-              flaggedPaymentHold: shOrder.flagged_payment_hold || false,
-              flaggedAddressHold: shOrder.flagged_address_hold || false,
-              flaggedFraudHold: shOrder.flagged_fraud_hold || false,
+
               orderItems: shOrder.line_items?.map((item: any) => ({
                 id: item.id,
                 sku: item.sku,
@@ -241,10 +231,7 @@ export class BackgroundJobService {
             updatedOrdersCount++;
             const changeTypes = [];
             if (existingOrder.status !== currentStatus) changeTypes.push('status');
-            if ((existingOrder.flaggedOperatorHold || false) !== (shOrder.flagged_operator_hold || false)) changeTypes.push('operator-hold');
-            if ((existingOrder.flaggedPaymentHold || false) !== (shOrder.flagged_payment_hold || false)) changeTypes.push('payment-hold');
-            if ((existingOrder.flaggedAddressHold || false) !== (shOrder.flagged_address_hold || false)) changeTypes.push('address-hold');
-            if ((existingOrder.flaggedFraudHold || false) !== (shOrder.flagged_fraud_hold || false)) changeTypes.push('fraud-hold');
+
             if (hasLineItemChanges) changeTypes.push('line-items');
             
             console.log(`🔄 Updated order ${shOrder.order_number} - Changes: ${changeTypes.join(', ')}`);
