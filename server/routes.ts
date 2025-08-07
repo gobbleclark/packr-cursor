@@ -24,19 +24,22 @@ import { sendBrandInvitationEmail } from "./services/emailService";
 import { nanoid } from "nanoid";
 
 // Helper function to map ShipHero status to our enum
+// CRITICAL: ShipHero logic - ALL shipped orders should be "fulfilled"
 function mapShipHeroStatus(shipHeroStatus: string): string {
   const statusMap: { [key: string]: string } = {
     'fulfilled': 'fulfilled',
-    'unfulfilled': 'unfulfilled', 
+    'shipped': 'fulfilled',  // ShipHero shipped = fulfilled
+    'delivered': 'fulfilled', // ShipHero delivered = fulfilled
+    'unfulfilled': 'pending', 
     'partially_fulfilled': 'partially_fulfilled',
     'pending': 'pending',
-    'processing': 'processing',
-    'shipped': 'shipped',
-    'delivered': 'delivered',
+    'processing': 'pending',
     'cancelled': 'cancelled',
-    'allocated': 'allocated',
+    'allocated': 'pending',
     'on_hold': 'on_hold',
-    'Urgent': 'pending', // Map unknown statuses to pending
+    'Urgent': 'pending',
+    'Amazon FBM': 'pending',
+    'canceled': 'cancelled',
   };
   
   return statusMap[shipHeroStatus] || 'pending';
