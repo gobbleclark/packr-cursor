@@ -494,13 +494,33 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Add date filtering
+    // Add date filtering for order creation (used for total orders)
     const dateFilter = [];
     if (dateRange?.start) {
       dateFilter.push(gte(orders.orderCreatedAt, dateRange.start));
     }
     if (dateRange?.end) {
       dateFilter.push(lte(orders.orderCreatedAt, dateRange.end));
+    }
+
+    // Add date filtering for fulfilled orders based on ship date
+    // Use shippedAt if available, otherwise fall back to orderCreatedAt
+    const fulfilledDateFilter = [];
+    if (dateRange?.start) {
+      fulfilledDateFilter.push(
+        or(
+          and(isNotNull(orders.shippedAt), gte(orders.shippedAt, dateRange.start)),
+          and(isNull(orders.shippedAt), gte(orders.orderCreatedAt, dateRange.start))
+        )
+      );
+    }
+    if (dateRange?.end) {
+      fulfilledDateFilter.push(
+        or(
+          and(isNotNull(orders.shippedAt), lte(orders.shippedAt, dateRange.end)),
+          and(isNull(orders.shippedAt), lte(orders.orderCreatedAt, dateRange.end))
+        )
+      );
     }
 
     const orderFilters = [brandFilter, ...dateFilter].filter(Boolean);
@@ -512,13 +532,13 @@ export class DatabaseStorage implements IStorage {
       .from(orders)
       .where(finalOrderFilter);
 
-    // Fulfilled orders (fulfilled, shipped, delivered)
-    let fulfilledWhere = or(eq(orders.status, 'fulfilled'), eq(orders.status, 'shipped'), eq(orders.status, 'delivered'));
+    // Fulfilled orders - filter by ship/delivery date, not order creation date
+    let fulfilledWhere = eq(orders.status, 'fulfilled');
     if (brandFilter) {
       fulfilledWhere = and(brandFilter, fulfilledWhere);
     }
-    if (dateFilter.length > 0) {
-      fulfilledWhere = and(and(...dateFilter), fulfilledWhere);
+    if (fulfilledDateFilter.length > 0) {
+      fulfilledWhere = and(and(...fulfilledDateFilter), fulfilledWhere);
     }
     const [fulfilledOrdersResult] = await db
       .select({ count: count() })
