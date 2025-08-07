@@ -183,11 +183,38 @@ export class BackgroundJobService {
           const orderData = {
             orderNumber: order.order_number,
             brandId: brand.id,
-            customerName: order.profile?.name || null,
+            customerName: order.profile?.name || `${order.shipping_address?.first_name || ''} ${order.shipping_address?.last_name || ''}`.trim() || null,
             customerEmail: order.email || null,
             shippingAddress: order.shipping_address || {},
             status: mappedStatus,
             totalAmount: order.total_price || "0.00",
+            shipHeroOrderId: order.id,
+            shipHeroLegacyId: order.legacy_id,
+            shopName: order.shop_name,
+            fulfillmentStatus: order.fulfillment_status,
+            subtotal: order.subtotal || "0.00",
+            totalTax: order.total_tax || "0.00", 
+            totalShipping: order.total_shipping || "0.00",
+            totalDiscounts: order.total_discounts || "0.00",
+            profile: order.profile || {},
+            holdUntilDate: order.hold_until_date ? new Date(order.hold_until_date) : null,
+            requiredShipDate: order.required_ship_date ? new Date(order.required_ship_date) : null,
+            priorityFlag: order.priority_flag || false,
+            tags: order.tags || [],
+            orderSource: order.order_source || order.shop_name,
+            orderCurrency: order.currency || 'USD',
+            warehouse: order.warehouse || null,
+            orderDate: order.order_date ? new Date(order.order_date) : new Date(),
+            totalQuantity: order.line_items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) || 0,
+            backorderQuantity: order.total_backorder_quantity || 0,
+            orderCreatedAt: new Date(order.order_date || new Date()),
+            allocatedAt: order.allocated_at ? new Date(order.allocated_at) : null,
+            packedAt: order.packed_at ? new Date(order.packed_at) : null,
+            shippedAt: order.shipped_at ? new Date(order.shipped_at) : null,
+            deliveredAt: order.delivered_at ? new Date(order.delivered_at) : null,
+            cancelledAt: order.cancelled_at ? new Date(order.cancelled_at) : null,
+            shipHeroUpdatedAt: order.updated_at ? new Date(order.updated_at) : new Date(),
+            lastSyncAt: new Date(),
             orderItems: order.line_items?.map((item: any) => ({
               id: item.id,
               sku: item.sku,
@@ -195,18 +222,10 @@ export class BackgroundJobService {
               quantityAllocated: item.quantity_allocated || 0,
               quantityShipped: item.quantity_shipped || 0,
               backorder_quantity: item.backorder_quantity || 0,
-              productName: item.title,
+              productName: item.product_name || item.title,
               price: item.price,
               fulfillmentStatus: item.fulfillment_status || 'pending'
-            })) || [],
-            shipHeroOrderId: order.id,
-            backorderQuantity: order.total_backorder_quantity || 0,
-            orderCreatedAt: new Date(order.order_date),
-            allocatedAt: order.allocated_at ? new Date(order.allocated_at) : null,
-            shippedAt: order.shipped_at ? new Date(order.shipped_at) : null,
-            priorityFlag: order.priority_flag || false,
-            tags: order.tags || [],
-            lastSyncAt: new Date()
+            })) || []
           };
           
           await this.storage.createOrder(orderData);
@@ -307,21 +326,28 @@ export class BackgroundJobService {
             shipHeroLegacyId: shOrder.legacy_id,
             shopName: shOrder.shop_name,
             fulfillmentStatus: shOrder.fulfillment_status,
-            subtotal: shOrder.subtotal || (parseFloat(shOrder.total_price || '0') * 0.9).toString(), // Estimate if not provided
-            totalTax: shOrder.total_tax || '0.00',
-            totalShipping: shOrder.total_shipping || '0.00', 
-            totalDiscounts: shOrder.total_discounts || '0.00',
-            profile: shOrder.profile || null,
+            subtotal: shOrder.subtotal || "0.00",
+            totalTax: shOrder.total_tax || "0.00", 
+            totalShipping: shOrder.total_shipping || "0.00",
+            totalDiscounts: shOrder.total_discounts || "0.00",
+            profile: shOrder.profile || {},
             holdUntilDate: shOrder.hold_until_date ? new Date(shOrder.hold_until_date) : null,
             requiredShipDate: shOrder.required_ship_date ? new Date(shOrder.required_ship_date) : null,
             priorityFlag: shOrder.priority_flag || false,
             tags: shOrder.tags || [],
-            
-            // Additional tracking fields
-            orderSource: shOrder.shop_name || 'unknown', // Use shop_name as source
-            orderCurrency: 'USD', // Default to USD, could be extracted from order data
+            orderSource: shOrder.order_source || shOrder.shop_name,
+            orderCurrency: shOrder.currency || 'USD',
             warehouse: shOrder.warehouse || null,
-            orderDate: new Date(shOrder.order_date),
+            orderDate: shOrder.order_date ? new Date(shOrder.order_date) : new Date(),
+            
+            // CRITICAL: Timestamp fields for proper date filtering
+            allocatedAt: shOrder.allocated_at ? new Date(shOrder.allocated_at) : null,
+            packedAt: shOrder.packed_at ? new Date(shOrder.packed_at) : null,
+            shippedAt: shOrder.shipped_at ? new Date(shOrder.shipped_at) : null,
+            deliveredAt: shOrder.delivered_at ? new Date(shOrder.delivered_at) : null,
+            cancelledAt: shOrder.cancelled_at ? new Date(shOrder.cancelled_at) : null,
+            shipHeroUpdatedAt: shOrder.updated_at ? new Date(shOrder.updated_at) : new Date(),
+            lastSyncAt: new Date(),
             
             // Calculate total quantity from line items
             totalQuantity: shOrder.line_items?.reduce((total: number, item: any) => total + (item.quantity || 0), 0) || 0,
