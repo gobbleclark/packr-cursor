@@ -19,6 +19,7 @@ import { createShipHeroIntegrationRoutes } from "./routes/shipHeroIntegration";
 import { createTrackstarRoutes } from "./routes/trackstarIntegration";
 import trackstarConnectionRoutes from "./routes/trackstarConnection";
 import { TrackstarService } from "./services/trackstar";
+import { TrackstarSyncService } from "./services/trackstarSync";
 import { BackgroundJobService } from "./services/backgroundJobs";
 import { RealApiSyncService } from "./services/realApiSync";
 // Removed old shipHeroApi - using only shipHeroApiFixed
@@ -66,11 +67,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize services
   // Using shipHeroApiFixed for all ShipHero API calls
   const trackstarService = new TrackstarService();
+  const trackstarSyncService = new TrackstarSyncService();
   const backgroundJobService = new BackgroundJobService(storage);
   
   // Start background jobs
   backgroundJobService.startOrderSync();
   backgroundJobService.startInventorySync();
+  
+  // Start Trackstar sync service
+  trackstarSyncService.startPeriodicSync();
 
   // Mount comprehensive ShipHero integration routes (legacy)
   app.use('/api/shiphero', createShipHeroIntegrationRoutes(storage));

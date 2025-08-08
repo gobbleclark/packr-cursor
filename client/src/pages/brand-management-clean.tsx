@@ -284,17 +284,33 @@ export default function BrandManagementClean() {
 
   const syncDataMutation = useMutation({
     mutationFn: async (brandId: string) => {
-      const response = await apiRequest('POST', `/api/brands/${brandId}/sync`);
+      const brand = brands.find(b => b.id === brandId);
+      const hasTrackstar = brand?.trackstarApiKey;
+      
+      // Use Trackstar sync for brands with Trackstar integration
+      const endpoint = hasTrackstar ? `/api/trackstar/sync/${brandId}` : `/api/brands/${brandId}/sync`;
+      
+      const response = await apiRequest('POST', endpoint);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       return response.json();
     },
-    onSuccess: (data) => {
-      toast({
-        title: "Sync Complete",
-        description: `Synced ${data.results.orders} orders, ${data.results.products} products`,
-      });
+    onSuccess: (data, brandId) => {
+      const brand = brands.find(b => b.id === brandId);
+      const integrationType = brand?.trackstarApiKey ? 'Trackstar' : 'Legacy';
+      
+      if (data.results) {
+        toast({
+          title: "Sync Complete",
+          description: `${integrationType}: Synced ${data.results.orders || 0} orders, ${data.results.products || 0} products`,
+        });
+      } else {
+        toast({
+          title: "Sync Complete",
+          description: `${integrationType} data synchronization completed successfully. Sample data has been added for testing.`,
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
     },
     onError: (error) => {
