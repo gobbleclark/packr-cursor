@@ -370,17 +370,28 @@ export default function BrandManagementClean() {
 
   const deleteIntegrationMutation = useMutation({
     mutationFn: async (brandId: string) => {
-      const response = await apiRequest('DELETE', `/api/brands/${brandId}/integrations`);
+      // Check if it's a Trackstar integration first
+      const brand = brands.find(b => b.id === brandId);
+      const hasTrackstar = brand?.trackstarApiKey;
+      
+      const endpoint = hasTrackstar 
+        ? `/api/trackstar/disconnect/${brandId}` 
+        : `/api/brands/${brandId}/integrations`;
+        
+      const response = await apiRequest('DELETE', endpoint);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, brandId) => {
       queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
+      const brand = brands.find(b => b.id === brandId);
+      const integrationType = brand?.trackstarApiKey ? 'Trackstar' : 'Legacy';
+      
       toast({
         title: "Integration Removed",
-        description: "Integration has been deleted successfully.",
+        description: `${integrationType} integration has been disconnected successfully.`,
       });
     },
     onError: (error) => {
