@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { storage } from '../storage.js';
+import { isAuthenticated } from '../replitAuth.js';
 
 const router = Router();
 
 // Connect brand to Trackstar with selected WMS provider
-router.post('/connect', async (req, res) => {
+router.post('/connect', isAuthenticated, async (req, res) => {
   try {
     const { brandId, wmsProvider, apiKey } = req.body;
 
@@ -15,7 +16,7 @@ router.post('/connect', async (req, res) => {
     }
 
     // Update brand with Trackstar connection
-    const brand = await storage.getBrandById(brandId);
+    const brand = await storage.getBrand(brandId);
     if (!brand) {
       return res.status(404).json({ message: 'Brand not found' });
     }
@@ -43,11 +44,11 @@ router.post('/connect', async (req, res) => {
 });
 
 // Get Trackstar connection status for a brand
-router.get('/status/:brandId', async (req, res) => {
+router.get('/status/:brandId', isAuthenticated, async (req, res) => {
   try {
     const { brandId } = req.params;
     
-    const brand = await storage.getBrandById(brandId);
+    const brand = await storage.getBrand(brandId);
     if (!brand) {
       return res.status(404).json({ message: 'Brand not found' });
     }
@@ -69,11 +70,11 @@ router.get('/status/:brandId', async (req, res) => {
 });
 
 // Disconnect Trackstar integration
-router.delete('/disconnect/:brandId', async (req, res) => {
+router.delete('/disconnect/:brandId', isAuthenticated, async (req, res) => {
   try {
     const { brandId } = req.params;
     
-    const brand = await storage.getBrandById(brandId);
+    const brand = await storage.getBrand(brandId);
     if (!brand) {
       return res.status(404).json({ message: 'Brand not found' });
     }
