@@ -19,6 +19,7 @@ interface ShipHeroTokenResponse {
 interface ShipHeroOrder {
   id: string;
   order_number: string;
+  legacy_id?: string;
   shop_name: string;
   fulfillment_status: string;
   order_date: string;
@@ -26,8 +27,9 @@ interface ShipHeroOrder {
   subtotal: string;
   total_discounts: string;
   total_tax: string;
+  total_shipping: string;
   email: string;
-  profile: {
+  profile?: {
     name: string;
   };
   shipping_address: {
@@ -41,6 +43,31 @@ interface ShipHeroOrder {
     zip: string;
     phone: string;
   };
+  billing_address?: {
+    first_name: string;
+    last_name: string;
+    address1: string;
+    address2: string;
+    city: string;
+    state: string;
+    country: string;
+    zip: string;
+    phone: string;
+  };
+  hold_until_date?: string;
+  required_ship_date?: string;
+  priority_flag?: boolean;
+  tags?: string[];
+  order_source?: string;
+  currency?: string;
+  warehouse?: string;
+  total_backorder_quantity?: number;
+  allocated_at?: string;
+  packed_at?: string;
+  shipped_at?: string;
+  delivered_at?: string;
+  cancelled_at?: string;
+  updated_at?: string;
   line_items: Array<{
     id: string;
     title: string;
@@ -160,7 +187,7 @@ export class ShipHeroApiService {
   /**
    * Make GraphQL request using Bearer token authentication
    */
-  private async makeGraphQLRequest(query: string, variables: any, credentials: ShipHeroCredentials) {
+  private async makeGraphQLRequest(query: string, variables: any, credentials: ShipHeroCredentials): Promise<any> {
     const accessToken = await this.getAccessToken(credentials);
     
     const response = await fetch(`${this.baseUrl}/graphql`, {

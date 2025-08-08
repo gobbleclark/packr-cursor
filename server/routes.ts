@@ -15,7 +15,7 @@ import {
   insertProductSchema 
 } from "@shared/schema";
 import { shipHeroApiFixed } from "./services/shipHeroApiFixed";
-import { shipHeroWebhookService } from "./services/shipHeroWebhooks";
+import { createShipHeroIntegrationRoutes } from "./routes/shipHeroIntegration";
 import { TrackstarService } from "./services/trackstar";
 import { BackgroundJobService } from "./services/backgroundJobs";
 import { RealApiSyncService } from "./services/realApiSync";
@@ -69,6 +69,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Start background jobs
   backgroundJobService.startOrderSync();
   backgroundJobService.startInventorySync();
+
+  // Mount comprehensive ShipHero integration routes
+  app.use('/api/shiphero', createShipHeroIntegrationRoutes(storage));
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: AuthenticatedRequest, res) => {

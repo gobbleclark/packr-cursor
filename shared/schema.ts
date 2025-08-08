@@ -303,6 +303,47 @@ export const attachments = pgTable("attachments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Purchase Orders - New addition for ShipHero integration
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  brandId: varchar("brand_id").notNull().references(() => brands.id),
+  poNumber: varchar("po_number").notNull().unique(),
+  shipHeroPoId: varchar("ship_hero_po_id").unique(),
+  supplierName: varchar("supplier_name").notNull(),
+  supplierEmail: varchar("supplier_email"),
+  warehouse: varchar("warehouse"),
+  status: varchar("status").default('draft'), // draft, pending, receiving, received, cancelled
+  expectedDate: timestamp("expected_date"),
+  receivedAt: timestamp("received_at"),
+  cancelledAt: timestamp("cancelled_at"),
+  notes: text("notes"),
+  totalValue: decimal("total_value", { precision: 10, scale: 2 }),
+  shipHeroUpdatedAt: timestamp("ship_hero_updated_at"),
+  lastSyncAt: timestamp("last_sync_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Purchase Order Line Items
+export const purchaseOrderItems = pgTable("purchase_order_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  poId: varchar("po_id").notNull().references(() => purchaseOrders.id, { onDelete: 'cascade' }),
+  shipHeroLineItemId: varchar("ship_hero_line_item_id"),
+  sku: varchar("sku").notNull(),
+  productName: varchar("product_name").notNull(),
+  quantity: integer("quantity").notNull(),
+  quantityReceived: integer("quantity_received").default(0),
+  unitCost: decimal("unit_cost", { precision: 10, scale: 4 }),
+  totalCost: decimal("total_cost", { precision: 10, scale: 2 }),
+  expectedDate: timestamp("expected_date"),
+  status: varchar("status").default('pending'), // pending, receiving, received, cancelled
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("po_items_po_id_idx").on(table.poId),
+  index("po_items_sku_idx").on(table.sku),
+]);
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   threePL: one(threePLs, {
@@ -334,6 +375,7 @@ export const brandsRelations = relations(brands, ({ one, many }) => ({
   orders: many(orders),
   products: many(products),
   tickets: many(tickets),
+  purchaseOrders: many(purchaseOrders),
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
@@ -426,6 +468,21 @@ export const attachmentsRelations = relations(attachments, ({ one }) => ({
   }),
 }));
 
+export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many }) => ({
+  brand: one(brands, {
+    fields: [purchaseOrders.brandId],
+    references: [brands.id],
+  }),
+  items: many(purchaseOrderItems),
+}));
+
+export const purchaseOrderItemsRelations = relations(purchaseOrderItems, ({ one }) => ({
+  purchaseOrder: one(purchaseOrders, {
+    fields: [purchaseOrderItems.poId],
+    references: [purchaseOrders.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -469,6 +526,18 @@ export const insertProductWarehouseSchema = createInsertSchema(productWarehouse)
 });
 
 export const insertTicketSchema = createInsertSchema(tickets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderItems).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

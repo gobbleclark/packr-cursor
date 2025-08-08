@@ -265,7 +265,7 @@ export class BackgroundJobService {
       
       console.log(`📦 Fetching new orders for ${brand.name} since ${fromDate.toISOString()}...`);
       
-      const orders = await shipHeroApiFixed.getOrders(credentials, fromDate);
+      const orders = await shipHeroApiFixed.getOrders(credentials, fromDate, new Date());
       console.log(`📊 Found ${orders.length} new orders from ShipHero for ${brand.name}`);
       
       const result = await this.processOrderBatch(brand, orders, 'incremental');
@@ -288,7 +288,7 @@ export class BackgroundJobService {
       
       console.log(`🔍 Running 24-hour integrity check for ${brand.name} since ${fromDate.toISOString()}...`);
       
-      const orders = await shipHeroApiFixed.getOrders(credentials, fromDate);
+      const orders = await shipHeroApiFixed.getOrders(credentials, fromDate, new Date());
       console.log(`📊 Found ${orders.length} orders in 24-hour window for ${brand.name}`);
       
       const result = await this.processOrderBatch(brand, orders, 'integrity-check');
