@@ -569,13 +569,16 @@ export default function BrandManagement() {
                   {brands.map((brand) => (
                     <div
                       key={brand.id}
-                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg bg-white"
+                      className="border rounded-lg bg-white p-4"
                     >
-                      <div className="flex-1 mb-4 sm:mb-0">
-                        <div className="flex items-center gap-3 mb-2">
+                      {/* Brand Info */}
+                      <div className="mb-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                           <h3 className="text-lg font-semibold text-gray-900">{brand.name}</h3>
-                          {getBrandStatusBadge(brand)}
-                          {getIntegrationStatus(brand)}
+                          <div className="flex items-center gap-2">
+                            {getBrandStatusBadge(brand)}
+                            {getIntegrationStatus(brand)}
+                          </div>
                         </div>
                         <p className="text-sm text-gray-600">{brand.email}</p>
                         {brand.createdAt && (
@@ -585,7 +588,9 @@ export default function BrandManagement() {
                         )}
                       </div>
                       
-                      <div className="flex items-center gap-2">
+                      {/* Action Buttons */}
+                      <div className="flex flex-wrap gap-2">
+                        {/* Inactive Brand Actions */}
                         {!brand.isActive && (
                           <>
                             <Button
@@ -595,7 +600,7 @@ export default function BrandManagement() {
                               className="flex items-center gap-2"
                             >
                               <Copy className="h-4 w-4" />
-                              <span className="hidden sm:inline">Copy Link</span>
+                              <span>Copy Link</span>
                             </Button>
                             <Button
                               variant="outline"
@@ -609,22 +614,24 @@ export default function BrandManagement() {
                               ) : (
                                 <Mail className="h-4 w-4" />
                               )}
-                              <span className="hidden sm:inline">Resend</span>
+                              <span>Resend</span>
                             </Button>
                           </>
                         )}
+                        
+                        {/* Active Brand Actions */}
                         {brand.isActive && (
                           <>
+                            {/* Integration Button */}
                             {!brand.trackstarApiKey ? (
                               <Button
-                                variant="outline"
+                                variant="default"
                                 size="sm"
                                 onClick={() => handleAddIntegration(brand)}
-                                className="flex items-center gap-2"
-                                title="Add Integration"
+                                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700"
                               >
                                 <Settings className="h-4 w-4" />
-                                <span className="inline">Add Integration</span>
+                                <span>Add Integration</span>
                               </Button>
                             ) : (
                               <Button
@@ -632,22 +639,24 @@ export default function BrandManagement() {
                                 size="sm"
                                 onClick={() => handleEditIntegration(brand)}
                                 className="flex items-center gap-2"
-                                title="Edit Integration"
                               >
                                 <Settings className="h-4 w-4" />
-                                <span className="inline">Edit Integration</span>
+                                <span>Edit Integration</span>
                               </Button>
                             )}
+                            
+                            {/* Manage Users Button */}
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleManageUsers(brand)}
                               className="flex items-center gap-2"
-                              title="Manage Users"
                             >
                               <Users className="h-4 w-4" />
-                              <span className="inline">Users</span>
+                              <span>Manage Users</span>
                             </Button>
+                            
+                            {/* Integration-specific buttons (only show if integrated) */}
                             {brand.trackstarApiKey && (
                               <>
                                 <Button
@@ -662,9 +671,7 @@ export default function BrandManagement() {
                                   ) : (
                                     <RefreshCw className="h-4 w-4" />
                                   )}
-                                  <span className="hidden sm:inline">
-                                    {syncBrandMutation.isPending ? 'Syncing...' : 'Sync Data'}
-                                  </span>
+                                  <span>Sync Data</span>
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -678,9 +685,7 @@ export default function BrandManagement() {
                                   ) : (
                                     <Zap className="h-4 w-4" />
                                   )}
-                                  <span className="hidden sm:inline">
-                                    {setupWebhooksMutation.isPending ? 'Setting up...' : 'Setup Webhooks'}
-                                  </span>
+                                  <span>Setup Webhooks</span>
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -692,7 +697,7 @@ export default function BrandManagement() {
                                   className="flex items-center gap-2"
                                 >
                                   <TrendingUp className="h-4 w-4" />
-                                  <span className="hidden sm:inline">Sync Status</span>
+                                  <span>Sync Status</span>
                                 </Button>
                               </>
                             )}
