@@ -421,15 +421,10 @@ export default function BrandManagement() {
   };
 
   const getIntegrationStatus = (brand: any) => {
-    const hasShipHero = brand.shipHeroApiKey;
-    const hasTrackstar = brand.trackstarAccessToken;
+    const hasTrackstar = brand.trackstarApiKey;
     
-    if (hasShipHero && hasTrackstar) {
-      return <Badge variant="default" className="bg-blue-50 text-blue-600 border-blue-200">ShipHero + Trackstar</Badge>;
-    } else if (hasShipHero) {
-      return <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">ShipHero Connected</Badge>;
-    } else if (hasTrackstar) {
-      return <Badge variant="outline" className="bg-purple-50 text-purple-600 border-purple-200">Trackstar Connected</Badge>;
+    if (hasTrackstar) {
+      return <Badge variant="default" className="bg-purple-50 text-purple-600 border-purple-200">Trackstar Connected</Badge>;
     } else {
       return <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">No Integration</Badge>;
     }
@@ -643,7 +638,7 @@ export default function BrandManagement() {
                               <Users className="h-4 w-4" />
                               <span className="hidden sm:inline">Manage Users</span>
                             </Button>
-                            {brand.shipHeroApiKey && (
+                            {brand.trackstarApiKey && (
                               <>
                                 <Button
                                   variant="outline"
@@ -718,61 +713,31 @@ export default function BrandManagement() {
                       <SelectValue placeholder="Select integration type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="shiphero">ShipHero</SelectItem>
-                      <SelectItem value="trackstar">Trackstar</SelectItem>
+                      <SelectItem value="trackstar">Trackstar Universal WMS</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 
-                {integrationType === 'shiphero' && (
+                {integrationType === 'trackstar' && (
                   <>
                     <div className="grid gap-2">
-                      <Label htmlFor="shiphero-username">ShipHero Username</Label>
+                      <Label htmlFor="trackstar-apikey">Trackstar API Key</Label>
                       <Input
-                        id="shiphero-username"
-                        value={shipHeroUsername}
-                        onChange={(e) => setShipHeroUsername(e.target.value)}
-                        placeholder="Enter your ShipHero username"
+                        id="trackstar-apikey"
+                        value="269fcaf8b50a4fb4b384724f3e5d76db"
+                        disabled
+                        placeholder="Universal Trackstar API Key"
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="shiphero-password">ShipHero Password</Label>
-                      <Input
-                        id="shiphero-password"
-                        type="password"
-                        value={shipHeroPassword}
-                        onChange={(e) => setShipHeroPassword(e.target.value)}
-                        placeholder="Enter your ShipHero password"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="user-id">User ID (Optional)</Label>
-                      <Input
-                        id="user-id"
-                        value={userId}
-                        onChange={(e) => setUserId(e.target.value)}
-                        placeholder="Enter ShipHero user ID (optional)"
-                      />
                       <p className="text-sm text-gray-500">
-                        Use your brand's ShipHero login credentials. User ID is optional.
+                        This universal API key provides access to all WMS platforms through Trackstar's unified integration layer.
                       </p>
                     </div>
                   </>
                 )}
                 
-                {integrationType === 'trackstar' && (
-                  <div className="grid gap-2">
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CheckCircle className="h-5 w-5 text-blue-600" />
-                        <span className="font-medium text-blue-900">Universal API Key Configured</span>
-                      </div>
-                      <p className="text-sm text-blue-700">
-                        Trackstar integration uses our universal API key for seamless connectivity across all WMS platforms (ShipHero, ShipBob, Fulfillment Works, etc.). No additional setup required.
-                      </p>
-                    </div>
-                  </div>
-                )}
+
               </div>
               <DialogFooter>
                 <Button

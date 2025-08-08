@@ -93,11 +93,19 @@ export const orders = pgTable("orders", {
   shippingMethod: varchar("shipping_method"),
   trackingNumber: varchar("tracking_number"),
   
-  // ShipHero-specific fields
+  // Trackstar universal WMS fields
+  trackstarOrderId: varchar("trackstar_order_id").unique(),
+  trackstarIntegrationId: varchar("trackstar_integration_id"),
+  warehouseName: varchar("warehouse_name"),
+  warehouseId: varchar("warehouse_id"),
+  
+  // Core order fields for universal WMS compatibility
+  fulfillmentStatus: varchar("fulfillment_status"), // Universal fulfillment status
+  
+  // Legacy ShipHero fields (kept for historical compatibility)
   shipHeroOrderId: varchar("ship_hero_order_id").unique(),
-  shipHeroLegacyId: varchar("ship_hero_legacy_id"), // ShipHero legacy_id field
-  shopName: varchar("shop_name"), // ShipHero shop_name field
-  fulfillmentStatus: varchar("fulfillment_status"), // ShipHero fulfillment_status
+  shipHeroLegacyId: varchar("ship_hero_legacy_id"),
+  shopName: varchar("shop_name"),
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }), // Order subtotal before tax/shipping
   totalTax: decimal("total_tax", { precision: 10, scale: 2 }), // Tax amount
   totalShipping: decimal("total_shipping", { precision: 10, scale: 2 }), // Shipping cost
@@ -118,26 +126,30 @@ export const orders = pgTable("orders", {
   fraudHold: boolean("fraud_hold").default(false), // If order is on fraud hold
   addressValidated: boolean("address_validated").default(false), // If address was validated
   
-  // External system IDs
-  trackstarOrderId: varchar("trackstar_order_id").unique(),
+  // Trackstar specific fields
+  costDetails: jsonb("cost_details"), // Fulfillment costs, storage costs
+  customFields: jsonb("custom_fields"), // WMS-specific custom data
   externalOrderId: varchar("external_order_id"), // Original order ID from source system
   
   // Quantity tracking for analytics
   backorderQuantity: integer("backorder_quantity").default(0), // Track backorder quantity for late order tool
   totalQuantity: integer("total_quantity").default(0), // Total items in order
   
-  // Allocation tracking timestamps for late order analysis
-  orderCreatedAt: timestamp("order_created_at"), // When order was created in ShipHero
-  orderDate: timestamp("order_date"), // ShipHero order_date field
+  // Fulfillment workflow timestamps (universal WMS)
+  orderCreatedAt: timestamp("order_created_at"), // When order was created in external system
+  orderDate: timestamp("order_date"), // Order date from source system
   allocatedAt: timestamp("allocated_at"), // When order was allocated in warehouse - updated by webhook
+  pickedAt: timestamp("picked_at"), // When order was picked from shelves
   packedAt: timestamp("packed_at"), // When order was packed
   shippedAt: timestamp("shipped_at"), // When order was shipped
   deliveredAt: timestamp("delivered_at"), // When order was delivered
   cancelledAt: timestamp("cancelled_at"), // When order was cancelled
   
-  // ShipHero sync tracking
-  shipHeroUpdatedAt: timestamp("ship_hero_updated_at"), // ShipHero updated_at field
-  lastSyncAt: timestamp("last_sync_at"),
+  // Universal sync tracking
+  lastSyncAt: timestamp("last_sync_at"), // Last sync from any WMS provider
+  
+  // Legacy ShipHero sync tracking
+  shipHeroUpdatedAt: timestamp("ship_hero_updated_at"), // Historical field
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -148,7 +160,12 @@ export const orderItems = pgTable("order_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id").notNull().references(() => orders.id, { onDelete: 'cascade' }),
   productId: varchar("product_id").references(() => products.id), // Optional FK to products table
-  shipHeroLineItemId: varchar("ship_hero_line_item_id"), // External system ID
+  // Universal WMS line item fields
+  trackstarLineItemId: varchar("trackstar_line_item_id"), // Trackstar line item ID
+  externalLineItemId: varchar("external_line_item_id"), // External system line item ID
+  
+  // Legacy ShipHero field
+  shipHeroLineItemId: varchar("ship_hero_line_item_id"), // Historical field
   sku: varchar("sku").notNull(),
   productName: varchar("product_name").notNull(),
   quantity: integer("quantity").notNull(),
@@ -212,8 +229,14 @@ export const products = pgTable("products", {
   inventoryCount: integer("inventory_count").default(0), // Total across all warehouses
   reservedQuantity: integer("reserved_quantity").default(0),
   lowStockThreshold: integer("low_stock_threshold").default(10),
-  shipHeroProductId: varchar("ship_hero_product_id").unique(),
+  // Trackstar universal WMS fields
   trackstarProductId: varchar("trackstar_product_id").unique(),
+  warehouseLocations: jsonb("warehouse_locations"), // Multiple warehouse location data
+  productDimensions: jsonb("product_dimensions"), // Length, width, height, weight from WMS
+  costPerUnit: decimal("cost_per_unit", { precision: 10, scale: 2 }), // Unit cost for cost tracking
+  
+  // Legacy ShipHero field
+  shipHeroProductId: varchar("ship_hero_product_id").unique(),
   barcode: varchar("barcode"),
   hsCode: varchar("hs_code"),
   countryOfOrigin: varchar("country_of_origin"),

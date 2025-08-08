@@ -184,7 +184,7 @@ export default function Integrations() {
     : brands?.[0];
 
   const getConnectionStatus = (brand: any) => {
-    if (brand?.shipHeroApiKey && brand?.shipHeroUserId) {
+    if (brand?.trackstarApiKey) {
       return {
         status: 'connected',
         label: 'Connected',
@@ -231,13 +231,13 @@ export default function Integrations() {
                     API Integrations
                   </h2>
                   <p className="mt-1 text-sm text-gray-500">
-                    Manage your ShipHero, Trackstar, and other API connections
+                    Manage your Trackstar universal WMS integration
                   </p>
                 </div>
                 <div className="mt-4 flex md:mt-0 md:ml-4">
                   <Button 
                     onClick={() => testConnectionMutation.mutate()}
-                    disabled={testConnectionMutation.isPending || !currentBrand?.shipHeroApiKey}
+                    disabled={testConnectionMutation.isPending || !currentBrand?.trackstarApiKey}
                     variant="outline"
                   >
                     {testConnectionMutation.isPending ? (
@@ -257,13 +257,13 @@ export default function Integrations() {
           {/* Integrations Content */}
           <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              {/* ShipHero Integration */}
+              {/* Trackstar Universal WMS Integration */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <Truck className="h-6 w-6 text-blue-600" />
-                      <CardTitle>ShipHero Integration</CardTitle>
+                      <Truck className="h-6 w-6 text-purple-600" />
+                      <CardTitle>Trackstar Universal WMS</CardTitle>
                     </div>
                     {currentBrand && (
                       <Badge 
@@ -285,19 +285,19 @@ export default function Integrations() {
                     <>
                       <div>
                         <p className="text-sm text-gray-600 mb-4">
-                          Configure your ShipHero API credentials to enable order sync, inventory management, and fulfillment tracking.
+                          Connect to Trackstar's universal WMS API to integrate with multiple fulfillment providers through one unified interface.
                         </p>
                       </div>
 
                       <div className="space-y-4">
                         <div>
-                          <Label htmlFor="api-key">API Key</Label>
+                          <Label htmlFor="api-key">Trackstar API Key</Label>
                           <div className="flex space-x-2">
                             <Input
                               id="api-key"
                               type={isEditing ? "text" : "password"}
-                              placeholder="Enter your ShipHero API key"
-                              value={isEditing ? apiKey : (currentBrand.shipHeroApiKey ? '••••••••••••••••' : '')}
+                              placeholder="Enter your Trackstar API key"
+                              value={isEditing ? apiKey : (currentBrand.trackstarApiKey ? '••••••••••••••••' : '')}
                               onChange={(e) => setApiKey(e.target.value)}
                               disabled={!isEditing}
                             />
@@ -306,8 +306,7 @@ export default function Integrations() {
                                 variant="outline"
                                 onClick={() => {
                                   setIsEditing(true);
-                                  setApiKey(currentBrand.shipHeroApiKey || '');
-                                  setUserId(currentBrand.shipHeroUserId || '');
+                                  setApiKey('269fcaf8b50a4fb4b384724f3e5d76db');
                                 }}
                               >
                                 <Key className="h-4 w-4" />
@@ -317,14 +316,12 @@ export default function Integrations() {
                         </div>
 
                         <div>
-                          <Label htmlFor="user-id">User ID</Label>
-                          <Input
-                            id="user-id"
-                            placeholder="Enter your ShipHero User ID"
-                            value={isEditing ? userId : (currentBrand.shipHeroUserId ? '••••••••••••••••' : '')}
-                            onChange={(e) => setUserId(e.target.value)}
-                            disabled={!isEditing}
-                          />
+                          <p className="text-sm text-gray-500">
+                            Universal API Key: 269fcaf8b50a4fb4b384724f3e5d76db
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            This universal key provides access to Trackstar's WMS integration platform for all brands.
+                          </p>
                         </div>
 
                         {isEditing && (

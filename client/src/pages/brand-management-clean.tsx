@@ -418,20 +418,18 @@ export default function BrandManagementClean() {
                       </div>
 
                       <div className="flex flex-wrap gap-2 mb-3">
-                        {brand.hasShipHeroIntegration && (
+                        {brand.trackstarApiKey && (
                           <div className="flex items-center gap-1">
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
                               <CheckCircle className="h-3 w-3 mr-1" />
-                              ShipHero Connected
+                              Trackstar Connected
                             </Badge>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
+                              className="h-6 w-6 p-0 text-purple-600 hover:text-purple-800"
                               onClick={() => {
                                 setSelectedBrandForEdit(brand);
-                                setEditShipHeroUsername(brand.shipHeroApiKey || '');
-                                setEditShipHeroPassword('');
                                 setIsEditIntegrationDialogOpen(true);
                               }}
                             >
@@ -440,14 +438,7 @@ export default function BrandManagementClean() {
                           </div>
                         )}
                         
-                        {brand.hasTrackstarIntegration && (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Trackstar Connected
-                          </Badge>
-                        )}
-                        
-                        {!brand.hasShipHeroIntegration && !brand.hasTrackstarIntegration && (
+                        {!brand.trackstarApiKey && (
                           <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
                             <XCircle className="h-3 w-3 mr-1" />
                             No Integration
