@@ -357,7 +357,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(brands.threePlId, threePlId))
       .orderBy(desc(brands.createdAt));
 
-    // Transform brands to include hasShipHeroIntegration flag
+    // Transform brands to include integration flags and map snake_case to camelCase
     return brandResults.map(brand => ({
       ...brand,
       status: brand.isActive ? 'active' : 'invited',
@@ -365,8 +365,12 @@ export class DatabaseStorage implements IStorage {
       hasShipHeroIntegration: !!(brand.shipHeroApiKey && brand.shipHeroPassword),
       hasTrackstarIntegration: !!brand.trackstarApiKey,
       shipHeroApiKey: brand.shipHeroApiKey,
-      // Also map the database column names to the expected API format
-      shipHeroPassword: brand.shipHeroPassword ? 'SET' : null
+      shipHeroPassword: brand.shipHeroPassword ? 'SET' : null,
+      // Map Trackstar fields to camelCase for frontend consistency
+      trackstarApiKey: brand.trackstarApiKey,
+      trackstarAccessToken: brand.trackstarAccessToken,
+      trackstarConnectionId: brand.trackstarConnectionId,
+      trackstarIntegrationName: brand.trackstarIntegrationName
     }));
   }
 
