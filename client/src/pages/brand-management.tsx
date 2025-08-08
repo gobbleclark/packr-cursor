@@ -56,7 +56,7 @@ import {
   Zap,
   TrendingUp
 } from "lucide-react";
-import { SyncStatusModal } from "@/components/sync-status-modal";
+
 
 export default function BrandManagement() {
   // ALL hooks must be called at the top level, in the same order every render
@@ -77,8 +77,8 @@ export default function BrandManagement() {
   const [shipHeroPassword, setShipHeroPassword] = useState('');
   const [isUserManagementDialogOpen, setIsUserManagementDialogOpen] = useState(false);
   const [selectedBrandForUsers, setSelectedBrandForUsers] = useState<any>(null);
-  const [syncStatusDialogOpen, setSyncStatusDialogOpen] = useState(false);
   const [selectedBrandForSync, setSelectedBrandForSync] = useState<any>(null);
+  const [syncStatusDialogOpen, setSyncStatusDialogOpen] = useState(false);
 
   // Query hooks - MUST be called every render
   const { data: brands = [], isLoading: brandsLoading } = useQuery<any[]>({
@@ -296,6 +296,7 @@ export default function BrandManagement() {
 
   const handleAddIntegration = (brand: any) => {
     setSelectedBrand(brand);
+    setIntegrationType('trackstar'); // Auto-select Trackstar as the only option
     setIsIntegrationDialogOpen(true);
   };
 
@@ -309,32 +310,24 @@ export default function BrandManagement() {
       return;
     }
 
-    // For ShipHero, require username and password
-    if (integrationType === 'shiphero' && (!shipHeroUsername || !shipHeroPassword)) {
+    // For Trackstar, no additional credentials needed (uses universal API key)
+    if (integrationType === 'trackstar') {
       toast({
-        title: "Error",
-        description: "Please enter your ShipHero username and password",
-        variant: "destructive",
+        title: "Setting up Trackstar Integration", 
+        description: "Configuring universal WMS connection...",
       });
-      return;
     }
 
-    // Prepare credentials based on integration type
-    let credentials = {};
-    if (integrationType === 'trackstar') {
-      credentials = { apiKey: '269fcaf8b50a4fb4b384724f3e5d76db' };
-    } else if (integrationType === 'shiphero') {
-      credentials = { 
-        username: shipHeroUsername, 
-        password: shipHeroPassword,
-        userId: userId || undefined
-      };
-    }
+    // Prepare Trackstar credentials
+    const credentials = { 
+      apiKey: '269fcaf8b50a4fb4b384724f3e5d76db',
+      integrationType: 'trackstar'
+    };
 
     addIntegrationMutation.mutate({
       brandId: selectedBrand.id,
-      integrationType,
-      ...credentials
+      integrationType: 'trackstar',
+      apiKey: '269fcaf8b50a4fb4b384724f3e5d76db'
     });
   };
 
@@ -426,7 +419,7 @@ export default function BrandManagement() {
     if (hasTrackstar) {
       return <Badge variant="default" className="bg-purple-50 text-purple-600 border-purple-200">Trackstar Connected</Badge>;
     } else {
-      return <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">No Integration</Badge>;
+      return <Badge variant="secondary" className="bg-gray-50 text-gray-600 border-gray-200">No Integration</Badge>;
     }
   };
 
@@ -702,7 +695,7 @@ export default function BrandManagement() {
               <DialogHeader>
                 <DialogTitle>Add Integration for {selectedBrand?.name}</DialogTitle>
                 <DialogDescription>
-                  Configure API integration for this brand to enable order and inventory sync.
+                  Configure Trackstar universal WMS integration for this brand to enable order and inventory sync across all platforms.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -718,24 +711,20 @@ export default function BrandManagement() {
                   </Select>
                 </div>
                 
-                {integrationType === 'trackstar' && (
-                  <>
-                    <div className="grid gap-2">
-                      <Label htmlFor="trackstar-apikey">Trackstar API Key</Label>
-                      <Input
-                        id="trackstar-apikey"
-                        value="269fcaf8b50a4fb4b384724f3e5d76db"
-                        disabled
-                        placeholder="Universal Trackstar API Key"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <p className="text-sm text-gray-500">
-                        This universal API key provides access to all WMS platforms through Trackstar's unified integration layer.
-                      </p>
-                    </div>
-                  </>
-                )}
+                <div className="grid gap-2">
+                  <Label htmlFor="trackstar-apikey">Trackstar API Key</Label>
+                  <Input
+                    id="trackstar-apikey"
+                    value="269fcaf8b50a4fb4b384724f3e5d76db"
+                    disabled
+                    placeholder="Universal Trackstar API Key"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <p className="text-sm text-purple-600">
+                    ✓ This universal API key provides access to all WMS platforms through Trackstar's unified integration layer.
+                  </p>
+                </div>
                 
 
               </div>
@@ -761,7 +750,7 @@ export default function BrandManagement() {
                   {addIntegrationMutation.isPending && (
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  {integrationType === 'trackstar' ? 'Configure Universal Integration' : 'Save Integration'}
+                  Connect Trackstar Integration
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1009,18 +998,7 @@ function UserManagement({ brandId, isOpen }: { brandId: string; isOpen: boolean 
         </DialogContent>
       </Dialog>
 
-      {/* Sync Status Modal */}
-      {selectedBrandForSync && (
-        <SyncStatusModal
-          brandId={selectedBrandForSync.id}
-          brandName={selectedBrandForSync.name}
-          isOpen={syncStatusDialogOpen}
-          onClose={() => {
-            setSyncStatusDialogOpen(false);
-            setSelectedBrandForSync(null);
-          }}
-        />
-      )}
+
     </div>
   );
 }
