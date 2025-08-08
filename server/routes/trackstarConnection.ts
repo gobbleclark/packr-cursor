@@ -6,89 +6,117 @@ import { TrackstarSyncService } from '../services/trackstarSync.js';
 const router = Router();
 const trackstarSyncService = new TrackstarSyncService();
 
-// Connect brand to Trackstar with selected WMS provider
-router.post('/connect', isAuthenticated, async (req, res) => {
+// Get Trackstar link token for new connection
+router.post('/link-token', isAuthenticated, async (req, res) => {
   try {
-    const { brandId, wmsProvider, credentials } = req.body;
+    const trackstarApiKey = process.env.TRACKSTAR_API_KEY;
+    if (!trackstarApiKey) {
+      return res.status(500).json({ message: 'Trackstar API key not configured' });
+    }
 
-    if (!brandId || !wmsProvider) {
-      return res.status(400).json({ 
-        message: 'Missing required fields: brandId and wmsProvider' 
+    console.log('🔗 Generating Trackstar link token...');
+    
+    const response = await fetch('https://production.trackstarhq.com/link/token', {
+      method: 'POST',
+      headers: {
+        'x-trackstar-api-key': trackstarApiKey,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Failed to get link token: ${errorText}`);
+      return res.status(response.status).json({ 
+        message: 'Failed to generate Trackstar link token',
+        error: errorText 
       });
     }
 
-    // Update brand with Trackstar connection
+    const data = await response.json();
+    console.log(`✅ Link token generated: ${data.link_token?.substring(0, 8)}...`);
+
+    res.json({
+      success: true,
+      linkToken: data.link_token
+    });
+
+  } catch (error) {
+    console.error('❌ Link token generation error:', error);
+    res.status(500).json({ 
+      message: 'Failed to generate Trackstar link token',
+      error: error.message 
+    });
+  }
+});
+
+// Connect brand to Trackstar with auth code from frontend
+router.post('/connect', isAuthenticated, async (req, res) => {
+  try {
+    const { brandId, authCode, wmsProvider, credentials } = req.body;
+
+    if (!brandId || !authCode) {
+      return res.status(400).json({ 
+        message: 'Missing required fields: brandId and authCode' 
+      });
+    }
+
     const brand = await storage.getBrand(brandId);
     if (!brand) {
       return res.status(404).json({ message: 'Brand not found' });
     }
 
-    // Store credentials for Trackstar connection
     const trackstarApiKey = process.env.TRACKSTAR_API_KEY;
     if (!trackstarApiKey) {
       return res.status(500).json({ message: 'Trackstar API key not configured' });
     }
     
-    // Get existing connections from Trackstar account
-    try {
-      const response = await fetch(`https://production.trackstarhq.com/connections`, {
-        headers: {
-          'x-trackstar-api-key': trackstarApiKey,
-        },
-      });
+    console.log(`🔄 Creating new Trackstar connection for ${brand.name}...`);
+    
+    // Exchange auth code for permanent access token
+    const response = await fetch('https://production.trackstarhq.com/link/exchange', {
+      method: 'POST',
+      headers: {
+        'x-trackstar-api-key': trackstarApiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ auth_code: authCode }),
+    });
 
-      if (!response.ok) {
-        throw new Error(`Trackstar API error: ${response.status}`);
-      }
-
-      const connectionsData = await response.json();
-      const connections = connectionsData.data || [];
-      
-      console.log(`📋 Found ${connections.length} existing connections in Trackstar account`);
-      
-      // Find a matching connection for the selected WMS provider
-      const matchingConnection = connections.find(conn => 
-        conn.integration_name === wmsProvider.toLowerCase() && 
-        conn.available_actions && 
-        conn.available_actions.length > 0
-      );
-
-      if (matchingConnection) {
-        console.log(`🔗 Using existing Trackstar connection: ${matchingConnection.connection_id}`);
-        
-        // Update brand with Trackstar connection details
-        await storage.updateBrandTrackstarCredentials(brandId, trackstarApiKey);
-        
-        // Store the connection ID for future use
-        console.log(`📝 WMS Provider: ${wmsProvider}`);
-        console.log(`🔗 Connection ID: ${matchingConnection.connection_id}`);
-        console.log(`✅ Using existing connection with ${matchingConnection.available_actions.length} available actions`);
-
-        res.json({
-          success: true,
-          message: `Successfully connected ${brand.name} to Trackstar using existing ${wmsProvider} connection`,
-          wmsProvider,
-          brandId,
-          connectionId: matchingConnection.connection_id,
-          availableActions: matchingConnection.available_actions.length
-        });
-      } else {
-        // No matching connection found
-        console.log(`⚠️ No existing ${wmsProvider} connection found in Trackstar account`);
-        res.status(400).json({
-          success: false,
-          message: `No ${wmsProvider} connection found in your Trackstar account. Please create a ${wmsProvider} connection in Trackstar first.`,
-          availableConnections: connections.map(c => c.integration_name)
-        });
-      }
-    } catch (error) {
-      console.error(`❌ Failed to check Trackstar connections: ${error.message}`);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to verify Trackstar connections',
-        error: error.message
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Failed to exchange auth code: ${errorText}`);
+      return res.status(response.status).json({ 
+        message: 'Failed to create Trackstar connection',
+        error: errorText 
       });
     }
+
+    const connectionData = await response.json();
+    console.log(`✅ New Trackstar connection created:`, {
+      connection_id: connectionData.connection_id,
+      integration_name: connectionData.integration_name,
+      available_endpoints: connectionData.available_endpoints?.length || 0
+    });
+
+    // Store the connection details in database
+    await storage.updateBrandTrackstarCredentials(brandId, trackstarApiKey);
+    // TODO: Store access_token and connection_id in brand record
+    
+    // Store WMS credentials if provided
+    if (credentials) {
+      console.log(`🔐 Storing ${wmsProvider} credentials for ${brand.name}`);
+      // TODO: Store encrypted WMS credentials in database
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully created new Trackstar connection for ${brand.name}`,
+      wmsProvider: connectionData.integration_name,
+      brandId,
+      connectionId: connectionData.connection_id,
+      availableEndpoints: connectionData.available_endpoints?.length || 0
+    });
 
   } catch (error) {
     console.error('❌ Trackstar connection error:', error);

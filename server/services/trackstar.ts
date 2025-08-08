@@ -1,6 +1,10 @@
 export class TrackstarService {
   private baseUrl = 'https://production.trackstarhq.com';
-  private apiKey = process.env.TRACKSTAR_API_KEY || ''; // Your personal Trackstar API key
+  private apiKey: string;
+
+  constructor(apiKey?: string) {
+    this.apiKey = apiKey || process.env.TRACKSTAR_API_KEY || '';
+  }
 
   /**
    * Get a link token for connecting a brand to Trackstar

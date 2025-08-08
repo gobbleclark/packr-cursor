@@ -40,6 +40,7 @@ import {
   TrendingUp,
   UserPlus
 } from "lucide-react";
+
 import { SyncStatusModal } from "@/components/sync-status-modal";
 
 export default function BrandManagementClean() {
@@ -191,12 +192,9 @@ export default function BrandManagementClean() {
   });
 
   const connectTrackstarMutation = useMutation({
-    mutationFn: async (data: { brandId: string; wmsProvider: string; credentials?: any }) => {
-      const response = await apiRequest('POST', `/api/trackstar/connect`, {
-        brandId: data.brandId,
-        wmsProvider: data.wmsProvider,
-        credentials: data.credentials
-      });
+    mutationFn: async (data: { brandId: string; wmsProvider: string; credentials: any }) => {
+      // Create new Trackstar connection with WMS credentials
+      const response = await apiRequest('POST', '/api/trackstar/create-connection', data);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -211,8 +209,8 @@ export default function BrandManagementClean() {
       setWmsCredentials({ username: '', password: '' });
       
       toast({
-        title: "Integration Connected",
-        description: "Trackstar integration has been successfully configured with your WMS credentials. Data sync will begin shortly.",
+        title: "Trackstar Connection Created",
+        description: "New connection created in your Trackstar account. Data sync will begin shortly.",
       });
     },
     onError: (error) => {
@@ -228,8 +226,8 @@ export default function BrandManagementClean() {
         return;
       }
       toast({
-        title: "Error",
-        description: "Failed to connect Trackstar integration",
+        title: "Connection Failed",
+        description: "Failed to create Trackstar connection. Please try again.",
         variant: "destructive",
       });
     },
@@ -250,11 +248,11 @@ export default function BrandManagementClean() {
       setShowCredentialsForm(true);
     } else {
       // Connect directly for providers that don't need credentials
-      handleTrackstarConnect();
+      handleDirectTrackstarConnection();
     }
   };
 
-  const handleTrackstarConnect = () => {
+  const handleDirectTrackstarConnection = () => {
     if (!selectedBrand || !selectedWMS) {
       toast({
         title: "Error",
@@ -277,8 +275,13 @@ export default function BrandManagementClean() {
     connectTrackstarMutation.mutate({
       brandId: selectedBrand.id,
       wmsProvider: selectedWMS,
-      credentials: showCredentialsForm ? wmsCredentials : undefined
+      credentials: wmsCredentials
     });
+  };
+
+  const handleManageUsers = (brand: any) => {
+    setSelectedBrandForUsers(brand);
+    setIsUserManagementDialogOpen(true);
   };
 
   const syncDataMutation = useMutation({
@@ -1003,14 +1006,14 @@ export default function BrandManagementClean() {
                   </Button>
                 ) : (
                   <Button
-                    onClick={handleTrackstarConnect}
+                    onClick={handleDirectTrackstarConnection}
                     disabled={!wmsCredentials.username || !wmsCredentials.password || connectTrackstarMutation.isPending}
                     className="bg-purple-600 hover:bg-purple-700"
                   >
                     {connectTrackstarMutation.isPending && (
                       <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                     )}
-                    Connect {selectedWMS && selectedWMS.charAt(0).toUpperCase() + selectedWMS.slice(1)}
+                    Create {selectedWMS && selectedWMS.charAt(0).toUpperCase() + selectedWMS.slice(1)} Connection
                   </Button>
                 )}
               </DialogFooter>
