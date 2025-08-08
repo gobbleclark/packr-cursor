@@ -151,15 +151,13 @@ export class BackgroundJobService {
       const endDate = new Date();
       const startDate = new Date();
       
-      // CRITICAL FIX: Go back to July 1st to capture 14,710 missing shipped orders
-      // 30 days only reaches July 9th, missing July 1-8 where most orders are
+      // COMPREHENSIVE SYNC: Pull ALL of July and August for complete accuracy
       const julyFirst = new Date('2025-07-01T00:00:00.000Z');
-      const daysToJuly = Math.ceil((endDate.getTime() - julyFirst.getTime()) / (1000 * 60 * 60 * 24));
-      startDate.setTime(julyFirst.getTime()); // Force start at July 1st
+      startDate.setTime(julyFirst.getTime()); // Start at July 1st
       
-      console.log(`📅 FIXED JULY RANGE: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-      console.log(`🎯 This ensures July 1-8 is captured (${daysToJuly} days total vs previous 120)`);
-      console.log(`🎯 Target: Capture ~450 missing unfulfilled orders`);
+      console.log(`📅 COMPREHENSIVE JULY-AUGUST SYNC: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      console.log(`🎯 Target: ALL July orders (14,710 shipped) + current August orders for complete accuracy`);
+      console.log(`🎯 Target: Complete July-August data accuracy with all 14,710+ July shipped orders`);
       
       // Use our existing API service but with extended date range
       const orders = await shipHeroApiFixed.getOrders(credentials, startDate, endDate);
