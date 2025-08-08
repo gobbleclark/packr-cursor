@@ -69,6 +69,56 @@ export class TrackstarService {
   }
 
   /**
+   * Get orders using brand's access token
+   */
+  async getOrdersWithToken(connectionId: string, accessToken: string): Promise<any[]> {
+    console.log(`📦 Getting orders from connection ${connectionId}...`);
+    
+    const response = await fetch(`${this.baseUrl}/wms/orders`, {
+      method: 'GET',
+      headers: {
+        'x-trackstar-api-key': this.apiKey,
+        'x-trackstar-access-token': accessToken,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Failed to fetch orders: ${response.status} ${errorText}`);
+      throw new Error(`Failed to fetch orders: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.orders || data || [];
+  }
+
+  /**
+   * Get products using brand's access token
+   */
+  async getProductsWithToken(connectionId: string, accessToken: string): Promise<any[]> {
+    console.log(`🏷️ Getting products from connection ${connectionId}...`);
+    
+    const response = await fetch(`${this.baseUrl}/wms/products`, {
+      method: 'GET',
+      headers: {
+        'x-trackstar-api-key': this.apiKey,
+        'x-trackstar-access-token': accessToken,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Failed to fetch products: ${response.status} ${errorText}`);
+      throw new Error(`Failed to fetch products: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.products || data || [];
+  }
+
+  /**
    * Get all connections from your Trackstar account
    */
   async getConnections(): Promise<any[]> {

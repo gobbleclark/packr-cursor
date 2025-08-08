@@ -16,51 +16,43 @@ export class TrackstarSyncService {
     
     try {
       const brands = await storage.getBrandsByThreePL('all'); // Get all brands
-      const trackstarBrands = brands.filter(brand => brand.trackstarApiKey);
+      const trackstarBrands = brands.filter(brand => brand.trackstarAccessToken && brand.trackstarConnectionId);
       
       console.log(`📊 Found ${trackstarBrands.length} brands with Trackstar integration`);
       
       for (const brand of trackstarBrands) {
         try {
-          await this.syncBrandData(brand.id, brand.trackstarApiKey);
+          await this.syncBrandData(brand.id);
         } catch (error) {
-          console.error(`❌ Failed to sync brand ${brand.name}:`, error);
+          console.error(`❌ Failed to sync brand ${brand.name}:`, (error as Error).message);
         }
       }
       
       console.log('✅ Trackstar sync completed for all brands');
     } catch (error) {
-      console.error('❌ Trackstar sync failed:', error);
+      console.error('❌ Trackstar sync failed:', (error as Error).message);
     }
   }
 
   /**
    * Sync data for a specific brand
    */
-  async syncBrandData(brandId: string, trackstarApiKey?: string): Promise<void> {
+  async syncBrandData(brandId: string): Promise<void> {
     const brand = await storage.getBrand(brandId);
-    if (!brand) {
-      throw new Error(`Brand not found: ${brandId}`);
+    if (!brand || !brand.trackstarAccessToken || !brand.trackstarConnectionId) {
+      throw new Error(`Brand not found or missing Trackstar connection: ${brandId}`);
     }
-
-    // Use environment API key instead of brand-specific key
-    const apiKey = process.env.TRACKSTAR_API_KEY;
-    if (!apiKey) {
-      throw new Error(`Trackstar API key not configured in environment`);
-    }
-    
-    console.log(`🔑 Using Trackstar API key for sync`);
-    this.trackstarService = new TrackstarService(apiKey);
 
     console.log(`🔄 Syncing Trackstar data for brand: ${brand.name}`);
+    console.log(`🔗 Using connection: ${brand.trackstarConnectionId} (${brand.trackstarIntegrationName})`);
 
     try {
-      // Sync real data from Trackstar
+      // Use the brand's access token to fetch real data
       await this.syncRealTrackstarData(brand);
       
       console.log(`✅ Successfully synced data for ${brand.name}`);
     } catch (error) {
-      console.error(`❌ Sync failed for ${brand.name}:`, error);
+      console.error(`❌ Sync failed for ${brand.name}:`, (error as Error).message);
       throw error;
     }
   }
@@ -72,49 +64,114 @@ export class TrackstarSyncService {
     console.log(`🔄 Syncing real Trackstar data for ${brand.name}...`);
     
     try {
-      // Get all connections from Trackstar account
-      const connections = await this.trackstarService.getConnections();
-      console.log(`📋 Found ${connections.length} connections in Trackstar`);
+      // Use the brand's connection to get real orders
+      const orders = await this.trackstarService.getOrdersWithToken(
+        brand.trackstarConnectionId, 
+        brand.trackstarAccessToken
+      );
       
-      // Use the first ShipHero connection with active sync schedules
-      const activeConnection = connections.find(conn => 
-        conn.integration_name === 'shiphero' && 
-        conn.sync_schedules && 
-        conn.sync_schedules.length > 0
-      ) || connections[0];
-
-      if (activeConnection) {
-        const connectionId = activeConnection.connection_id;
-        console.log(`🔗 Using connection: ${connectionId} (${activeConnection.integration_name})`);
-        console.log(`📊 Connection has ${activeConnection.sync_schedules?.length || 0} sync schedules`);
-        
-        // Try to get real orders from the active connection
-        try {
-          const orders = await this.trackstarService.getOrders(connectionId);
-          console.log(`📦 Retrieved ${orders.length} orders from Trackstar`);
-          
-          if (orders.length > 0) {
-            console.log(`🔄 Processing ${orders.length} real orders from Trackstar...`);
-            // TODO: Process and store real orders in database
-            console.log(`✅ Real data sync completed for ${brand.name}`);
-          } else {
-            console.log(`📝 No orders found in Trackstar, creating sample data for testing`);
-            await this.createSampleData(brand);
-          }
-        } catch (error) {
-          console.log(`⚠️ Could not fetch orders from connection ${connectionId}: ${error.message}`);
-          console.log(`🔄 Creating sample data for testing`);
-          await this.createSampleData(brand);
-        }
+      console.log(`📦 Retrieved ${orders.length} orders from Trackstar`);
+      
+      if (orders.length > 0) {
+        console.log(`🔄 Processing ${orders.length} real orders from Trackstar...`);
+        await this.processAndStoreOrders(brand, orders);
+        console.log(`✅ Real data sync completed for ${brand.name}`);
       } else {
-        console.log(`⚠️ No active connections found in Trackstar, creating sample data`);
-        await this.createSampleData(brand);
+        console.log(`📝 No orders found - this is normal for new connections`);
       }
+
+      // Also sync products if available
+      try {
+        const products = await this.trackstarService.getProductsWithToken(
+          brand.trackstarConnectionId,
+          brand.trackstarAccessToken
+        );
+        
+        console.log(`🏷️ Retrieved ${products.length} products from Trackstar`);
+        if (products.length > 0) {
+          await this.processAndStoreProducts(brand, products);
+        }
+      } catch (error) {
+        console.log(`⚠️ Could not fetch products: ${(error as Error).message}`);
+      }
+
     } catch (error) {
-      console.error(`❌ Failed to sync real data: ${error.message}`);
-      console.log(`🔄 Falling back to sample data for testing`);
-      await this.createSampleData(brand);
+      console.error(`❌ Failed to sync real data: ${(error as Error).message}`);
+      throw error;
     }
+  }
+
+  /**
+   * Process and store orders from Trackstar
+   */
+  private async processAndStoreOrders(brand: any, orders: any[]): Promise<void> {
+    console.log(`📦 Processing ${orders.length} orders for ${brand.name}...`);
+    
+    for (const trackstarOrder of orders) {
+      try {
+        // Convert Trackstar order format to our database format
+        const orderData = {
+          brandId: brand.id,
+          orderNumber: trackstarOrder.order_number || `TRK-${Date.now()}`,
+          customerName: trackstarOrder.customer?.name || trackstarOrder.customer_name,
+          customerEmail: trackstarOrder.customer?.email || trackstarOrder.customer_email,
+          status: this.mapTrackstarStatus(trackstarOrder.status) as const,
+          totalAmount: trackstarOrder.total_amount || '0.00',
+          trackstarOrderId: trackstarOrder.id || trackstarOrder.order_id,
+          fulfillmentStatus: trackstarOrder.fulfillment_status || 'pending',
+          orderDate: new Date(trackstarOrder.order_date || trackstarOrder.created_at || Date.now()),
+          shippingAddress: trackstarOrder.shipping_address || null,
+        };
+
+        await storage.createOrder(orderData);
+        console.log(`✅ Created order: ${orderData.orderNumber}`);
+      } catch (error) {
+        console.error(`❌ Failed to process order:`, (error as Error).message);
+      }
+    }
+  }
+
+  /**
+   * Process and store products from Trackstar
+   */
+  private async processAndStoreProducts(brand: any, products: any[]): Promise<void> {
+    console.log(`🏷️ Processing ${products.length} products for ${brand.name}...`);
+    
+    for (const trackstarProduct of products) {
+      try {
+        const productData = {
+          brandId: brand.id,
+          name: trackstarProduct.name || trackstarProduct.title,
+          sku: trackstarProduct.sku || trackstarProduct.product_id,
+          inventoryCount: trackstarProduct.inventory_count || trackstarProduct.quantity || 0,
+          price: trackstarProduct.price || '0.00',
+          trackstarProductId: trackstarProduct.id || trackstarProduct.product_id,
+        };
+
+        await storage.createProduct(productData);
+        console.log(`✅ Created product: ${productData.name}`);
+      } catch (error) {
+        console.error(`❌ Failed to process product:`, (error as Error).message);
+      }
+    }
+  }
+
+  /**
+   * Map Trackstar order status to our internal status
+   */
+  private mapTrackstarStatus(trackstarStatus: string): string {
+    const statusMap: { [key: string]: string } = {
+      'pending': 'pending',
+      'processing': 'processing', 
+      'fulfilled': 'fulfilled',
+      'shipped': 'shipped',
+      'delivered': 'delivered',
+      'cancelled': 'cancelled',
+      'on_hold': 'on_hold',
+      'unfulfilled': 'unfulfilled',
+    };
+    
+    return statusMap[trackstarStatus?.toLowerCase()] || 'pending';
   }
 
   /**
@@ -130,7 +187,7 @@ export class TrackstarSyncService {
         brandId: brand.id,
         customerName: 'John Smith',
         customerEmail: 'john@example.com',
-        status: 'pending',
+        status: 'pending' as const,
         totalAmount: '49.99',
         trackstarOrderId: `trackstar_${Date.now()}_1`,
         fulfillmentStatus: 'awaiting_fulfillment',
