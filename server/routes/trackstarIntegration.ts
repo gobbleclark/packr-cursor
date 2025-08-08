@@ -6,6 +6,9 @@
 import { Router } from 'express';
 import { IStorage } from '../storage';
 import { TrackstarIntegrationService } from '../services/trackstarIntegrationService';
+import { db } from '../db';
+import { brands } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 export function createTrackstarRoutes(storage: IStorage) {
   const router = Router();
@@ -275,6 +278,51 @@ export function createTrackstarRoutes(storage: IStorage) {
         error: 'Link token generation failed',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
+    }
+  });
+
+  /**
+   * Trackstar OAuth callback endpoint
+   * POST /api/trackstar/callback
+   */
+  router.post('/callback', async (req, res) => {
+    try {
+      const { brand_id, connection_id, access_token, integration_name } = req.body;
+      
+      if (!brand_id || !connection_id || !access_token) {
+        return res.status(400).json({ 
+          error: 'Missing required parameters: brand_id, connection_id, access_token' 
+        });
+      }
+
+      console.log(`🔗 Processing Trackstar callback for brand: ${brand_id}`);
+
+      // Verify brand exists
+      const [brand] = await db.select().from(brands).where(eq(brands.id, brand_id));
+      if (!brand) {
+        return res.status(404).json({ error: 'Brand not found' });
+      }
+
+      // Update brand with Trackstar connection details using direct DB call
+      await db.update(brands)
+        .set({
+          trackstarConnectionId: connection_id,
+          trackstarAccessToken: access_token,
+          trackstarApiKey: process.env.TRACKSTAR_API_KEY || '269fcaf8b50a4fb4b384724f3e5d76db',
+          trackstarIntegrationName: integration_name || 'Unknown WMS',
+          updatedAt: new Date()
+        })
+        .where(eq(brands.id, brand_id));
+
+      res.json({ 
+        success: true, 
+        message: `Trackstar integration configured successfully with ${integration_name || 'WMS provider'}`,
+        brand_id,
+        integration_name
+      });
+    } catch (error) {
+      console.error('❌ Trackstar callback error:', error);
+      res.status(500).json({ error: 'Failed to process Trackstar callback' });
     }
   });
 

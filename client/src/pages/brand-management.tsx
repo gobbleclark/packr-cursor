@@ -316,25 +316,21 @@ export default function BrandManagement() {
       return;
     }
 
-    // For Trackstar, no additional credentials needed (uses universal API key)
-    if (integrationType === 'trackstar') {
-      toast({
-        title: "Setting up Trackstar Integration", 
-        description: "Configuring universal WMS connection...",
-      });
-    }
-
-    // Prepare Trackstar credentials
-    const credentials = { 
-      apiKey: '269fcaf8b50a4fb4b384724f3e5d76db',
-      integrationType: 'trackstar'
-    };
-
-    addIntegrationMutation.mutate({
-      brandId: selectedBrand.id,
-      integrationType: 'trackstar',
-      apiKey: '269fcaf8b50a4fb4b384724f3e5d76db'
+    // Redirect to Trackstar's connection interface
+    const trackstarConnectUrl = `https://app.trackstar.com/connect?client_id=269fcaf8b50a4fb4b384724f3e5d76db&brand_id=${selectedBrand.id}&redirect_uri=${encodeURIComponent(window.location.origin)}/api/trackstar/callback`;
+    
+    toast({
+      title: "Redirecting to Trackstar", 
+      description: "Opening Trackstar's WMS selection interface...",
     });
+
+    // Open Trackstar connection in new window
+    window.open(trackstarConnectUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+    
+    // Close the dialog
+    setIsIntegrationDialogOpen(false);
+    setSelectedBrand(null);
+    setIntegrationType('');
   };
 
   const handleManageUsers = (brand: any) => {
@@ -733,19 +729,22 @@ export default function BrandManagement() {
                   </Select>
                 </div>
                 
-                <div className="grid gap-2">
-                  <Label htmlFor="trackstar-apikey">Trackstar API Key</Label>
-                  <Input
-                    id="trackstar-apikey"
-                    value="269fcaf8b50a4fb4b384724f3e5d76db"
-                    disabled
-                    placeholder="Universal Trackstar API Key"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <p className="text-sm text-purple-600">
-                    ✓ This universal API key provides access to all WMS platforms through Trackstar's unified integration layer.
-                  </p>
+                <div className="grid gap-4">
+                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                    <h4 className="font-semibold text-purple-900 mb-2">Universal WMS Integration</h4>
+                    <p className="text-sm text-purple-700 mb-3">
+                      Trackstar provides a unified connection to multiple warehouse management systems including:
+                    </p>
+                    <ul className="text-sm text-purple-700 space-y-1 mb-3">
+                      <li>• ShipHero</li>
+                      <li>• ShipBob</li>
+                      <li>• Fulfillment Works</li>
+                      <li>• And 20+ other WMS providers</li>
+                    </ul>
+                    <p className="text-sm text-purple-600">
+                      Click "Connect to Trackstar" to choose your WMS provider and configure the connection.
+                    </p>
+                  </div>
                 </div>
                 
 
@@ -773,8 +772,8 @@ export default function BrandManagement() {
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                   )}
                   {(selectedBrand?.trackstar_api_key || selectedBrand?.trackstarApiKey) 
-                    ? 'Update Integration' 
-                    : 'Connect Trackstar Integration'}
+                    ? 'Reconnect to Trackstar' 
+                    : 'Connect to Trackstar'}
                 </Button>
               </DialogFooter>
             </DialogContent>
