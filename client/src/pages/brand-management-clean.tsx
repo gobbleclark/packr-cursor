@@ -200,7 +200,7 @@ export default function BrandManagementClean() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
       setIsTrackstarModalOpen(false);
       setSelectedWMS('');
@@ -208,10 +208,20 @@ export default function BrandManagementClean() {
       setShowCredentialsForm(false);
       setWmsCredentials({ username: '', password: '' });
       
-      toast({
-        title: "Trackstar Connection Created",
-        description: "New connection created in your Trackstar account. Data sync will begin shortly.",
-      });
+      // Open Trackstar link in new window if provided
+      if (response.openInNewWindow && response.trackstarLinkUrl) {
+        window.open(response.trackstarLinkUrl, '_blank', 'width=1000,height=700,scrollbars=yes,resizable=yes');
+        toast({
+          title: "Complete Setup in Trackstar",
+          description: "A Trackstar window opened. Complete your integration setup there to finish connecting to your warehouse.",
+          duration: 8000,
+        });
+      } else {
+        toast({
+          title: "Trackstar Connection Created",
+          description: response.message || "New connection created in your Trackstar account. Data sync will begin shortly.",
+        });
+      }
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {

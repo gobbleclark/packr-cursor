@@ -179,15 +179,18 @@ router.post('/create-connection', isAuthenticated, async (req, res) => {
       // Store the Trackstar API key in database to mark as connected
       await storage.updateBrandTrackstarCredentials(brandId, trackstarApiKey);
 
-      // Return the link token for the frontend to complete the OAuth flow
+      // Return the link token and open Trackstar in a new window
+      const trackstarLinkUrl = `https://production.trackstarhq.com/link?token=${linkData.link_token}`;
+      
       res.json({
         success: true,
-        message: `Trackstar link token generated for ${brand.name}. Complete the ${wmsProvider} connection in Trackstar.`,
+        message: `Connection setup initiated for ${brand.name}. Please complete the ${wmsProvider} setup in the Trackstar window that just opened.`,
         wmsProvider,
         brandId,
         linkToken: linkData.link_token,
-        trackstarLinkUrl: `https://production.trackstarhq.com/link?token=${linkData.link_token}`,
-        instructions: `Visit the Trackstar link to complete your ${wmsProvider} integration setup`
+        trackstarLinkUrl,
+        openInNewWindow: true,
+        instructions: `Complete your ${wmsProvider} integration in the Trackstar window to finish the connection.`
       });
 
     } catch (apiError) {
