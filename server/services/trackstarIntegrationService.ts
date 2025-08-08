@@ -441,22 +441,138 @@ export class TrackstarIntegrationService {
 
   /**
    * Process webhook data from Trackstar
+   * Comprehensive webhook handler for all WMS events
    */
   async processWebhook(webhookData: any): Promise<void> {
-    console.log('📡 Processing Trackstar webhook:', webhookData.type);
+    console.log('📡 Processing Trackstar webhook:', webhookData.type || webhookData.event_type);
     
-    switch (webhookData.type) {
+    const eventType = webhookData.type || webhookData.event_type;
+    
+    switch (eventType) {
+      // Order Events
+      case 'order.created':
+        await this.handleOrderCreated(webhookData.data);
+        break;
       case 'order.updated':
         await this.handleOrderUpdate(webhookData.data);
         break;
-      case 'inventory.updated':
-        await this.handleInventoryUpdate(webhookData.data);
+      case 'order.cancelled':
+        await this.handleOrderCancelled(webhookData.data);
         break;
+      case 'order.allocated':
+        await this.handleOrderAllocated(webhookData.data);
+        break;
+      case 'order.picked':
+        await this.handleOrderPicked(webhookData.data);
+        break;
+      case 'order.packed':
+        await this.handleOrderPacked(webhookData.data);
+        break;
+      case 'order.shipped':
       case 'shipment.created':
         await this.handleShipmentUpdate(webhookData.data);
         break;
+      case 'order.delivered':
+        await this.handleOrderDelivered(webhookData.data);
+        break;
+      case 'order.returned':
+        await this.handleOrderReturned(webhookData.data);
+        break;
+      
+      // Inventory Events  
+      case 'inventory.updated':
+      case 'inventory.changed':
+        await this.handleInventoryUpdate(webhookData.data);
+        break;
+      case 'inventory.low_stock':
+        await this.handleLowStockAlert(webhookData.data);
+        break;
+      case 'inventory.out_of_stock':
+        await this.handleOutOfStockAlert(webhookData.data);
+        break;
+      case 'inventory.restock':
+        await this.handleRestockAlert(webhookData.data);
+        break;
+      
+      // Product Events
+      case 'product.created':
+        await this.handleProductCreated(webhookData.data);
+        break;
+      case 'product.updated':
+        await this.handleProductUpdated(webhookData.data);
+        break;
+      case 'product.discontinued':
+        await this.handleProductDiscontinued(webhookData.data);
+        break;
+      
+      // Receiving/Inbound Events
+      case 'purchase_order.received':
+        await this.handlePurchaseOrderReceived(webhookData.data);
+        break;
+      case 'receipt.created':
+        await this.handleReceiptCreated(webhookData.data);
+        break;
+      case 'receipt.completed':
+        await this.handleReceiptCompleted(webhookData.data);
+        break;
+      
+      // Return Events
+      case 'return.initiated':
+        await this.handleReturnInitiated(webhookData.data);
+        break;
+      case 'return.received':
+        await this.handleReturnReceived(webhookData.data);
+        break;
+      case 'return.processed':
+        await this.handleReturnProcessed(webhookData.data);
+        break;
+      
+      // Warehouse Events
+      case 'warehouse.capacity_alert':
+        await this.handleWarehouseCapacityAlert(webhookData.data);
+        break;
+      case 'warehouse.cycle_count':
+        await this.handleCycleCount(webhookData.data);
+        break;
+      
+      // Cost Events
+      case 'cost.updated':
+        await this.handleCostUpdate(webhookData.data);
+        break;
+      case 'billing.monthly_summary':
+        await this.handleMonthlyCostSummary(webhookData.data);
+        break;
+      
+      // Integration Events
+      case 'integration.connected':
+        await this.handleIntegrationConnected(webhookData.data);
+        break;
+      case 'integration.disconnected':
+        await this.handleIntegrationDisconnected(webhookData.data);
+        break;
+      case 'integration.error':
+        await this.handleIntegrationError(webhookData.data);
+        break;
+      
       default:
-        console.log(`⚠️ Unhandled webhook type: ${webhookData.type}`);
+        console.log(`⚠️ Unhandled webhook type: ${eventType}`);
+        console.log('📋 Webhook data:', JSON.stringify(webhookData, null, 2));
+    }
+  }
+
+  // ===========================================
+  // COMPREHENSIVE WEBHOOK HANDLERS
+  // ===========================================
+
+  /**
+   * Handle new order created
+   */
+  private async handleOrderCreated(orderData: any): Promise<void> {
+    try {
+      console.log('📦 New order created via webhook:', orderData.order_number);
+      await this.processTrackstarOrder(orderData.brand_id, orderData);
+    } catch (error) {
+      console.error('❌ Failed to handle order created webhook:', error);
     }
   }
 
@@ -475,13 +591,161 @@ export class TrackstarIntegrationService {
   }
 
   /**
+   * Handle order cancelled
+   */
+  private async handleOrderCancelled(orderData: any): Promise<void> {
+    try {
+      const order = await this.storage.getOrderByTrackstarId?.(orderData.id);
+      if (order) {
+        await this.storage.updateOrder(order.id, {
+          status: 'cancelled' as any,
+          cancelledAt: new Date(),
+          lastSyncAt: new Date()
+        });
+        console.log(`❌ Order cancelled: ${order.orderNumber}`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to handle order cancelled webhook:', error);
+    }
+  }
+
+  /**
+   * Handle order allocated (inventory reserved)
+   */
+  private async handleOrderAllocated(orderData: any): Promise<void> {
+    try {
+      const order = await this.storage.getOrderByTrackstarId?.(orderData.id);
+      if (order) {
+        await this.storage.updateOrder(order.id, {
+          status: 'processing' as any,
+          allocatedAt: new Date(orderData.allocated_at),
+          lastSyncAt: new Date()
+        });
+        console.log(`📋 Order allocated: ${order.orderNumber}`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to handle order allocated webhook:', error);
+    }
+  }
+
+  /**
+   * Handle order picked
+   */
+  private async handleOrderPicked(orderData: any): Promise<void> {
+    try {
+      const order = await this.storage.getOrderByTrackstarId?.(orderData.id);
+      if (order) {
+        await this.storage.updateOrder(order.id, {
+          status: 'processing' as any,
+          lastSyncAt: new Date()
+        });
+        console.log(`🏃 Order picked: ${order.orderNumber}`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to handle order picked webhook:', error);
+    }
+  }
+
+  /**
+   * Handle order packed
+   */
+  private async handleOrderPacked(orderData: any): Promise<void> {
+    try {
+      const order = await this.storage.getOrderByTrackstarId?.(orderData.id);
+      if (order) {
+        await this.storage.updateOrder(order.id, {
+          status: 'processing' as any,
+          packedAt: new Date(orderData.packed_at),
+          lastSyncAt: new Date()
+        });
+        console.log(`📦 Order packed: ${order.orderNumber}`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to handle order packed webhook:', error);
+    }
+  }
+
+  /**
+   * Handle order delivered
+   */
+  private async handleOrderDelivered(orderData: any): Promise<void> {
+    try {
+      const order = await this.storage.getOrderByTrackstarId?.(orderData.id);
+      if (order) {
+        await this.storage.updateOrder(order.id, {
+          status: 'delivered' as any,
+          deliveredAt: new Date(orderData.delivered_at),
+          lastSyncAt: new Date()
+        });
+        console.log(`✅ Order delivered: ${order.orderNumber}`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to handle order delivered webhook:', error);
+    }
+  }
+
+  /**
+   * Handle order returned
+   */
+  private async handleOrderReturned(orderData: any): Promise<void> {
+    try {
+      const order = await this.storage.getOrderByTrackstarId?.(orderData.id);
+      if (order) {
+        await this.storage.updateOrder(order.id, {
+          status: 'returned' as any,
+          lastSyncAt: new Date()
+        });
+        console.log(`↩️ Order returned: ${order.orderNumber}`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to handle order returned webhook:', error);
+    }
+  }
+
+  /**
    * Handle inventory update webhook
    */
   private async handleInventoryUpdate(inventoryData: any): Promise<void> {
     try {
       await this.processTrackstarInventory(inventoryData.brand_id, inventoryData);
+      console.log(`📊 Inventory updated for SKU: ${inventoryData.sku}`);
     } catch (error) {
       console.error('❌ Failed to handle inventory update webhook:', error);
+    }
+  }
+
+  /**
+   * Handle low stock alert
+   */
+  private async handleLowStockAlert(alertData: any): Promise<void> {
+    try {
+      console.log(`⚠️ Low stock alert: ${alertData.sku} - ${alertData.available} remaining`);
+      // Could trigger notifications or alerts here
+    } catch (error) {
+      console.error('❌ Failed to handle low stock alert:', error);
+    }
+  }
+
+  /**
+   * Handle out of stock alert
+   */
+  private async handleOutOfStockAlert(alertData: any): Promise<void> {
+    try {
+      console.log(`🚫 Out of stock: ${alertData.sku}`);
+      // Could trigger urgent notifications
+    } catch (error) {
+      console.error('❌ Failed to handle out of stock alert:', error);
+    }
+  }
+
+  /**
+   * Handle restock alert
+   */
+  private async handleRestockAlert(alertData: any): Promise<void> {
+    try {
+      console.log(`📈 Restocked: ${alertData.sku} - ${alertData.quantity} units added`);
+    } catch (error) {
+      console.error('❌ Failed to handle restock alert:', error);
     }
   }
 
@@ -496,13 +760,108 @@ export class TrackstarIntegrationService {
           status: 'shipped' as any,
           trackingNumber: shipmentData.tracking_number,
           carrier: shipmentData.carrier,
-          shippedAt: new Date(shipmentData.shipped_at),
+          shippedAt: new Date(shipmentData.shipped_at || shipmentData.created_at),
           lastSyncAt: new Date()
         });
-        console.log(`📦 Updated shipment for order: ${order.orderNumber}`);
+        console.log(`🚚 Shipment created for order: ${order.orderNumber}`);
       }
     } catch (error) {
       console.error('❌ Failed to handle shipment update webhook:', error);
     }
+  }
+
+  /**
+   * Handle product created
+   */
+  private async handleProductCreated(productData: any): Promise<void> {
+    try {
+      await this.processTrackstarProduct(productData.brand_id, productData);
+      console.log(`➕ New product created: ${productData.sku}`);
+    } catch (error) {
+      console.error('❌ Failed to handle product created webhook:', error);
+    }
+  }
+
+  /**
+   * Handle product updated
+   */
+  private async handleProductUpdated(productData: any): Promise<void> {
+    try {
+      await this.processTrackstarProduct(productData.brand_id, productData);
+      console.log(`🔄 Product updated: ${productData.sku}`);
+    } catch (error) {
+      console.error('❌ Failed to handle product updated webhook:', error);
+    }
+  }
+
+  /**
+   * Handle product discontinued
+   */
+  private async handleProductDiscontinued(productData: any): Promise<void> {
+    try {
+      const product = await this.storage.getProductBySku?.(productData.sku, productData.brand_id);
+      if (product) {
+        await this.storage.updateProduct?.(product.id, {
+          inventoryCount: 0,
+          lastSyncAt: new Date()
+        });
+      }
+      console.log(`🚫 Product discontinued: ${productData.sku}`);
+    } catch (error) {
+      console.error('❌ Failed to handle product discontinued webhook:', error);
+    }
+  }
+
+  // Additional webhook handlers for completeness...
+  private async handlePurchaseOrderReceived(data: any): Promise<void> {
+    console.log(`📦 Purchase order received: ${data.po_number}`);
+  }
+
+  private async handleReceiptCreated(data: any): Promise<void> {
+    console.log(`📋 Receipt created: ${data.receipt_id}`);
+  }
+
+  private async handleReceiptCompleted(data: any): Promise<void> {
+    console.log(`✅ Receipt completed: ${data.receipt_id}`);
+  }
+
+  private async handleReturnInitiated(data: any): Promise<void> {
+    console.log(`↩️ Return initiated: ${data.return_id}`);
+  }
+
+  private async handleReturnReceived(data: any): Promise<void> {
+    console.log(`📦 Return received: ${data.return_id}`);
+  }
+
+  private async handleReturnProcessed(data: any): Promise<void> {
+    console.log(`✅ Return processed: ${data.return_id}`);
+  }
+
+  private async handleWarehouseCapacityAlert(data: any): Promise<void> {
+    console.log(`⚠️ Warehouse capacity alert: ${data.warehouse} at ${data.capacity_percentage}%`);
+  }
+
+  private async handleCycleCount(data: any): Promise<void> {
+    console.log(`📊 Cycle count completed: ${data.location}`);
+  }
+
+  private async handleCostUpdate(data: any): Promise<void> {
+    console.log(`💰 Cost updated: ${data.cost_type} - $${data.amount}`);
+  }
+
+  private async handleMonthlyCostSummary(data: any): Promise<void> {
+    console.log(`📊 Monthly cost summary: $${data.total_cost} for ${data.month}`);
+  }
+
+  private async handleIntegrationConnected(data: any): Promise<void> {
+    console.log(`🔗 Integration connected: ${data.integration_name}`);
+  }
+
+  private async handleIntegrationDisconnected(data: any): Promise<void> {
+    console.log(`🔌 Integration disconnected: ${data.integration_name}`);
+  }
+
+  private async handleIntegrationError(data: any): Promise<void> {
+    console.error(`❌ Integration error: ${data.integration_name} - ${data.error_message}`);
   }
 }

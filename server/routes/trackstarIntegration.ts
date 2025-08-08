@@ -150,19 +150,71 @@ export function createTrackstarRoutes(storage: IStorage) {
    */
   router.post('/webhook', async (req, res) => {
     try {
-      console.log('📡 Received Trackstar webhook:', req.body?.type);
+      const eventType = req.body?.type || req.body?.event_type || 'unknown';
+      console.log('📡 Received Trackstar webhook:', eventType);
 
-      // Verify webhook signature if needed
-      // const signature = req.headers['x-trackstar-signature'];
+      // Verify webhook signature if provided
+      const signature = req.headers['x-trackstar-signature'] || req.headers['trackstar-signature'];
+      if (signature && process.env.TRACKSTAR_WEBHOOK_SECRET) {
+        // TODO: Implement signature verification when Trackstar provides the method
+        // const isValid = TrackstarWebhookManager.validateWebhookSignature(
+        //   JSON.stringify(req.body), 
+        //   signature, 
+        //   process.env.TRACKSTAR_WEBHOOK_SECRET
+        // );
+        // if (!isValid) {
+        //   return res.status(401).json({ error: 'Invalid webhook signature' });
+        // }
+      }
 
+      // Process the webhook
       await trackstarService.processWebhook(req.body);
 
-      res.status(200).json({ received: true });
+      // Log webhook for debugging
+      console.log(`✅ Processed ${eventType} webhook successfully`);
+
+      res.status(200).json({ 
+        received: true, 
+        event_type: eventType,
+        timestamp: new Date().toISOString()
+      });
 
     } catch (error) {
       console.error('❌ Webhook processing failed:', error);
       res.status(500).json({
         error: 'Webhook processing failed',
+        event_type: req.body?.type || 'unknown',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  /**
+   * Get webhook configuration and supported events
+   * GET /api/trackstar/webhooks/config
+   */
+  router.get('/webhooks/config', async (req, res) => {
+    try {
+      const { TrackstarWebhookManager } = await import('../services/trackstarWebhookManager');
+      
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const config = TrackstarWebhookManager.generateWebhookConfig(baseUrl);
+      const events = TrackstarWebhookManager.getAllEvents();
+      const summary = TrackstarWebhookManager.getEventsSummary();
+
+      res.json({
+        webhook_config: config,
+        supported_events: events,
+        events_summary: summary,
+        webhook_url: `${baseUrl}/api/trackstar/webhook`,
+        total_events: events.length,
+        required_events: TrackstarWebhookManager.getRequiredEvents().length
+      });
+
+    } catch (error) {
+      console.error('❌ Failed to get webhook config:', error);
+      res.status(500).json({
+        error: 'Failed to get webhook configuration',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
     }

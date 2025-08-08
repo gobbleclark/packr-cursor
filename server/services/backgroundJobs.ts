@@ -30,6 +30,8 @@ export class BackgroundJobService {
   ) {}
 
   startOrderSync() {
+    console.log('⚠️ ShipHero sync disabled - migrated to Trackstar');
+    return; // Disabled for Trackstar migration
     // Incremental sync every 2 minutes - only new orders since last successful sync
     cron.schedule('*/2 * * * *', async () => {
       console.log('Starting incremental order sync...');
@@ -62,6 +64,8 @@ export class BackgroundJobService {
   }
 
   startInventorySync() {
+    console.log('⚠️ ShipHero inventory sync disabled - migrated to Trackstar');
+    return; // Disabled for Trackstar migration
     // Run every hour
     cron.schedule('0 * * * *', async () => {
       console.log('Starting inventory sync job...');
