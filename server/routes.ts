@@ -16,6 +16,7 @@ import {
 } from "@shared/schema";
 import { shipHeroApiFixed } from "./services/shipHeroApiFixed";
 import { createShipHeroIntegrationRoutes } from "./routes/shipHeroIntegration";
+import { createTrackstarRoutes } from "./routes/trackstarIntegration";
 import { TrackstarService } from "./services/trackstar";
 import { BackgroundJobService } from "./services/backgroundJobs";
 import { RealApiSyncService } from "./services/realApiSync";
@@ -70,8 +71,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   backgroundJobService.startOrderSync();
   backgroundJobService.startInventorySync();
 
-  // Mount comprehensive ShipHero integration routes
+  // Mount comprehensive ShipHero integration routes (legacy)
   app.use('/api/shiphero', createShipHeroIntegrationRoutes(storage));
+  
+  // Mount Trackstar universal WMS integration routes
+  app.use('/api/trackstar', createTrackstarRoutes(storage));
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: AuthenticatedRequest, res) => {

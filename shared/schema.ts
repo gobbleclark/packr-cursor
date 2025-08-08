@@ -67,7 +67,9 @@ export const brands = pgTable("brands", {
   shipHeroApiKey: varchar("ship_hero_api_key"),
   shipHeroPassword: varchar("ship_hero_password"),
   shipHeroUserId: varchar("ship_hero_user_id"),
+  // Trackstar universal WMS integration
   trackstarApiKey: varchar("trackstar_api_key"),
+  trackstarAccessToken: varchar("trackstar_access_token"),
   trackstarConnectionId: varchar("trackstar_connection_id"),
   trackstarIntegrationName: varchar("trackstar_integration_name"),
   invitationToken: varchar("invitation_token"), // For brand signup invitations
