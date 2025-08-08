@@ -23,9 +23,20 @@ router.post('/connect', isAuthenticated, async (req, res) => {
       return res.status(404).json({ message: 'Brand not found' });
     }
 
-    // Update brand with Trackstar API key and selected WMS provider
-    // For now, just update trackstarApiKey field (the other fields will be added in future migrations)
-    await storage.updateBrandTrackstarCredentials(brandId, apiKey);
+    // Store credentials for Trackstar connection
+    const trackstarApiKey = process.env.TRACKSTAR_API_KEY;
+    if (!trackstarApiKey) {
+      return res.status(500).json({ message: 'Trackstar API key not configured' });
+    }
+    
+    // Update brand with Trackstar API key and credentials
+    await storage.updateBrandTrackstarCredentials(brandId, trackstarApiKey);
+    
+    // TODO: Store WMS credentials securely for the selected provider
+    console.log(`📝 WMS Provider: ${wmsProvider}`);
+    if (req.body.credentials) {
+      console.log(`🔐 Credentials provided for ${wmsProvider}`);
+    }
 
     console.log(`✅ Trackstar integration connected for brand ${brand.name} with ${wmsProvider}`);
 

@@ -195,7 +195,6 @@ export default function BrandManagementClean() {
       const response = await apiRequest('POST', `/api/trackstar/connect`, {
         brandId: data.brandId,
         wmsProvider: data.wmsProvider,
-        apiKey: '269fcaf8b50a4fb4b384724f3e5d76db', // Universal Trackstar API key
         credentials: data.credentials
       });
       if (!response.ok) {

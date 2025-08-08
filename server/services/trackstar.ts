@@ -1,25 +1,32 @@
 export class TrackstarService {
   private baseUrl = 'https://production.trackstarhq.com';
-  private apiKey = '269fcaf8b50a4fb4b384724f3e5d76db'; // Universal API key for all brands
+  private apiKey = process.env.TRACKSTAR_API_KEY || ''; // Your personal Trackstar API key
 
   /**
    * Get a link token for connecting a brand to Trackstar
    */
   async getLinkToken(): Promise<string> {
+    console.log(`🔗 Getting Trackstar link token with API key: ${this.apiKey.substring(0, 8)}...`);
 
     const response = await fetch(`${this.baseUrl}/link/token`, {
       method: 'POST',
       headers: {
         'x-trackstar-api-key': this.apiKey,
+        'Authorization': `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
       },
     });
 
+    console.log(`📡 Trackstar link token response: ${response.status} ${response.statusText}`);
+    
     if (!response.ok) {
-      throw new Error(`Failed to get link token: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`❌ Trackstar link token error: ${errorText}`);
+      throw new Error(`Failed to get link token: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log(`✅ Trackstar link token received: ${data.link_token?.substring(0, 8)}...`);
     return data.link_token;
   }
 
@@ -32,21 +39,29 @@ export class TrackstarService {
     integration_name: string;
     available_endpoints: string[];
   }> {
+    console.log(`🔄 Exchanging Trackstar auth code: ${authCode.substring(0, 8)}...`);
 
     const response = await fetch(`${this.baseUrl}/link/exchange`, {
       method: 'POST',
       headers: {
         'x-trackstar-api-key': this.apiKey,
+        'Authorization': `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ auth_code: authCode }),
     });
 
+    console.log(`📡 Trackstar exchange response: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
-      throw new Error(`Failed to exchange auth code: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`❌ Trackstar exchange error: ${errorText}`);
+      throw new Error(`Failed to exchange auth code: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log(`✅ Trackstar connection established: ${data.connection_id}`);
+    return data;
   }
 
   /**
