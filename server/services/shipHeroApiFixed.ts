@@ -250,8 +250,6 @@ export class ShipHeroApiService {
                   total_price
                   subtotal
                   total_tax
-                  total_shipping
-                  total_discounts
                   email
                   profile
                   hold_until_date
@@ -259,15 +257,6 @@ export class ShipHeroApiService {
                   priority_flag
                   tags
                   updated_at
-                  allocated_at
-                  packed_at
-                  shipped_at
-                  delivered_at
-                  cancelled_at
-                  order_source
-                  currency
-                  warehouse
-                  customer_account_id
 
                   shipping_address {
                     first_name
@@ -284,16 +273,12 @@ export class ShipHeroApiService {
                   shipments {
                     id
                     legacy_id
-                    shipped_date
-                    carrier
-                    tracking_number
-                    shipping_method
-                    cost
-                    delivered_date
-                    line_items {
+                    created_date
+                    delivered
+                    shipping_labels {
                       id
-                      sku
-                      quantity
+                      tracking_number
+                      carrier
                     }
                   }
                   line_items(first: 10) {
