@@ -64,6 +64,8 @@ export default function BrandManagementClean() {
   const [selectedBrandForEdit, setSelectedBrandForEdit] = useState<any>(null);
   const [editShipHeroUsername, setEditShipHeroUsername] = useState('');
   const [editShipHeroPassword, setEditShipHeroPassword] = useState('');
+  const [isTrackstarModalOpen, setIsTrackstarModalOpen] = useState(false);
+  const [selectedWMS, setSelectedWMS] = useState('');
 
   const { data: brands = [], isLoading: brandsLoading } = useQuery<any[]>({
     queryKey: ['/api/brands'],
@@ -182,6 +184,65 @@ export default function BrandManagementClean() {
       });
     }
   });
+
+  const connectTrackstarMutation = useMutation({
+    mutationFn: async (data: { brandId: string; wmsProvider: string }) => {
+      const response = await apiRequest('POST', `/api/trackstar/connect`, {
+        brandId: data.brandId,
+        wmsProvider: data.wmsProvider,
+        apiKey: '269fcaf8b50a4fb4b384724f3e5d76db' // Universal Trackstar API key
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
+      setIsTrackstarModalOpen(false);
+      setSelectedWMS('');
+      setSelectedBrand(null);
+      
+      toast({
+        title: "Integration Connected",
+        description: "Trackstar integration has been successfully configured. Data sync will begin shortly.",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to connect Trackstar integration",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleTrackstarConnect = () => {
+    if (!selectedBrand || !selectedWMS) {
+      toast({
+        title: "Error",
+        description: "Please select a WMS provider",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    connectTrackstarMutation.mutate({
+      brandId: selectedBrand.id,
+      wmsProvider: selectedWMS
+    });
+  };
 
   const syncDataMutation = useMutation({
     mutationFn: async (brandId: string) => {
@@ -362,20 +423,9 @@ export default function BrandManagementClean() {
       return;
     }
 
-    // Redirect to Trackstar's connection interface
-    const trackstarConnectUrl = `https://app.trackstar.com/connect?client_id=269fcaf8b50a4fb4b384724f3e5d76db&brand_id=${selectedBrand.id}&redirect_uri=${encodeURIComponent(window.location.origin)}/api/trackstar/callback`;
-    
-    toast({
-      title: "Redirecting to Trackstar", 
-      description: "Opening Trackstar's WMS selection interface...",
-    });
-
-    // Open Trackstar connection in new window
-    window.open(trackstarConnectUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-    
-    // Close the dialog
+    // Close current dialog and open Trackstar WMS selection modal
     setIsIntegrationDialogOpen(false);
-    setSelectedBrand(null);
+    setIsTrackstarModalOpen(true);
   };
 
   return (
@@ -733,6 +783,100 @@ export default function BrandManagementClean() {
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                   )}
                   Update Integration
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Trackstar WMS Selection Modal */}
+          <Dialog open={isTrackstarModalOpen} onOpenChange={setIsTrackstarModalOpen}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-purple-600 rounded flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">T</span>
+                  </div>
+                  Trackstar Universal WMS
+                </DialogTitle>
+                <DialogDescription>
+                  Choose your warehouse management system to connect with {selectedBrand?.name}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                  Select your WMS provider from the list below. Trackstar will handle the connection and data synchronization.
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label>Select WMS Provider</Label>
+                  <Select value={selectedWMS} onValueChange={setSelectedWMS}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose your WMS provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="shiphero">ShipHero</SelectItem>
+                      <SelectItem value="shipbob">ShipBob</SelectItem>
+                      <SelectItem value="fulfillment-works">Fulfillment Works</SelectItem>
+                      <SelectItem value="shipstation">ShipStation</SelectItem>
+                      <SelectItem value="orderhive">OrderHive</SelectItem>
+                      <SelectItem value="skubana">Skubana</SelectItem>
+                      <SelectItem value="linnworks">Linnworks</SelectItem>
+                      <SelectItem value="brightpearl">Brightpearl</SelectItem>
+                      <SelectItem value="cin7">Cin7</SelectItem>
+                      <SelectItem value="netsuite">NetSuite WMS</SelectItem>
+                      <SelectItem value="other">Other Provider</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedWMS && (
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <h4 className="font-semibold text-green-900 mb-2">
+                      {selectedWMS === 'shiphero' && 'ShipHero Integration'}
+                      {selectedWMS === 'shipbob' && 'ShipBob Integration'}
+                      {selectedWMS === 'fulfillment-works' && 'Fulfillment Works Integration'}
+                      {selectedWMS === 'shipstation' && 'ShipStation Integration'}
+                      {selectedWMS === 'orderhive' && 'OrderHive Integration'}
+                      {selectedWMS === 'skubana' && 'Skubana Integration'}
+                      {selectedWMS === 'linnworks' && 'Linnworks Integration'}
+                      {selectedWMS === 'brightpearl' && 'Brightpearl Integration'}
+                      {selectedWMS === 'cin7' && 'Cin7 Integration'}
+                      {selectedWMS === 'netsuite' && 'NetSuite WMS Integration'}
+                      {selectedWMS === 'other' && 'Custom WMS Integration'}
+                    </h4>
+                    <p className="text-sm text-green-700 mb-3">
+                      Trackstar will sync the following data:
+                    </p>
+                    <ul className="text-sm text-green-700 space-y-1">
+                      <li>• Orders and fulfillment status</li>
+                      <li>• Inventory levels and stock updates</li>
+                      <li>• Product catalog and SKUs</li>
+                      <li>• Shipping and tracking information</li>
+                      <li>• Purchase orders and receiving</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsTrackstarModalOpen(false);
+                    setSelectedWMS('');
+                    setSelectedBrand(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleTrackstarConnect}
+                  disabled={!selectedWMS || connectTrackstarMutation.isPending}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  {connectTrackstarMutation.isPending && (
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Connect {selectedWMS && selectedWMS.charAt(0).toUpperCase() + selectedWMS.slice(1)}
                 </Button>
               </DialogFooter>
             </DialogContent>
