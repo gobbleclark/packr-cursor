@@ -66,6 +66,11 @@ export default function BrandManagementClean() {
   const [editShipHeroPassword, setEditShipHeroPassword] = useState('');
   const [isTrackstarModalOpen, setIsTrackstarModalOpen] = useState(false);
   const [selectedWMS, setSelectedWMS] = useState('');
+  const [showCredentialsForm, setShowCredentialsForm] = useState(false);
+  const [wmsCredentials, setWmsCredentials] = useState({
+    username: '',
+    password: ''
+  });
 
   const { data: brands = [], isLoading: brandsLoading } = useQuery<any[]>({
     queryKey: ['/api/brands'],
@@ -186,11 +191,12 @@ export default function BrandManagementClean() {
   });
 
   const connectTrackstarMutation = useMutation({
-    mutationFn: async (data: { brandId: string; wmsProvider: string }) => {
+    mutationFn: async (data: { brandId: string; wmsProvider: string; credentials?: any }) => {
       const response = await apiRequest('POST', `/api/trackstar/connect`, {
         brandId: data.brandId,
         wmsProvider: data.wmsProvider,
-        apiKey: '269fcaf8b50a4fb4b384724f3e5d76db' // Universal Trackstar API key
+        apiKey: '269fcaf8b50a4fb4b384724f3e5d76db', // Universal Trackstar API key
+        credentials: data.credentials
       });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -202,10 +208,12 @@ export default function BrandManagementClean() {
       setIsTrackstarModalOpen(false);
       setSelectedWMS('');
       setSelectedBrand(null);
+      setShowCredentialsForm(false);
+      setWmsCredentials({ username: '', password: '' });
       
       toast({
         title: "Integration Connected",
-        description: "Trackstar integration has been successfully configured. Data sync will begin shortly.",
+        description: "Trackstar integration has been successfully configured with your WMS credentials. Data sync will begin shortly.",
       });
     },
     onError: (error) => {
@@ -228,6 +236,25 @@ export default function BrandManagementClean() {
     },
   });
 
+  const handleWMSSelection = () => {
+    if (!selectedWMS) {
+      toast({
+        title: "Error",
+        description: "Please select a WMS provider",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Show credentials form for providers that require them
+    if (selectedWMS === 'shiphero' || selectedWMS === 'shipbob' || selectedWMS === 'fulfillmentworks') {
+      setShowCredentialsForm(true);
+    } else {
+      // Connect directly for providers that don't need credentials
+      handleTrackstarConnect();
+    }
+  };
+
   const handleTrackstarConnect = () => {
     if (!selectedBrand || !selectedWMS) {
       toast({
@@ -238,9 +265,20 @@ export default function BrandManagementClean() {
       return;
     }
 
+    // Validate credentials if required
+    if (showCredentialsForm && (!wmsCredentials.username || !wmsCredentials.password)) {
+      toast({
+        title: "Error",
+        description: "Please enter your WMS credentials",
+        variant: "destructive",
+      });
+      return;
+    }
+
     connectTrackstarMutation.mutate({
       brandId: selectedBrand.id,
-      wmsProvider: selectedWMS
+      wmsProvider: selectedWMS,
+      credentials: showCredentialsForm ? wmsCredentials : undefined
     });
   };
 
@@ -829,7 +867,7 @@ export default function BrandManagementClean() {
                   </Select>
                 </div>
 
-                {selectedWMS && (
+                {selectedWMS && !showCredentialsForm && (
                   <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                     <h4 className="font-semibold text-green-900 mb-2">
                       {selectedWMS === 'shiphero' && 'ShipHero Integration'}
@@ -856,6 +894,63 @@ export default function BrandManagementClean() {
                     </ul>
                   </div>
                 )}
+
+                {/* WMS Credentials Form */}
+                {showCredentialsForm && (
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <h4 className="font-semibold text-blue-900 mb-3">
+                      Enter {selectedWMS === 'shiphero' ? 'ShipHero' : 
+                             selectedWMS === 'shipbob' ? 'ShipBob' : 
+                             selectedWMS === 'fulfillment-works' ? 'Fulfillment Works' : 
+                             selectedWMS.charAt(0).toUpperCase() + selectedWMS.slice(1)} Credentials
+                    </h4>
+                    <p className="text-sm text-blue-700 mb-4">
+                      These credentials will be securely stored and used by Trackstar to connect to your warehouse.
+                    </p>
+                    <div className="grid gap-3">
+                      <div className="grid gap-2">
+                        <Label htmlFor="wms-username">
+                          {selectedWMS === 'shiphero' ? 'ShipHero Username (Email)' : 
+                           selectedWMS === 'shipbob' ? 'ShipBob API Key' : 
+                           selectedWMS === 'fulfillment-works' ? 'Fulfillment Works Username' : 
+                           'Username/API Key'}
+                        </Label>
+                        <Input
+                          id="wms-username"
+                          type="text"
+                          value={wmsCredentials.username}
+                          onChange={(e) => setWmsCredentials({ ...wmsCredentials, username: e.target.value })}
+                          placeholder={
+                            selectedWMS === 'shiphero' ? 'your-email@company.com' :
+                            selectedWMS === 'shipbob' ? 'Enter your ShipBob API key' :
+                            selectedWMS === 'fulfillment-works' ? 'Enter your username' :
+                            'Enter your username or API key'
+                          }
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="wms-password">
+                          {selectedWMS === 'shiphero' ? 'ShipHero Password' : 
+                           selectedWMS === 'shipbob' ? 'ShipBob API Secret' : 
+                           selectedWMS === 'fulfillment-works' ? 'Fulfillment Works Password' : 
+                           'Password/API Secret'}
+                        </Label>
+                        <Input
+                          id="wms-password"
+                          type="password"
+                          value={wmsCredentials.password}
+                          onChange={(e) => setWmsCredentials({ ...wmsCredentials, password: e.target.value })}
+                          placeholder={
+                            selectedWMS === 'shiphero' ? 'Enter your ShipHero password' :
+                            selectedWMS === 'shipbob' ? 'Enter your ShipBob API secret' :
+                            selectedWMS === 'fulfillment-works' ? 'Enter your password' :
+                            'Enter your password or API secret'
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button
@@ -864,20 +959,45 @@ export default function BrandManagementClean() {
                     setIsTrackstarModalOpen(false);
                     setSelectedWMS('');
                     setSelectedBrand(null);
+                    setShowCredentialsForm(false);
+                    setWmsCredentials({ username: '', password: '' });
                   }}
                 >
                   Cancel
                 </Button>
-                <Button
-                  onClick={handleTrackstarConnect}
-                  disabled={!selectedWMS || connectTrackstarMutation.isPending}
-                  className="bg-purple-600 hover:bg-purple-700"
-                >
-                  {connectTrackstarMutation.isPending && (
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Connect {selectedWMS && selectedWMS.charAt(0).toUpperCase() + selectedWMS.slice(1)}
-                </Button>
+                
+                {showCredentialsForm && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowCredentialsForm(false);
+                      setWmsCredentials({ username: '', password: '' });
+                    }}
+                  >
+                    Back
+                  </Button>
+                )}
+                
+                {!showCredentialsForm ? (
+                  <Button
+                    onClick={handleWMSSelection}
+                    disabled={!selectedWMS}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    Continue with {selectedWMS && selectedWMS.charAt(0).toUpperCase() + selectedWMS.slice(1)}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleTrackstarConnect}
+                    disabled={!wmsCredentials.username || !wmsCredentials.password || connectTrackstarMutation.isPending}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    {connectTrackstarMutation.isPending && (
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Connect {selectedWMS && selectedWMS.charAt(0).toUpperCase() + selectedWMS.slice(1)}
+                  </Button>
+                )}
               </DialogFooter>
             </DialogContent>
           </Dialog>
