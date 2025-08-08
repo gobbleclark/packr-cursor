@@ -9,11 +9,11 @@ const trackstarSyncService = new TrackstarSyncService();
 // Connect brand to Trackstar with selected WMS provider
 router.post('/connect', isAuthenticated, async (req, res) => {
   try {
-    const { brandId, wmsProvider, apiKey } = req.body;
+    const { brandId, wmsProvider, credentials } = req.body;
 
-    if (!brandId || !wmsProvider || !apiKey) {
+    if (!brandId || !wmsProvider) {
       return res.status(400).json({ 
-        message: 'Missing required fields: brandId, wmsProvider, and apiKey' 
+        message: 'Missing required fields: brandId and wmsProvider' 
       });
     }
 
@@ -32,10 +32,14 @@ router.post('/connect', isAuthenticated, async (req, res) => {
     // Update brand with Trackstar API key and credentials
     await storage.updateBrandTrackstarCredentials(brandId, trackstarApiKey);
     
-    // TODO: Store WMS credentials securely for the selected provider
+    // Store WMS credentials securely for the selected provider
     console.log(`📝 WMS Provider: ${wmsProvider}`);
-    if (req.body.credentials) {
-      console.log(`🔐 Credentials provided for ${wmsProvider}`);
+    if (credentials) {
+      console.log(`🔐 Credentials provided for ${wmsProvider}:`, { 
+        username: credentials.username ? '***' : 'none',
+        password: credentials.password ? '***' : 'none'
+      });
+      // TODO: Store encrypted credentials in database for the selected WMS provider
     }
 
     console.log(`✅ Trackstar integration connected for brand ${brand.name} with ${wmsProvider}`);
