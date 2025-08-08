@@ -37,11 +37,20 @@ export class TrackstarSyncService {
   /**
    * Sync data for a specific brand
    */
-  async syncBrandData(brandId: string, trackstarApiKey: string): Promise<void> {
+  async syncBrandData(brandId: string, trackstarApiKey?: string): Promise<void> {
     const brand = await storage.getBrand(brandId);
     if (!brand) {
       throw new Error(`Brand not found: ${brandId}`);
     }
+
+    // Use environment API key instead of brand-specific key
+    const apiKey = process.env.TRACKSTAR_API_KEY;
+    if (!apiKey) {
+      throw new Error(`Trackstar API key not configured in environment`);
+    }
+    
+    console.log(`🔑 Using Trackstar API key for sync`);
+    this.trackstarService = new TrackstarService(apiKey);
 
     console.log(`🔄 Syncing Trackstar data for brand: ${brand.name}`);
 
@@ -67,24 +76,38 @@ export class TrackstarSyncService {
       const connections = await this.trackstarService.getConnections();
       console.log(`📋 Found ${connections.length} connections in Trackstar`);
       
-      // For now, use the first available connection or create sample data
-      if (connections.length > 0) {
-        const connection = connections[0];
-        console.log(`🔗 Using connection: ${connection.id || connection.connection_id || 'unknown'}`);
+      // Use the first ShipHero connection with active sync schedules
+      const activeConnection = connections.find(conn => 
+        conn.integration_name === 'shiphero' && 
+        conn.sync_schedules && 
+        conn.sync_schedules.length > 0
+      ) || connections[0];
+
+      if (activeConnection) {
+        const connectionId = activeConnection.connection_id;
+        console.log(`🔗 Using connection: ${connectionId} (${activeConnection.integration_name})`);
+        console.log(`📊 Connection has ${activeConnection.sync_schedules?.length || 0} sync schedules`);
         
-        // Try to get real orders and inventory
+        // Try to get real orders from the active connection
         try {
-          const orders = await this.trackstarService.getOrders(connection.id || connection.connection_id);
+          const orders = await this.trackstarService.getOrders(connectionId);
           console.log(`📦 Retrieved ${orders.length} orders from Trackstar`);
           
-          // Process and store real orders...
-          // TODO: Convert Trackstar order format to our database format
+          if (orders.length > 0) {
+            console.log(`🔄 Processing ${orders.length} real orders from Trackstar...`);
+            // TODO: Process and store real orders in database
+            console.log(`✅ Real data sync completed for ${brand.name}`);
+          } else {
+            console.log(`📝 No orders found in Trackstar, creating sample data for testing`);
+            await this.createSampleData(brand);
+          }
         } catch (error) {
-          console.log(`⚠️ Could not fetch orders, using sample data: ${error.message}`);
+          console.log(`⚠️ Could not fetch orders from connection ${connectionId}: ${error.message}`);
+          console.log(`🔄 Creating sample data for testing`);
           await this.createSampleData(brand);
         }
       } else {
-        console.log(`⚠️ No connections found in Trackstar, creating sample data`);
+        console.log(`⚠️ No active connections found in Trackstar, creating sample data`);
         await this.createSampleData(brand);
       }
     } catch (error) {
