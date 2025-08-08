@@ -352,20 +352,29 @@ export default function BrandManagementClean() {
   };
 
   const handleSaveIntegration = () => {
-    if (!selectedBrand || !shipHeroUsername || !shipHeroPassword) {
+    if (!selectedBrand) {
       toast({
         title: "Error",
-        description: "Please fill in all ShipHero credentials",
+        description: "Please select a brand",
         variant: "destructive",
       });
       return;
     }
 
-    addIntegrationMutation.mutate({
-      brandId: selectedBrand.id,
-      shipHeroUsername,
-      shipHeroPassword
+    // Redirect to Trackstar's connection interface
+    const trackstarConnectUrl = `https://app.trackstar.com/connect?client_id=269fcaf8b50a4fb4b384724f3e5d76db&brand_id=${selectedBrand.id}&redirect_uri=${encodeURIComponent(window.location.origin)}/api/trackstar/callback`;
+    
+    toast({
+      title: "Redirecting to Trackstar", 
+      description: "Opening Trackstar's WMS selection interface...",
     });
+
+    // Open Trackstar connection in new window
+    window.open(trackstarConnectUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+    
+    // Close the dialog
+    setIsIntegrationDialogOpen(false);
+    setSelectedBrand(null);
   };
 
   return (
@@ -449,16 +458,27 @@ export default function BrandManagementClean() {
 
 
                       <div className="flex flex-wrap gap-2">
-                        {!brand.hasShipHeroIntegration ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAddIntegration(brand)}
-                            className="flex items-center gap-2"
-                          >
-                            <Settings className="h-4 w-4" />
-                            <span className="hidden sm:inline">Add Integration</span>
-                          </Button>
+                        {!brand.trackstarApiKey ? (
+                          <>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => handleAddIntegration(brand)}
+                              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700"
+                            >
+                              <Settings className="h-4 w-4" />
+                              <span>Add Integration</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleManageUsers(brand)}
+                              className="flex items-center gap-2"
+                            >
+                              <UserPlus className="h-4 w-4" />
+                              <span>Manage Users</span>
+                            </Button>
+                          </>
                         ) : (
                           <>
                             <Button
@@ -473,21 +493,16 @@ export default function BrandManagementClean() {
                               ) : (
                                 <RefreshCw className="h-4 w-4" />
                               )}
-                              <span className="hidden sm:inline">Sync Data</span>
+                              <span>Sync Data</span>
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                setSelectedBrandForEdit(brand);
-                                setEditShipHeroUsername(brand.shipHeroApiKey || '');
-                                setEditShipHeroPassword('');
-                                setIsEditIntegrationDialogOpen(true);
-                              }}
+                              onClick={() => handleAddIntegration(brand)}
                               className="flex items-center gap-2"
                             >
                               <Settings className="h-4 w-4" />
-                              <span className="hidden sm:inline">Edit Integration</span>
+                              <span>Edit Integration</span>
                             </Button>
                             <Button
                               variant="destructive"
@@ -539,7 +554,7 @@ export default function BrandManagementClean() {
                               className="flex items-center gap-2"
                             >
                               <Users className="h-4 w-4" />
-                              <span className="hidden sm:inline">Manage Users</span>
+                              <span>Manage Users</span>
                             </Button>
                           </>
                         )}
@@ -608,28 +623,24 @@ export default function BrandManagementClean() {
               <DialogHeader>
                 <DialogTitle>Add Integration for {selectedBrand?.name}</DialogTitle>
                 <DialogDescription>
-                  Configure ShipHero API integration for this brand to enable order and inventory sync.
+                  Configure Trackstar universal WMS integration for this brand to enable order and inventory sync across all platforms.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="shiphero-username">ShipHero Username</Label>
-                  <Input
-                    id="shiphero-username"
-                    value={shipHeroUsername}
-                    onChange={(e) => setShipHeroUsername(e.target.value)}
-                    placeholder="Enter your ShipHero username"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="shiphero-password">ShipHero Password</Label>
-                  <Input
-                    id="shiphero-password"
-                    type="password"
-                    value={shipHeroPassword}
-                    onChange={(e) => setShipHeroPassword(e.target.value)}
-                    placeholder="Enter your ShipHero password"
-                  />
+                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                  <h4 className="font-semibold text-purple-900 mb-2">Universal WMS Integration</h4>
+                  <p className="text-sm text-purple-700 mb-3">
+                    Trackstar provides a unified connection to multiple warehouse management systems including:
+                  </p>
+                  <ul className="text-sm text-purple-700 space-y-1 mb-3">
+                    <li>• ShipHero</li>
+                    <li>• ShipBob</li>
+                    <li>• Fulfillment Works</li>
+                    <li>• And 20+ other WMS providers</li>
+                  </ul>
+                  <p className="text-sm text-purple-600">
+                    Click "Connect to Trackstar" to choose your WMS provider and configure the connection.
+                  </p>
                 </div>
               </div>
               <DialogFooter>
@@ -638,8 +649,6 @@ export default function BrandManagementClean() {
                   onClick={() => {
                     setIsIntegrationDialogOpen(false);
                     setSelectedBrand(null);
-                    setShipHeroUsername('');
-                    setShipHeroPassword('');
                   }}
                 >
                   Cancel
@@ -647,11 +656,12 @@ export default function BrandManagementClean() {
                 <Button
                   onClick={handleSaveIntegration}
                   disabled={addIntegrationMutation.isPending}
+                  className="bg-purple-600 hover:bg-purple-700"
                 >
                   {addIntegrationMutation.isPending && (
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Save Integration
+                  Connect to Trackstar
                 </Button>
               </DialogFooter>
             </DialogContent>
