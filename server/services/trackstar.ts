@@ -65,18 +65,46 @@ export class TrackstarService {
   }
 
   /**
-   * Get inventory data for a specific connection
+   * Get all connections from your Trackstar account
    */
-  async getInventory(accessToken: string, connectionId: string): Promise<any[]> {
-    const response = await fetch(`${this.baseUrl}/inventory`, {
+  async getConnections(): Promise<any[]> {
+    console.log(`📋 Getting all connections from Trackstar account...`);
+    
+    const response = await fetch(`${this.baseUrl}/connections`, {
       headers: {
         'x-trackstar-api-key': this.apiKey,
-        'x-trackstar-access-token': accessToken,
+      },
+    });
+
+    console.log(`📡 Trackstar connections response: ${response.status} ${response.statusText}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Failed to get connections: ${errorText}`);
+      throw new Error(`Failed to get connections: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Found ${data.length || 0} connections in Trackstar account`);
+    return data;
+  }
+
+  /**
+   * Get inventory data for a specific connection
+   */
+  async getInventory(connectionId: string): Promise<any[]> {
+    console.log(`📦 Getting inventory for connection: ${connectionId}`);
+    
+    const response = await fetch(`${this.baseUrl}/inventory?connection_id=${connectionId}`, {
+      headers: {
+        'x-trackstar-api-key': this.apiKey,
       },
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to get inventory: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`❌ Failed to get inventory: ${errorText}`);
+      throw new Error(`Failed to get inventory: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     return response.json();
@@ -85,16 +113,19 @@ export class TrackstarService {
   /**
    * Get orders data for a specific connection
    */
-  async getOrders(accessToken: string, connectionId: string): Promise<any[]> {
-    const response = await fetch(`${this.baseUrl}/orders`, {
+  async getOrders(connectionId: string): Promise<any[]> {
+    console.log(`📋 Getting orders for connection: ${connectionId}`);
+    
+    const response = await fetch(`${this.baseUrl}/orders?connection_id=${connectionId}`, {
       headers: {
         'x-trackstar-api-key': this.apiKey,
-        'x-trackstar-access-token': accessToken,
       },
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to get orders: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`❌ Failed to get orders: ${errorText}`);
+      throw new Error(`Failed to get orders: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     return response.json();
