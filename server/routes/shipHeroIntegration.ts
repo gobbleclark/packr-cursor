@@ -141,6 +141,10 @@ export function createShipHeroIntegrationRoutes(storage: IStorage): Router {
       
       if (type === 'incremental') {
         await integrationService.performIncrementalSync(brandId);
+      } else if (type === 'shipments') {
+        // Sync shipments for the specified number of days
+        const days = req.body.days || 30;
+        await integrationService.syncShipments(brandId, days);
       } else {
         await scheduler.triggerManualSync(brandId);
       }

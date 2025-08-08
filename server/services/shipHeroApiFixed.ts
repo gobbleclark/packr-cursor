@@ -243,6 +243,124 @@ export class ShipHeroApiService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  /**
+   * Get shipments from ShipHero API with date range and pagination
+   */
+  async getShipments(credentials: ShipHeroCredentials, fromDate: Date, toDate: Date): Promise<any[]> {
+    console.log(`🚢 Fetching ShipHero shipments from ${fromDate.toISOString()} to ${toDate.toISOString()} with credentials ${credentials.username}`);
+    
+    const query = `
+      query GetShipments($after: String, $first: Int, $date_from: ISODateTime, $date_to: ISODateTime) {
+        shipments(first: $first, after: $after, date_from: $date_from, date_to: $date_to) {
+          request_id
+          complexity
+          edges {
+            node {
+              id
+              legacy_id
+              order_id
+              order_number
+              user_id
+              warehouse
+              address {
+                first_name
+                last_name
+                company
+                address1
+                address2
+                city
+                state
+                state_code
+                zip
+                country
+                country_code
+                email
+                phone
+              }
+              shipped_date
+              delivered_date
+              carrier
+              method
+              tracking_number
+              cost
+              insurance
+              insurance_amount
+              profile
+              status
+              created_at
+              updated_at
+              line_items {
+                edges {
+                  node {
+                    id
+                    order_line_item_id
+                    sku
+                    partner_line_item_id
+                    quantity
+                    quantity_shipped
+                    product_name
+                  }
+                }
+              }
+            }
+          }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
+          }
+        }
+      }
+    `;
+
+    const variables = {
+      first: 100,
+      date_from: fromDate.toISOString(),
+      date_to: toDate.toISOString(),
+      after: null
+    };
+
+    let allShipments: any[] = [];
+    let hasNextPage = true;
+    let pageCount = 0;
+
+    try {
+      while (hasNextPage) {
+        pageCount++;
+        console.log(`📄 Fetching shipments page ${pageCount}${variables.after ? ` (cursor: ${variables.after})` : ''}...`);
+
+        const response = await this.makeGraphQLRequest(credentials, query, variables);
+        
+        if (!response.data?.shipments?.edges) {
+          console.error('❌ Invalid shipments response structure');
+          break;
+        }
+
+        const shipments = response.data.shipments.edges.map((edge: any) => edge.node);
+        allShipments.push(...shipments);
+        
+        console.log(`✅ ShipHero shipments API page ${pageCount} response received, complexity: ${response.data.shipments.complexity}`);
+        console.log(`📦 Shipments page ${pageCount}: Found ${shipments.length} shipments (Total so far: ${allShipments.length})`);
+
+        hasNextPage = response.data.shipments.pageInfo.hasNextPage;
+        variables.after = response.data.shipments.pageInfo.endCursor;
+
+        if (pageCount > 200) {
+          console.warn('⚠️ Stopping after 200 pages to avoid excessive API usage');
+          break;
+        }
+      }
+
+      console.log(`✅ All shipment pages fetched. Total shipments: ${allShipments.length}`);
+      return allShipments;
+
+    } catch (error) {
+      console.error('❌ ShipHero shipments API failed:', error);
+      throw error;
+    }
+  }
+
   async getOrders(credentials: ShipHeroCredentials, fromDate?: Date): Promise<ShipHeroOrder[]> {
     const fromDateTime = fromDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const toDateTime = new Date();

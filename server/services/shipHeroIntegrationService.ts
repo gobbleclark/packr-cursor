@@ -73,6 +73,41 @@ export class ShipHeroIntegrationService {
   }
 
   /**
+   * Sync shipments for a brand to get accurate shipped order count
+   */
+  async syncShipments(brandId: string, days: number = 30): Promise<void> {
+    console.log(`🚢 Syncing shipments for brand ${brandId} - last ${days} days`);
+    
+    try {
+      const brand = await this.storage.getBrand(brandId);
+      if (!brand?.shipHeroApiKey || !brand?.shipHeroPassword) {
+        throw new Error('ShipHero credentials not configured');
+      }
+      
+      const credentials = {
+        username: brand.shipHeroApiKey,
+        password: brand.shipHeroPassword
+      };
+      
+      const fromDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      const toDate = new Date();
+      
+      console.log(`📅 Fetching shipments from ${fromDate.toISOString()} to ${toDate.toISOString()}`);
+      
+      // Use the working ShipHero API service
+      const { shipHeroApiFixed } = await import('./shipHeroApiFixed.js');
+      const shipments = await shipHeroApiFixed.getShipments(credentials, fromDate, toDate);
+      
+      console.log(`📦 Found ${shipments.length} shipments from ShipHero`);
+      console.log(`🎯 Answer: ${shipments.length} orders shipped in last ${days} days`);
+      
+    } catch (error) {
+      console.error(`❌ Shipments sync failed for brand ${brandId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Step 2: Subscribe to all required ShipHero webhooks
    */
   private async subscribeToWebhooks(credentials: ShipHeroCredentials, brandId: string): Promise<void> {
