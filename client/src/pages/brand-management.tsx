@@ -615,23 +615,38 @@ export default function BrandManagement() {
                         )}
                         {brand.isActive && (
                           <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAddIntegration(brand)}
-                              className="flex items-center gap-2"
-                            >
-                              <Settings className="h-4 w-4" />
-                              <span className="hidden sm:inline">Add Integration</span>
-                            </Button>
+                            {!brand.trackstarApiKey ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAddIntegration(brand)}
+                                className="flex items-center gap-2"
+                                title="Add Integration"
+                              >
+                                <Settings className="h-4 w-4" />
+                                <span className="inline">Add Integration</span>
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditIntegration(brand)}
+                                className="flex items-center gap-2"
+                                title="Edit Integration"
+                              >
+                                <Settings className="h-4 w-4" />
+                                <span className="inline">Edit Integration</span>
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleManageUsers(brand)}
                               className="flex items-center gap-2"
+                              title="Manage Users"
                             >
                               <Users className="h-4 w-4" />
-                              <span className="hidden sm:inline">Manage Users</span>
+                              <span className="inline">Users</span>
                             </Button>
                             {brand.trackstarApiKey && (
                               <>
