@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { TrackstarConnectButton } from '@trackstar/react-trackstar-link';
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 import { Button } from "@/components/ui/button";
@@ -191,16 +192,16 @@ export default function BrandManagementClean() {
     }
   });
 
+  // Legacy Trackstar modal connection (kept for fallback)
   const connectTrackstarMutation = useMutation({
     mutationFn: async (data: { brandId: string; wmsProvider: string; credentials: any }) => {
-      // Create new Trackstar connection with WMS credentials
       const response = await apiRequest('POST', '/api/trackstar/create-connection', data);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       return response.json();
     },
-    onSuccess: (response) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
       setIsTrackstarModalOpen(false);
       setSelectedWMS('');
@@ -208,20 +209,10 @@ export default function BrandManagementClean() {
       setShowCredentialsForm(false);
       setWmsCredentials({ username: '', password: '' });
       
-      // Open Trackstar link in new window if provided
-      if (response.openInNewWindow && response.trackstarLinkUrl) {
-        window.open(response.trackstarLinkUrl, '_blank', 'width=1000,height=700,scrollbars=yes,resizable=yes');
-        toast({
-          title: "Complete Setup in Trackstar",
-          description: "A Trackstar window opened. Complete your integration setup there to finish connecting to your warehouse.",
-          duration: 8000,
-        });
-      } else {
-        toast({
-          title: "Trackstar Connection Created",
-          description: response.message || "New connection created in your Trackstar account. Data sync will begin shortly.",
-        });
-      }
+      toast({
+        title: "Trackstar Connection Created",
+        description: "Legacy connection method completed.",
+      });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -577,11 +568,86 @@ export default function BrandManagementClean() {
                       <div className="flex flex-wrap gap-2">
                         {!brand.trackstarApiKey ? (
                           <>
+                            <TrackstarConnectButton
+                              getLinkToken={async () => {
+                                try {
+                                  console.log('🔗 Getting link token for brand:', brand.name);
+                                  const response = await apiRequest('POST', '/api/trackstar/create-connection', {
+                                    brandId: brand.id,
+                                    wmsProvider: 'shiphero',
+                                    credentials: { username: 'placeholder', password: 'placeholder' }
+                                  });
+                                  
+                                  if (!response.ok) {
+                                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                  }
+                                  
+                                  const data = await response.json();
+                                  console.log('✅ Link token received:', data.linkToken?.substring(0, 8) + '...');
+                                  return data.linkToken;
+                                } catch (error) {
+                                  console.error('❌ Failed to get link token:', error);
+                                  throw error;
+                                }
+                              }}
+                              onSuccess={async (authCode, integrationName) => {
+                                try {
+                                  console.log('🎉 Trackstar connection successful:', { integrationName, authCode: authCode?.substring(0, 8) + '...' });
+                                  
+                                  const response = await apiRequest('POST', '/api/trackstar/store-connection', {
+                                    brandId: brand.id,
+                                    authCode,
+                                    integrationName,
+                                  });
+                                  
+                                  if (!response.ok) {
+                                    throw new Error(`Failed to store connection: ${response.status}`);
+                                  }
+                                  
+                                  const result = await response.json();
+                                  console.log('✅ Connection stored:', result);
+                                  
+                                  // Refresh the brands list
+                                  queryClient.invalidateQueries({ queryKey: ['/api/brands'] });
+                                  
+                                  toast({
+                                    title: "Connection Successful!",
+                                    description: `${brand.name} is now connected to ${integrationName}`,
+                                  });
+                                } catch (error) {
+                                  console.error('❌ Failed to store connection:', error);
+                                  toast({
+                                    title: "Connection Failed",
+                                    description: "Failed to complete the connection setup. Please try again.",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                              onClose={() => console.log('🔒 Trackstar modal closed')}
+                              onLoad={() => console.log('📱 Trackstar modal loaded')}
+                              integrationAllowList={['shiphero']}
+                              buttonId={`trackstar-${brand.id}`}
+                              style={{
+                                backgroundColor: '#7c3aed',
+                                color: 'white',
+                                padding: '8px 16px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                fontWeight: '500',
+                              }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Zap className="h-4 w-4" />
+                                Connect to Trackstar
+                              </div>
+                            </TrackstarConnectButton>
                             <Button
-                              variant="default"
+                              variant="outline"
                               size="sm"
                               onClick={() => handleAddIntegration(brand)}
-                              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700"
+                              className="flex items-center gap-2"
                             >
                               <Settings className="h-4 w-4" />
                               <span>Add Integration</span>

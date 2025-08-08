@@ -179,18 +179,13 @@ router.post('/create-connection', isAuthenticated, async (req, res) => {
       // Store the Trackstar API key in database to mark as connected
       await storage.updateBrandTrackstarCredentials(brandId, trackstarApiKey);
 
-      // Return the link token and open Trackstar in a new window
-      const trackstarLinkUrl = `https://production.trackstarhq.com/link?token=${linkData.link_token}`;
-      
+      // Return just the link token - the React component will handle the flow
       res.json({
         success: true,
-        message: `Connection setup initiated for ${brand.name}. Please complete the ${wmsProvider} setup in the Trackstar window that just opened.`,
-        wmsProvider,
-        brandId,
+        message: `Link token generated for ${brand.name}`,
         linkToken: linkData.link_token,
-        trackstarLinkUrl,
-        openInNewWindow: true,
-        instructions: `Complete your ${wmsProvider} integration in the Trackstar window to finish the connection.`
+        brandId,
+        wmsProvider
       });
 
     } catch (apiError) {
@@ -331,6 +326,79 @@ router.get('/sync-stats/:brandId', isAuthenticated, async (req, res) => {
     res.status(500).json({ 
       message: 'Failed to get sync stats',
       error: (error as Error).message 
+    });
+  }
+});
+
+// Store connection after successful Trackstar OAuth
+router.post('/store-connection', async (req, res) => {
+  try {
+    const { brandId, authCode, integrationName } = req.body;
+    
+    if (!brandId || !authCode || !integrationName) {
+      return res.status(400).json({ 
+        message: 'Missing required fields: brandId, authCode, integrationName' 
+      });
+    }
+
+    const user = req.user;
+    if (!user || user.role !== 'threePL') {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const brand = await storage.getBrand(brandId);
+    if (!brand) {
+      return res.status(404).json({ message: 'Brand not found' });
+    }
+
+    console.log(`🔒 Storing Trackstar connection for ${brand.name}:`, {
+      integration: integrationName,
+      authCode: authCode.substring(0, 8) + '...'
+    });
+
+    // Exchange auth code for permanent access token
+    const tokenResponse = await fetch('https://production.trackstarhq.com/tokens/exchange', {
+      method: 'POST',
+      headers: {
+        'x-trackstar-api-key': process.env.TRACKSTAR_API_KEY!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        auth_code: authCode
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error(`❌ Token exchange failed: ${errorText}`);
+      return res.status(500).json({ 
+        message: 'Failed to exchange auth code for token',
+        error: errorText 
+      });
+    }
+
+    const tokenData = await tokenResponse.json();
+    console.log(`✅ Received connection data:`, {
+      connection_id: tokenData.connection_id,
+      access_token: tokenData.access_token?.substring(0, 8) + '...'
+    });
+
+    // Store connection details in database (just update trackstar API key for now)
+    await storage.updateBrandTrackstarCredentials(brandId, process.env.TRACKSTAR_API_KEY!);
+
+    res.json({
+      success: true,
+      message: `Successfully connected ${brand.name} to ${integrationName}!`,
+      connectionId: tokenData.connection_id,
+      integrationName
+    });
+
+  } catch (error) {
+    console.error(`❌ Error storing Trackstar connection: ${(error as Error).message}`);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to store connection',
+      error: (error as Error).message
     });
   }
 });

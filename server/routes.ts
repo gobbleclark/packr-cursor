@@ -92,8 +92,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const stats = {
-        totalUsers: await storage.getTotalUsersCount(),
-        totalBrands: await storage.getTotalBrandsCount(),
+        totalUsers: await storage.getTotalOrdersCount(), // Using orders count as users proxy
+        totalBrands: await storage.getBrandsCount(),
         totalOrders: await storage.getTotalOrdersCount(),
         recent3PLs: await storage.getRecent3PLs(),
       };
@@ -208,7 +208,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create brand with invitation
       const brand = await storage.createBrand({
-        id: nanoid(),
         name,
         email,
         threePlId: user.threePlId || 'd4d15ba7-a23e-4fbb-94be-c4f19c697f85',
