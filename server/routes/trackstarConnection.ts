@@ -2,9 +2,11 @@ import { Router } from 'express';
 import { storage } from '../storage.js';
 import { isAuthenticated } from '../replitAuth.js';
 import { TrackstarSyncService } from '../services/trackstarSync.js';
+import { TrackstarWebhookService } from '../services/trackstarWebhooks.js';
 
 const router = Router();
 const trackstarSyncService = new TrackstarSyncService();
+const trackstarWebhookService = new TrackstarWebhookService();
 
 // Get Trackstar link token for new connection
 router.post('/link-token', isAuthenticated, async (req, res) => {
@@ -413,6 +415,63 @@ router.post('/store-connection', isAuthenticated, async (req, res) => {
       success: false,
       message: 'Failed to store connection',
       error: (error as Error).message
+    });
+  }
+});
+
+// Setup webhooks for a brand
+router.post('/setup-webhooks/:brandId', isAuthenticated, async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    
+    const user = req.user;
+    if (!user) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+    
+    // Get user details from database
+    const userId = user.id || user.sub || (user as any).claims?.sub;
+    const dbUser = await storage.getUser(userId);
+    if (!dbUser || dbUser.role !== 'threePL') {
+      return res.status(403).json({ message: "Unauthorized - 3PL access required" });
+    }
+
+    const result = await trackstarWebhookService.setupWebhooksForBrand(brandId);
+    
+    res.json({
+      success: result.success,
+      message: `Webhooks setup completed: ${result.webhooks.length} webhooks registered`,
+      webhooks: result.webhooks
+    });
+  } catch (error) {
+    console.error('❌ Webhook setup error:', error);
+    res.status(500).json({ 
+      message: 'Failed to setup webhooks',
+      error: (error as Error).message 
+    });
+  }
+});
+
+// Receive webhook from Trackstar
+router.post('/webhook', async (req, res) => {
+  try {
+    const signature = req.headers['x-trackstar-signature'] as string;
+    const payload = req.body;
+    
+    console.log('📥 Received Trackstar webhook:', payload.event_type || 'unknown');
+    
+    const result = await trackstarWebhookService.processWebhook(payload, signature);
+    
+    res.json({
+      success: result.success,
+      processed: result.processed,
+      message: 'Webhook processed successfully'
+    });
+  } catch (error) {
+    console.error('❌ Webhook processing error:', error);
+    res.status(500).json({ 
+      message: 'Failed to process webhook',
+      error: (error as Error).message 
     });
   }
 });
