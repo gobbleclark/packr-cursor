@@ -37,7 +37,8 @@ import {
   Settings,
   RefreshCw,
   Zap,
-  TrendingUp
+  TrendingUp,
+  UserPlus
 } from "lucide-react";
 import { SyncStatusModal } from "@/components/sync-status-modal";
 
