@@ -163,6 +163,64 @@ export function createShipHeroIntegrationRoutes(storage: IStorage): Router {
     }
   });
 
+  // Emergency comprehensive sync endpoint for July data
+  router.post('/comprehensive-sync/:brandId', async (req, res) => {
+    try {
+      const { brandId } = req.params;
+      const { days = 180, forceRefresh = false } = req.body;
+      
+      console.log(`🚨 EMERGENCY COMPREHENSIVE SYNC for brand: ${brandId}, days: ${days}`);
+      console.log('🎯 TARGET: Capture missing July 2025 orders');
+      
+      const brand = await storage.getBrand(brandId);
+      if (!brand) {
+        return res.status(404).json({ error: 'Brand not found' });
+      }
+      
+      if (!brand.shipHeroApiKey || !brand.shipHeroPassword) {
+        return res.status(400).json({ error: 'ShipHero credentials not configured' });
+      }
+      
+      const credentials = {
+        username: brand.shipHeroApiKey,
+        password: brand.shipHeroPassword
+      };
+      
+      // Import the working API service
+      const { shipHeroApiFixed } = await import('../services/shipHeroApiFixed.js');
+      
+      // Go back far enough to capture July
+      const fromDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      console.log(`📅 Comprehensive sync from: ${fromDate.toISOString()}`);
+      
+      const orders = await shipHeroApiFixed.getOrders(credentials, fromDate);
+      console.log(`📦 Found ${orders.length} total orders from ShipHero`);
+      
+      // Analyze July specifically
+      const julyOrders = orders.filter(order => {
+        const orderDate = new Date(order.order_date);
+        return orderDate >= new Date('2025-07-01') && orderDate < new Date('2025-08-01');
+      });
+      
+      const julyShipped = julyOrders.filter(o => o.fulfillment_status === 'fulfilled');
+      console.log(`🎯 JULY ANALYSIS: ${julyOrders.length} total, ${julyShipped.length} shipped`);
+      
+      res.json({ 
+        success: true, 
+        message: `Comprehensive sync completed for brand ${brandId}`,
+        totalOrders: orders.length,
+        julyOrdersFound: julyOrders.length,
+        julyShippedFound: julyShipped.length,
+        targetJulyShipped: 14710,
+        gap: 14710 - julyShipped.length
+      });
+      
+    } catch (error) {
+      console.error(`❌ Comprehensive sync failed:`, error);
+      res.status(500).json({ error: 'Comprehensive sync failed', details: error.message });
+    }
+  });
+
   /**
    * Product sync for a brand
    * POST /api/shiphero/sync-products/:brandId

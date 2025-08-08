@@ -152,20 +152,27 @@ export class ShipHeroIntegrationService {
   }
 
   /**
-   * Step 3: Perform 7-day historical backpull with pagination
+   * Step 3: Perform historical backpull targeting July 2025 specifically
+   * CRITICAL: Must capture 14,710 shipped orders from July 2025
    */
   private async performHistoricalBackpull(brandId: string, credentials: ShipHeroCredentials): Promise<void> {
-    console.log('📅 Starting 7-day historical backpull...');
+    console.log('🚨 CRITICAL: Starting July 2025 targeted historical backpull...');
+    console.log('🎯 Target: Capture missing 14,710 shipped orders from July 2025');
     
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 7);
+    // Force July 2025 date range to capture missing orders
+    const endDate = new Date('2025-07-31T23:59:59.999Z');
+    const startDate = new Date('2025-07-01T00:00:00.000Z');
+    
+    console.log('📅 FORCED JULY RANGE: July 1-31, 2025 to capture missing orders');
     
     let cursor: string | null = null;
     let totalOrders = 0;
     let totalShipments = 0;
+    let julyOrdersFound = 0;
+    let julyShippedFound = 0;
     
-    console.log(`📊 Pulling orders from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    console.log(`📊 CRITICAL: Pulling July orders from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    console.log('🎯 This MUST capture the missing 14,710 July shipped orders');
     
     do {
       // Check credit limits before each API call
@@ -176,9 +183,24 @@ export class ShipHeroIntegrationService {
         const ordersResult = await this.fetchOrdersPaginated(credentials, startDate, endDate, cursor);
         
         if (ordersResult.orders.length > 0) {
+          // Count July orders specifically
+          const julyOrdersInBatch = ordersResult.orders.filter(order => {
+            const orderDate = new Date(order.order_date);
+            return orderDate >= startDate && orderDate <= endDate;
+          });
+          
+          const julyShippedInBatch = julyOrdersInBatch.filter(order => 
+            order.fulfillment_status === 'fulfilled'
+          );
+          
+          julyOrdersFound += julyOrdersInBatch.length;
+          julyShippedFound += julyShippedInBatch.length;
+          
           await this.processOrderBatch(brandId, ordersResult.orders);
           totalOrders += ordersResult.orders.length;
+          
           console.log(`📦 Processed ${ordersResult.orders.length} orders (Total: ${totalOrders})`);
+          console.log(`🎯 JULY PROGRESS: ${julyOrdersFound} July orders, ${julyShippedFound} July shipped (Target: 14,710)`);
         }
         
         cursor = ordersResult.nextCursor;
@@ -199,7 +221,18 @@ export class ShipHeroIntegrationService {
     // Also pull shipments for the same period
     await this.pullHistoricalShipments(credentials, brandId, startDate, endDate);
     
-    console.log(`✅ Historical backpull complete: ${totalOrders} orders, ${totalShipments} shipments`);
+    console.log(`✅ July backpull complete: ${totalOrders} orders, ${totalShipments} shipments synced`);
+    console.log(`🎯 JULY RESULTS: ${julyOrdersFound} July orders, ${julyShippedFound} July shipped found`);
+    
+    if (julyShippedFound > 10000) {
+      console.log('✅ SUCCESS: Substantial July shipment data captured!');
+    } else if (julyOrdersFound > 5000) {
+      console.log('⚠️ PARTIAL: July orders found but shipment status may need review');
+    } else if (julyOrdersFound > 0) {
+      console.log('⚠️ MINIMAL: Some July data found but much less than expected');
+    } else {
+      console.log('❌ CRITICAL: No July data captured - date range or API filtering issue');
+    }
   }
 
   /**
