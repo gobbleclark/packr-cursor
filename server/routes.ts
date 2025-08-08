@@ -17,6 +17,7 @@ import {
 import { shipHeroApiFixed } from "./services/shipHeroApiFixed";
 import { createShipHeroIntegrationRoutes } from "./routes/shipHeroIntegration";
 import { createTrackstarRoutes } from "./routes/trackstarIntegration";
+import trackstarConnectionRoutes from "./routes/trackstarConnection";
 import { TrackstarService } from "./services/trackstar";
 import { BackgroundJobService } from "./services/backgroundJobs";
 import { RealApiSyncService } from "./services/realApiSync";
@@ -76,6 +77,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Mount Trackstar universal WMS integration routes
   app.use('/api/trackstar', createTrackstarRoutes(storage));
+  
+  // Mount Trackstar connection routes
+  app.use('/api/trackstar', trackstarConnectionRoutes);
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: AuthenticatedRequest, res) => {

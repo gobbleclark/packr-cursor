@@ -57,7 +57,7 @@ export interface IStorage {
   getBrandsByThreePL(threePlId: string): Promise<Brand[]>;
   updateBrandApiCredentials(id: string, apiKey: string, userId: string): Promise<Brand>;
   updateBrandShipHeroCredentials(id: string, username: string, password: string, userId?: string): Promise<Brand>;
-  updateBrandTrackstarCredentials(id: string, apiKey: string): Promise<Brand>;
+  updateBrandTrackstarCredentials(id: string, apiKey: string | null): Promise<Brand>;
   getBrandByInvitationToken(token: string): Promise<Brand | undefined>;
   updateBrandInvitationStatus(id: string, isActive: boolean): Promise<Brand>;
   updateBrandInvitationToken(id: string, token: string): Promise<Brand>;
@@ -415,10 +415,11 @@ export class DatabaseStorage implements IStorage {
     return brand;
   }
 
-  async updateBrandTrackstarCredentials(id: string, apiKey: string): Promise<Brand> {
+  async updateBrandTrackstarCredentials(id: string, apiKey: string | null): Promise<Brand> {
     const [brand] = await db
       .update(brands)
       .set({
+        trackstarApiKey: apiKey,
         updatedAt: new Date(),
       })
       .where(eq(brands.id, id))

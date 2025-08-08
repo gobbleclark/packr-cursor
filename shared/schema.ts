@@ -72,6 +72,9 @@ export const brands = pgTable("brands", {
   trackstarAccessToken: varchar("trackstar_access_token"),
   trackstarConnectionId: varchar("trackstar_connection_id"),
   trackstarIntegrationName: varchar("trackstar_integration_name"),
+  wmsProvider: varchar("wms_provider"), // Selected WMS provider (shiphero, shipbob, etc.)
+  integrationStatus: varchar("integration_status").default('disconnected'), // connected, disconnected, pending
+  connectedAt: timestamp("connected_at"), // When integration was established
   invitationToken: varchar("invitation_token"), // For brand signup invitations
   invitationSentAt: timestamp("invitation_sent_at"),
   isActive: boolean("is_active").default(true),
