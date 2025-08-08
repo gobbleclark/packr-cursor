@@ -77,6 +77,12 @@ export default function BrandManagement() {
   const [shipHeroPassword, setShipHeroPassword] = useState('');
   const [isUserManagementDialogOpen, setIsUserManagementDialogOpen] = useState(false);
   const [selectedBrandForUsers, setSelectedBrandForUsers] = useState<any>(null);
+  const [syncStatusDialogOpen, setSyncStatusDialogOpen] = useState(false);
+  const [selectedBrandForSync, setSelectedBrandForSync] = useState<any>(null);
+  const [shipHeroUsername, setShipHeroUsername] = useState('');
+  const [shipHeroPassword, setShipHeroPassword] = useState('');
+  const [isUserManagementDialogOpen, setIsUserManagementDialogOpen] = useState(false);
+  const [selectedBrandForUsers, setSelectedBrandForUsers] = useState<any>(null);
   const [selectedBrandForSync, setSelectedBrandForSync] = useState<any>(null);
   const [syncStatusDialogOpen, setSyncStatusDialogOpen] = useState(false);
 
