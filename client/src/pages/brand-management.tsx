@@ -300,6 +300,12 @@ export default function BrandManagement() {
     setIsIntegrationDialogOpen(true);
   };
 
+  const handleEditIntegration = (brand: any) => {
+    setSelectedBrand(brand);
+    setIntegrationType('trackstar');
+    setIsIntegrationDialogOpen(true);
+  };
+
   const handleSaveIntegration = () => {
     if (!selectedBrand || !integrationType) {
       toast({
@@ -414,7 +420,7 @@ export default function BrandManagement() {
   };
 
   const getIntegrationStatus = (brand: any) => {
-    const hasTrackstar = brand.trackstarApiKey;
+    const hasTrackstar = brand.trackstar_api_key || brand.trackstarApiKey;
     
     if (hasTrackstar) {
       return <Badge variant="default" className="bg-purple-50 text-purple-600 border-purple-200">Trackstar Connected</Badge>;
@@ -613,15 +619,27 @@ export default function BrandManagement() {
                         )}
                         {brand.isActive && (
                           <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAddIntegration(brand)}
-                              className="flex items-center gap-2"
-                            >
-                              <Settings className="h-4 w-4" />
-                              <span className="hidden sm:inline">Add Integration</span>
-                            </Button>
+                            {!(brand.trackstar_api_key || brand.trackstarApiKey) ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAddIntegration(brand)}
+                                className="flex items-center gap-2"
+                              >
+                                <Settings className="h-4 w-4" />
+                                <span className="hidden sm:inline">Add Integration</span>
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditIntegration(brand)}
+                                className="flex items-center gap-2"
+                              >
+                                <Settings className="h-4 w-4" />
+                                <span className="hidden sm:inline">Edit Integration</span>
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
@@ -631,7 +649,7 @@ export default function BrandManagement() {
                               <Users className="h-4 w-4" />
                               <span className="hidden sm:inline">Manage Users</span>
                             </Button>
-                            {brand.trackstarApiKey && (
+                            {(brand.trackstar_api_key || brand.trackstarApiKey) && (
                               <>
                                 <Button
                                   variant="outline"
@@ -693,7 +711,11 @@ export default function BrandManagement() {
           <Dialog open={isIntegrationDialogOpen} onOpenChange={setIsIntegrationDialogOpen}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>Add Integration for {selectedBrand?.name}</DialogTitle>
+                <DialogTitle>
+                  {(selectedBrand?.trackstar_api_key || selectedBrand?.trackstarApiKey) 
+                    ? `Edit Integration for ${selectedBrand?.name}` 
+                    : `Add Integration for ${selectedBrand?.name}`}
+                </DialogTitle>
                 <DialogDescription>
                   Configure Trackstar universal WMS integration for this brand to enable order and inventory sync across all platforms.
                 </DialogDescription>
@@ -750,7 +772,9 @@ export default function BrandManagement() {
                   {addIntegrationMutation.isPending && (
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Connect Trackstar Integration
+                  {(selectedBrand?.trackstar_api_key || selectedBrand?.trackstarApiKey) 
+                    ? 'Update Integration' 
+                    : 'Connect Trackstar Integration'}
                 </Button>
               </DialogFooter>
             </DialogContent>
