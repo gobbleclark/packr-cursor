@@ -152,38 +152,46 @@ router.post('/create-connection', isAuthenticated, async (req, res) => {
     console.log(`🔐 WMS Credentials: ${credentials.username} / ${credentials.password ? '[PROVIDED]' : '[MISSING]'}`);
     
     try {
-      // Create a working connection immediately
-      console.log(`🚀 Creating Trackstar ${wmsProvider} connection for ${brand.name}...`);
+      // Create real Trackstar connection using production API
+      console.log(`🔗 Creating production Trackstar connection for ${brand.name} with ${wmsProvider}...`);
       
-      // Generate a unique connection ID for this brand-WMS combination
-      const connectionId = `trackstar_${wmsProvider}_${brandId.substring(0, 8)}_${Date.now()}`;
-      
-      console.log(`✅ Trackstar connection created:`, {
-        connection_id: connectionId,
-        integration_name: wmsProvider,
-        brand: brand.name,
-        credentials_username: credentials.username
+      // Get link token from production Trackstar API
+      const linkTokenResponse = await fetch('https://production.trackstarhq.com/link/token', {
+        method: 'POST',
+        headers: {
+          'x-trackstar-api-key': trackstarApiKey,
+          'Content-Type': 'application/json',
+        },
       });
 
-      // Store the connection details in database
+      if (!linkTokenResponse.ok) {
+        const errorText = await linkTokenResponse.text();
+        console.error(`❌ Failed to get Trackstar link token: ${errorText}`);
+        return res.status(500).json({ 
+          message: 'Failed to get Trackstar link token',
+          error: errorText 
+        });
+      }
+
+      const linkData = await linkTokenResponse.json();
+      console.log(`✅ Trackstar link token generated: ${linkData.link_token?.substring(0, 8)}...`);
+
+      // Store the Trackstar API key in database to mark as connected
       await storage.updateBrandTrackstarCredentials(brandId, trackstarApiKey);
 
+      // Return the link token for the frontend to complete the OAuth flow
       res.json({
         success: true,
-        message: `Successfully connected ${brand.name} to ${wmsProvider} via Trackstar! The integration is now active and ready to sync data.`,
+        message: `Trackstar link token generated for ${brand.name}. Complete the ${wmsProvider} connection in Trackstar.`,
         wmsProvider,
         brandId,
-        connectionId,
-        integrationStatus: 'connected',
-        nextSteps: [
-          'Your warehouse data will now sync automatically',
-          'Orders will be processed through Trackstar',
-          'Inventory levels will be updated in real-time'
-        ]
+        linkToken: linkData.link_token,
+        trackstarLinkUrl: `https://production.trackstarhq.com/link?token=${linkData.link_token}`,
+        instructions: `Visit the Trackstar link to complete your ${wmsProvider} integration setup`
       });
 
     } catch (apiError) {
-      console.error(`❌ Error creating Trackstar connection: ${(apiError as Error).message}`);
+      console.error(`❌ Trackstar API error: ${(apiError as Error).message}`);
       res.status(500).json({
         success: false,
         message: 'Failed to create Trackstar connection',
