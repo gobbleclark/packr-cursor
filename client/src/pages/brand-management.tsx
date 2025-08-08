@@ -416,7 +416,7 @@ export default function BrandManagement() {
   };
 
   const getIntegrationStatus = (brand: any) => {
-    const hasTrackstar = brand.trackstar_api_key || brand.trackstarApiKey;
+    const hasTrackstar = brand.trackstarApiKey;
     
     if (hasTrackstar) {
       return <Badge variant="default" className="bg-purple-50 text-purple-600 border-purple-200">Trackstar Connected</Badge>;
@@ -615,7 +615,7 @@ export default function BrandManagement() {
                         )}
                         {brand.isActive && (
                           <>
-                            {!(brand.trackstar_api_key || brand.trackstarApiKey) ? (
+                            {!brand.trackstarApiKey ? (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -645,7 +645,7 @@ export default function BrandManagement() {
                               <Users className="h-4 w-4" />
                               <span className="hidden sm:inline">Manage Users</span>
                             </Button>
-                            {(brand.trackstar_api_key || brand.trackstarApiKey) && (
+                            {brand.trackstarApiKey && (
                               <>
                                 <Button
                                   variant="outline"
