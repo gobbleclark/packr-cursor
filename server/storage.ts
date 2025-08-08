@@ -58,6 +58,12 @@ export interface IStorage {
   updateBrandApiCredentials(id: string, apiKey: string, userId: string): Promise<Brand>;
   updateBrandShipHeroCredentials(id: string, username: string, password: string, userId?: string): Promise<Brand>;
   updateBrandTrackstarCredentials(id: string, apiKey: string | null): Promise<Brand>;
+  updateBrandTrackstarConnection(id: string, connectionData: {
+    trackstarApiKey?: string;
+    trackstarAccessToken?: string;
+    trackstarConnectionId?: string;
+    trackstarIntegrationName?: string;
+  }): Promise<Brand>;
   getBrandByInvitationToken(token: string): Promise<Brand | undefined>;
   updateBrandInvitationStatus(id: string, isActive: boolean): Promise<Brand>;
   updateBrandInvitationToken(id: string, token: string): Promise<Brand>;
@@ -420,6 +426,23 @@ export class DatabaseStorage implements IStorage {
       .update(brands)
       .set({
         trackstarApiKey: apiKey,
+        updatedAt: new Date(),
+      })
+      .where(eq(brands.id, id))
+      .returning();
+    return brand;
+  }
+
+  async updateBrandTrackstarConnection(id: string, connectionData: {
+    trackstarApiKey?: string;
+    trackstarAccessToken?: string;
+    trackstarConnectionId?: string;
+    trackstarIntegrationName?: string;
+  }): Promise<Brand> {
+    const [brand] = await db
+      .update(brands)
+      .set({
+        ...connectionData,
         updatedAt: new Date(),
       })
       .where(eq(brands.id, id))

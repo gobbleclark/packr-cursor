@@ -331,7 +331,7 @@ router.get('/sync-stats/:brandId', isAuthenticated, async (req, res) => {
 });
 
 // Store connection after successful Trackstar OAuth
-router.post('/store-connection', async (req, res) => {
+router.post('/store-connection', isAuthenticated, async (req, res) => {
   try {
     const { brandId, authCode, integrationName } = req.body;
     
@@ -342,8 +342,15 @@ router.post('/store-connection', async (req, res) => {
     }
 
     const user = req.user;
-    if (!user || user.role !== 'threePL') {
+    if (!user) {
       return res.status(403).json({ message: "Unauthorized" });
+    }
+    
+    // Get user details from database
+    const userId = user.id || user.sub || (user as any).claims?.sub;
+    const dbUser = await storage.getUser(userId);
+    if (!dbUser || dbUser.role !== 'threePL') {
+      return res.status(403).json({ message: "Unauthorized - 3PL access required" });
     }
 
     const brand = await storage.getBrand(brandId);
@@ -357,7 +364,7 @@ router.post('/store-connection', async (req, res) => {
     });
 
     // Exchange auth code for permanent access token
-    const tokenResponse = await fetch('https://production.trackstarhq.com/tokens/exchange', {
+    const tokenResponse = await fetch('https://production.trackstarhq.com/link/exchange', {
       method: 'POST',
       headers: {
         'x-trackstar-api-key': process.env.TRACKSTAR_API_KEY!,
@@ -372,7 +379,7 @@ router.post('/store-connection', async (req, res) => {
       const errorText = await tokenResponse.text();
       console.error(`❌ Token exchange failed: ${errorText}`);
       return res.status(500).json({ 
-        message: 'Failed to exchange auth code for token',
+        message: 'Failed to exchange auth code for permanent access token',
         error: errorText 
       });
     }
@@ -380,11 +387,18 @@ router.post('/store-connection', async (req, res) => {
     const tokenData = await tokenResponse.json();
     console.log(`✅ Received connection data:`, {
       connection_id: tokenData.connection_id,
-      access_token: tokenData.access_token?.substring(0, 8) + '...'
+      access_token: tokenData.access_token?.substring(0, 8) + '...',
+      integration_name: tokenData.integration_name,
+      available_actions: tokenData.available_actions
     });
 
-    // Store connection details in database (just update trackstar API key for now)
-    await storage.updateBrandTrackstarCredentials(brandId, process.env.TRACKSTAR_API_KEY!);
+    // Store complete connection details in database
+    await storage.updateBrandTrackstarConnection(brandId, {
+      trackstarApiKey: process.env.TRACKSTAR_API_KEY!,
+      trackstarAccessToken: tokenData.access_token,
+      trackstarConnectionId: tokenData.connection_id,
+      trackstarIntegrationName: tokenData.integration_name || integrationName
+    });
 
     res.json({
       success: true,
