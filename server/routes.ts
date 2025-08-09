@@ -49,6 +49,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const trackstarIntegrationsRoutes = await import('./routes/trackstarIntegrations.js');
   app.use('/api/trackstar-info', trackstarIntegrationsRoutes.default);
 
+  // Trackstar logs and monitoring
+  const trackstarLogsRoutes = await import('./routes/trackstarLogs.js');
+  app.use('/api/trackstar', trackstarLogsRoutes.default);
+
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
