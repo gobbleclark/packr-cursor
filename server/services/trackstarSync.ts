@@ -186,23 +186,48 @@ export class TrackstarSyncService {
   private async processAndStoreProducts(brand: any, products: any[]): Promise<void> {
     console.log(`🏷️ Processing ${products.length} products for ${brand.name}...`);
     
+    // Get existing products for this brand to check for duplicates
+    const existingProducts = await storage.getProductsByBrand(brand.id);
+    const existingTrackstarIds = new Set(existingProducts.map(p => p.trackstarProductId).filter(id => id));
+    const existingSkus = new Set(existingProducts.map(p => p.sku));
+
+    let created = 0;
+    let skipped = 0;
+    
     for (const trackstarProduct of products) {
       try {
+        const trackstarProductId = trackstarProduct.id || trackstarProduct.product_id;
+        const sku = trackstarProduct.sku || trackstarProduct.product_id;
+        
+        // Skip if we already have this product (by trackstar ID OR sku)
+        if (existingTrackstarIds.has(trackstarProductId) || existingSkus.has(sku)) {
+          skipped++;
+          continue;
+        }
+        
         const productData = {
           brandId: brand.id,
           name: trackstarProduct.name || trackstarProduct.title,
-          sku: trackstarProduct.sku || trackstarProduct.product_id,
+          sku,
           inventoryCount: trackstarProduct.inventory_count || trackstarProduct.quantity || 0,
           price: trackstarProduct.price || '0.00',
-          trackstarProductId: trackstarProduct.id || trackstarProduct.product_id,
+          trackstarProductId,
         };
 
         await storage.createProduct(productData);
+        created++;
         console.log(`✅ Created product: ${productData.name}`);
+        
+        // Add to our tracking sets to avoid duplicates in this batch
+        existingTrackstarIds.add(trackstarProductId);
+        existingSkus.add(sku);
+        
       } catch (error) {
         console.error(`❌ Failed to process product:`, (error as Error).message);
       }
     }
+    
+    console.log(`📊 Product processing summary for ${brand.name}: ${created} created, ${skipped} skipped (already exist)`);
   }
 
   /**
