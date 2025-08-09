@@ -57,6 +57,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const trackstarWebhooksRoutes = await import('./routes/trackstarWebhooks.js');
   app.use('/api/trackstar', trackstarWebhooksRoutes.default);
 
+  // Manual Trackstar sync route
+  app.post('/api/trackstar/manual-sync', isAuthenticated, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'threePL' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Only 3PL managers can trigger manual sync" });
+      }
+
+      const { brandId, dateFrom, dateTo } = req.body;
+      
+      if (!brandId) {
+        return res.status(400).json({ message: "Brand ID is required" });
+      }
+
+      // Get brand with Trackstar connection
+      const brand = await storage.getBrand(brandId);
+      if (!brand?.trackstarAccessToken || !brand?.trackstarConnectionId) {
+        return res.status(400).json({ message: "Brand does not have active Trackstar connection" });
+      }
+
+      console.log(`🔄 Manual sync requested for ${brand.name} from ${dateFrom || 'beginning'} to ${dateTo || 'now'}`);
+
+      // Initialize Trackstar service and sync service
+      const { TrackstarService } = await import('./services/trackstar.js');
+      const trackstarService = new TrackstarService();
+      const { TrackstarSyncService } = await import('./services/trackstarSync.js');
+      const syncService = new TrackstarSyncService();
+
+      // Perform manual sync with date range
+      const orders = await trackstarService.getOrdersWithToken(
+        brand.trackstarConnectionId, 
+        brand.trackstarAccessToken,
+        dateFrom,
+        dateTo
+      );
+
+      console.log(`📦 Retrieved ${orders.length} orders for manual sync`);
+
+      // Process and store the orders
+      await syncService.processAndStoreOrders(brand, orders);
+
+      res.json({ 
+        message: `Manual sync completed for ${brand.name}`,
+        ordersProcessed: orders.length,
+        dateRange: { from: dateFrom || 'beginning', to: dateTo || 'now' }
+      });
+    } catch (error) {
+      console.error("Manual sync error:", error);
+      res.status(500).json({ message: "Manual sync failed", error: (error as Error).message });
+    }
+  });
+
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {

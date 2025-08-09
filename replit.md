@@ -2,15 +2,17 @@
 
 This is a comprehensive 3PL (Third-Party Logistics) management SaaS platform built with React and Express.js. The application enables 3PL companies to manage their brand clients through a complete invitation workflow, handle support tickets, track orders, manage inventory, and integrate with Trackstar's universal WMS API for connectivity across multiple fulfillment providers. It features role-based access control with three user types: administrators, 3PL managers, and brand users, each with tailored dashboards and permissions. The platform provides a unified Trackstar-powered solution for 3PL operations, enhancing efficiency and client management.
 
-**LATEST UPDATE (Aug 9, 2025 - 1:05 AM)**: TRACKSTAR API OPTIMIZATION & ROADMAP COMPLETE:
+**LATEST UPDATE (Aug 9, 2025 - 1:47 AM)**: TRACKSTAR API LIMITATIONS DISCOVERED & DATA CORRECTED:
 
-📊 **COMPREHENSIVE API ANALYSIS**: Full review of Trackstar Universal WMS API capabilities completed
-🎯 **1,000+ REAL ORDERS**: Successfully synced from Mabē's ShipHero through Trackstar Universal API
-📦 **422 PRODUCTS**: Complete product catalog with Trackstar IDs and proper field mapping  
-🖥️ **UI FIXED**: Dashboard correctly shows 998 shipped orders using 90-day date range for historical data
-🔄 **OPTIMIZATION ROADMAP**: Identified critical missing features for maximum Trackstar utilization
-⚡ **WEBHOOK INFRASTRUCTURE**: Real-time webhook system implemented for order/inventory updates
-🏭 **EXPANDED API CALLS**: Added inventory, warehouses, returns, and manual sync capabilities
+📊 **API LIMITATIONS IDENTIFIED**: Trackstar Universal WMS API has significant restrictions:
+  - No date range filtering (created_after/created_before parameters rejected)  
+  - No pagination support (limit/offset parameters rejected)
+  - Fixed 1,000 order limit per connection
+🎯 **REAL DATA VERIFIED**: 1,000 orders total from August 2024 - June 15, 2025
+📦 **ACCURATE METRICS**: 998 fulfilled orders, 2 cancelled orders (not 15,000/month as expected)  
+🖥️ **BUSINESS INSIGHT**: Mabē peaked at 913 orders/month in June 2025, then stopped operations
+🔄 **SYNC STATUS**: Regular sync working correctly with 1,000 order limitation
+⚡ **NO MISSING ORDERS**: All available orders successfully synced - no July/Aug 2025 activity
 
 **COMPREHENSIVE SHIPHERO INTEGRATION COMPLETE** - Previous implementation:
 

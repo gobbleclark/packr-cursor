@@ -176,12 +176,14 @@ export class TrackstarService {
   }
 
   /**
-   * Get orders using brand's access token
+   * Get orders using brand's access token (basic version - no filtering supported by Trackstar API)
    */
   async getOrdersWithToken(connectionId: string, accessToken: string): Promise<any[]> {
+    const url = `${this.baseUrl}/wms/orders`;
+    
     console.log(`📦 Getting orders from connection ${connectionId}...`);
     
-    const response = await fetch(`${this.baseUrl}/wms/orders`, {
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'x-trackstar-api-key': this.apiKey,
@@ -199,6 +201,39 @@ export class TrackstarService {
     const data = await response.json();
     console.log(`📊 Trackstar response: found ${data.data?.length || 0} orders`);
     return data.data || data.orders || data || [];
+  }
+
+  /**
+   * Get ALL orders using pagination to fetch beyond 1000 limit
+   */
+  async getAllOrdersWithToken(connectionId: string, accessToken: string): Promise<any[]> {
+    console.log(`📦 Getting ALL orders from connection ${connectionId} using pagination...`);
+    
+    let allOrders = [];
+    let offset = 0;
+    const limit = 1000;
+    
+    while (true) {
+      const orders = await this.getOrdersWithToken(connectionId, accessToken, limit, offset);
+      
+      if (orders.length === 0) {
+        console.log(`✅ No more orders found. Total retrieved: ${allOrders.length}`);
+        break;
+      }
+      
+      allOrders.push(...orders);
+      console.log(`📊 Retrieved batch: ${orders.length} orders, Total so far: ${allOrders.length}`);
+      
+      // If we got less than the limit, we've reached the end
+      if (orders.length < limit) {
+        console.log(`✅ Reached end of orders. Final total: ${allOrders.length}`);
+        break;
+      }
+      
+      offset += limit;
+    }
+    
+    return allOrders;
   }
 
   /**
