@@ -542,14 +542,18 @@ export class DatabaseStorage implements IStorage {
       );
     }
 
-    // Add date filtering for fulfilled orders
-    // Priority: shippedAt > orderDate > orderCreatedAt
+    // Add date filtering for fulfilled/shipped orders
+    // For Trackstar: Use order_date as shipping date since shipped_at is often NULL
+    // For fulfilled orders, we treat order_date as the shipped date when shipped_at is not available
     const fulfilledDateFilter = [];
     if (dateRange?.start) {
       fulfilledDateFilter.push(
         or(
+          // Priority 1: Use actual shipped_at if available
           and(isNotNull(orders.shippedAt), gte(orders.shippedAt, dateRange.start)),
+          // Priority 2: Use order_date as ship date for fulfilled orders (Trackstar pattern)
           and(isNull(orders.shippedAt), isNotNull(orders.orderDate), gte(orders.orderDate, dateRange.start)),
+          // Priority 3: Fallback to orderCreatedAt for legacy data
           and(isNull(orders.shippedAt), isNull(orders.orderDate), isNotNull(orders.orderCreatedAt), gte(orders.orderCreatedAt, dateRange.start))
         )
       );
@@ -557,8 +561,11 @@ export class DatabaseStorage implements IStorage {
     if (dateRange?.end) {
       fulfilledDateFilter.push(
         or(
+          // Priority 1: Use actual shipped_at if available
           and(isNotNull(orders.shippedAt), lte(orders.shippedAt, dateRange.end)),
+          // Priority 2: Use order_date as ship date for fulfilled orders (Trackstar pattern)
           and(isNull(orders.shippedAt), isNotNull(orders.orderDate), lte(orders.orderDate, dateRange.end)),
+          // Priority 3: Fallback to orderCreatedAt for legacy data
           and(isNull(orders.shippedAt), isNull(orders.orderDate), isNotNull(orders.orderCreatedAt), lte(orders.orderCreatedAt, dateRange.end))
         )
       );

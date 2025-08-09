@@ -132,6 +132,9 @@ export class TrackstarSyncService {
           trackstarOrderId: trackstarOrder.id,
           fulfillmentStatus: trackstarOrder.status || 'pending',
           orderDate: new Date(trackstarOrder.created_date || Date.now()),
+          // Capture Trackstar shipping dates if available
+          shippedAt: trackstarOrder.shipped_date ? new Date(trackstarOrder.shipped_date) : null,
+          deliveredAt: trackstarOrder.delivered_date ? new Date(trackstarOrder.delivered_date) : null,
           shippingAddress: trackstarOrder.ship_to_address || null,
           // Additional Trackstar-specific fields
           warehouseId: trackstarOrder.warehouse_id,
