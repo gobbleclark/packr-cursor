@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { TrackstarConnectButton } from '@trackstar/react-trackstar-link';
+import { WMSProviderLogo } from "@/components/WMSProviderLogo";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 import { Button } from "@/components/ui/button";
@@ -546,11 +547,18 @@ export default function BrandManagementClean() {
                       </div>
 
                       <div className="flex flex-wrap gap-2 mb-3">
-                        {brand.trackstarApiKey && (
-                          <div className="flex items-center gap-1">
-                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Trackstar Connected
+                        {brand.trackstarApiKey && brand.trackstarIntegrationName && (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-2">
+                              <CheckCircle className="h-3 w-3" />
+                              <div className="flex items-center gap-1">
+                                <span>Trackstar →</span>
+                                <WMSProviderLogo 
+                                  integrationName={brand.trackstarIntegrationName} 
+                                  className="w-4 h-4"
+                                  showName={true}
+                                />
+                              </div>
                             </Badge>
                             <Button
                               variant="ghost"
@@ -564,6 +572,13 @@ export default function BrandManagementClean() {
                               <Settings className="h-3 w-3" />
                             </Button>
                           </div>
+                        )}
+                        
+                        {brand.trackstarApiKey && !brand.trackstarIntegrationName && (
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Trackstar Connected
+                          </Badge>
                         )}
                         
                         {!brand.trackstarApiKey && (
