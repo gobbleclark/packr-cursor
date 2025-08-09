@@ -90,7 +90,8 @@ export class TrackstarService {
     }
 
     const data = await response.json();
-    return data.orders || data || [];
+    console.log(`📊 Trackstar response: found ${data.data?.length || 0} orders`);
+    return data.data || data.orders || data || [];
   }
 
   /**
@@ -115,7 +116,8 @@ export class TrackstarService {
     }
 
     const data = await response.json();
-    return data.products || data || [];
+    console.log(`📊 Trackstar response: found ${data.data?.length || 0} products`);
+    return data.data || data.products || data || [];
   }
 
   /**

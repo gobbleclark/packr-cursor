@@ -15,7 +15,19 @@ export class TrackstarSyncService {
     console.log('🔄 Starting Trackstar sync for all connected brands...');
     
     try {
-      const brands = await storage.getBrandsByThreePL('all'); // Get all brands
+      // Get all brands from all 3PLs
+      const all3PLs = await storage.getThreePLs();
+      let brands: any[] = [];
+      
+      for (const threePL of all3PLs) {
+        const brandsFor3PL = await storage.getBrandsByThreePL(threePL.id);
+        brands = brands.concat(brandsFor3PL);
+      }
+      
+      console.log(`🔍 Total brands found: ${brands.length}`);
+      brands.forEach(brand => {
+        console.log(`   - ${brand.name}: hasToken=${!!brand.trackstarAccessToken}, hasConnection=${!!brand.trackstarConnectionId}`);
+      });
       const trackstarBrands = brands.filter(brand => brand.trackstarAccessToken && brand.trackstarConnectionId);
       
       console.log(`📊 Found ${trackstarBrands.length} brands with Trackstar integration`);
@@ -109,18 +121,27 @@ export class TrackstarSyncService {
     
     for (const trackstarOrder of orders) {
       try {
-        // Convert Trackstar order format to our database format
+        // Convert Trackstar order format to our database format using actual API structure
         const orderData = {
           brandId: brand.id,
-          orderNumber: trackstarOrder.order_number || `TRK-${Date.now()}`,
-          customerName: trackstarOrder.customer?.name || trackstarOrder.customer_name,
-          customerEmail: trackstarOrder.customer?.email || trackstarOrder.customer_email,
-          status: this.mapTrackstarStatus(trackstarOrder.status) as const,
-          totalAmount: trackstarOrder.total_amount || '0.00',
-          trackstarOrderId: trackstarOrder.id || trackstarOrder.order_id,
-          fulfillmentStatus: trackstarOrder.fulfillment_status || 'pending',
-          orderDate: new Date(trackstarOrder.order_date || trackstarOrder.created_at || Date.now()),
-          shippingAddress: trackstarOrder.shipping_address || null,
+          orderNumber: trackstarOrder.order_number || trackstarOrder.reference_id || `TRK-${Date.now()}`,
+          customerName: trackstarOrder.ship_to_address?.full_name || 'Unknown Customer',
+          customerEmail: trackstarOrder.ship_to_address?.email_address || null,
+          status: this.mapTrackstarStatus(trackstarOrder.status),
+          totalAmount: trackstarOrder.total_price?.toString() || '0.00',
+          trackstarOrderId: trackstarOrder.id,
+          fulfillmentStatus: trackstarOrder.status || 'pending',
+          orderDate: new Date(trackstarOrder.created_date || Date.now()),
+          shippingAddress: trackstarOrder.ship_to_address || null,
+          // Additional Trackstar-specific fields
+          warehouseId: trackstarOrder.warehouse_id,
+          warehouseName: trackstarOrder.warehouse?.name || null,
+          shippingMethod: trackstarOrder.shipping_method,
+          totalTax: trackstarOrder.total_tax,
+          totalShipping: trackstarOrder.total_shipping,
+          totalDiscounts: trackstarOrder.total_discount,
+          orderItems: trackstarOrder.line_items || [],
+          trackingNumber: trackstarOrder.shipments?.[0]?.packages?.[0]?.tracking_number || null,
         };
 
         await storage.createOrder(orderData);
@@ -159,8 +180,8 @@ export class TrackstarSyncService {
   /**
    * Map Trackstar order status to our internal status
    */
-  private mapTrackstarStatus(trackstarStatus: string): string {
-    const statusMap: { [key: string]: string } = {
+  private mapTrackstarStatus(trackstarStatus: string): 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'fulfilled' | 'allocated' | 'on_hold' | 'unfulfilled' | 'partially_fulfilled' {
+    const statusMap: { [key: string]: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'fulfilled' | 'allocated' | 'on_hold' | 'unfulfilled' | 'partially_fulfilled' } = {
       'pending': 'pending',
       'processing': 'processing', 
       'fulfilled': 'fulfilled',
@@ -169,6 +190,8 @@ export class TrackstarSyncService {
       'cancelled': 'cancelled',
       'on_hold': 'on_hold',
       'unfulfilled': 'unfulfilled',
+      'allocated': 'allocated',
+      'partially_fulfilled': 'partially_fulfilled'
     };
     
     return statusMap[trackstarStatus?.toLowerCase()] || 'pending';

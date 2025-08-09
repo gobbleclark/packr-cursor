@@ -369,7 +369,7 @@ export class DatabaseStorage implements IStorage {
       status: brand.isActive ? 'active' : 'invited',
       contactEmail: brand.email,
       hasShipHeroIntegration: !!(brand.shipHeroApiKey && brand.shipHeroPassword),
-      hasTrackstarIntegration: !!brand.trackstarApiKey,
+      hasTrackstarIntegration: !!(brand.trackstarAccessToken && brand.trackstarConnectionId),
       shipHeroApiKey: brand.shipHeroApiKey,
       shipHeroPassword: brand.shipHeroPassword ? 'SET' : null,
       // Map Trackstar fields to camelCase for frontend consistency
