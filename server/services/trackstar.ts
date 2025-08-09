@@ -69,6 +69,113 @@ export class TrackstarService {
   }
 
   /**
+   * Get inventory data using brand's access token
+   */
+  async getInventoryWithToken(connectionId: string, accessToken: string): Promise<any[]> {
+    console.log(`📊 Getting inventory from connection ${connectionId}...`);
+
+    const response = await fetch(`${this.baseUrl}/wms/inventory`, {
+      method: 'GET',
+      headers: {
+        'x-trackstar-api-key': this.apiKey,
+        'x-trackstar-access-token': accessToken,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Trackstar inventory error: ${errorText}`);
+      throw new Error(`Failed to get inventory: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Retrieved ${data.length || 0} inventory items from connection ${connectionId}`);
+    return data;
+  }
+
+  /**
+   * Get warehouses using brand's access token
+   */
+  async getWarehousesWithToken(connectionId: string, accessToken: string): Promise<any[]> {
+    console.log(`🏭 Getting warehouses from connection ${connectionId}...`);
+
+    const response = await fetch(`${this.baseUrl}/wms/warehouses`, {
+      method: 'GET',
+      headers: {
+        'x-trackstar-api-key': this.apiKey,
+        'x-trackstar-access-token': accessToken,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Trackstar warehouses error: ${errorText}`);
+      throw new Error(`Failed to get warehouses: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Retrieved ${data.length || 0} warehouses from connection ${connectionId}`);
+    return data;
+  }
+
+  /**
+   * Get returns using brand's access token
+   */
+  async getReturnsWithToken(connectionId: string, accessToken: string): Promise<any[]> {
+    console.log(`↩️ Getting returns from connection ${connectionId}...`);
+
+    const response = await fetch(`${this.baseUrl}/wms/returns`, {
+      method: 'GET',
+      headers: {
+        'x-trackstar-api-key': this.apiKey,
+        'x-trackstar-access-token': accessToken,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Trackstar returns error: ${errorText}`);
+      throw new Error(`Failed to get returns: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Retrieved ${data.length || 0} returns from connection ${connectionId}`);
+    return data;
+  }
+
+  /**
+   * Trigger manual sync for a connection
+   */
+  async triggerSync(connectionId: string, dataType?: string): Promise<void> {
+    console.log(`🔄 Triggering manual sync for connection ${connectionId}, data type: ${dataType || 'all'}`);
+
+    const body: any = { connection_id: connectionId };
+    if (dataType) {
+      body.data_type = dataType;
+    }
+
+    const response = await fetch(`${this.baseUrl}/mgmt/sync-connection`, {
+      method: 'POST',
+      headers: {
+        'x-trackstar-api-key': this.apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Trackstar manual sync error: ${errorText}`);
+      throw new Error(`Failed to trigger sync: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    console.log(`✅ Manual sync triggered for connection ${connectionId}`);
+  }
+
+  /**
    * Get orders using brand's access token
    */
   async getOrdersWithToken(connectionId: string, accessToken: string): Promise<any[]> {
@@ -231,7 +338,7 @@ export class TrackstarService {
     errors: string[];
   }> {
     try {
-      const inventory = await this.getInventory(accessToken, connectionId);
+      const inventory = await this.getInventoryWithToken(connectionId, accessToken);
       console.log(`Synced ${inventory.length} inventory items for connection ${connectionId}`);
       
       return {
@@ -255,7 +362,7 @@ export class TrackstarService {
     errors: string[];
   }> {
     try {
-      const orders = await this.getOrders(accessToken, connectionId);
+      const orders = await this.getOrdersWithToken(connectionId, accessToken);
       console.log(`Synced ${orders.length} orders for connection ${connectionId}`);
       
       return {
