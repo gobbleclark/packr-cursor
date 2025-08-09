@@ -119,17 +119,34 @@ export class TrackstarSyncService {
   private async processAndStoreOrders(brand: any, orders: any[]): Promise<void> {
     console.log(`📦 Processing ${orders.length} orders for ${brand.name}...`);
     
+    // Get existing orders for this brand to check for duplicates
+    const existingOrders = await storage.getOrdersByBrand(brand.id);
+    const existingOrderNumbers = new Set(existingOrders.map(o => o.orderNumber));
+    const existingTrackstarIds = new Set(existingOrders.map(o => o.trackstarOrderId).filter(id => id));
+
+    let created = 0;
+    let skipped = 0;
+    
     for (const trackstarOrder of orders) {
       try {
+        const orderNumber = trackstarOrder.order_number || trackstarOrder.reference_id || `TRK-${Date.now()}`;
+        const trackstarOrderId = trackstarOrder.id;
+        
+        // Skip if we already have this order (by order number OR trackstar ID)
+        if (existingOrderNumbers.has(orderNumber) || existingTrackstarIds.has(trackstarOrderId)) {
+          skipped++;
+          continue;
+        }
+        
         // Convert Trackstar order format to our database format using actual API structure
         const orderData = {
           brandId: brand.id,
-          orderNumber: trackstarOrder.order_number || trackstarOrder.reference_id || `TRK-${Date.now()}`,
+          orderNumber,
           customerName: trackstarOrder.ship_to_address?.full_name || 'Unknown Customer',
           customerEmail: trackstarOrder.ship_to_address?.email_address || null,
           status: this.mapTrackstarStatus(trackstarOrder.status),
           totalAmount: trackstarOrder.total_price?.toString() || '0.00',
-          trackstarOrderId: trackstarOrder.id,
+          trackstarOrderId,
           fulfillmentStatus: trackstarOrder.status || 'pending',
           orderDate: new Date(trackstarOrder.created_date || Date.now()),
           // Capture Trackstar shipping dates if available
@@ -148,11 +165,19 @@ export class TrackstarSyncService {
         };
 
         await storage.createOrder(orderData);
+        created++;
         console.log(`✅ Created order: ${orderData.orderNumber}`);
+        
+        // Add to our tracking sets to avoid duplicates in this batch
+        existingOrderNumbers.add(orderNumber);
+        existingTrackstarIds.add(trackstarOrderId);
+        
       } catch (error) {
         console.error(`❌ Failed to process order:`, (error as Error).message);
       }
     }
+    
+    console.log(`📊 Order processing summary for ${brand.name}: ${created} created, ${skipped} skipped (already exist)`);
   }
 
   /**
