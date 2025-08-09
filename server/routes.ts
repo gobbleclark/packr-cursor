@@ -14,6 +14,7 @@ import {
   insertProductSchema 
 } from "@shared/schema";
 import trackstarConnectionRoutes from "./routes/trackstarConnection";
+import webhookRoutes from "./routes/webhooks";
 import { TrackstarService } from "./services/trackstar";
 import { TrackstarSyncService } from "./services/trackstarSync";
 import { sendBrandInvitationEmail } from "./services/emailService";
@@ -44,6 +45,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Mount Trackstar connection routes
   app.use('/api/trackstar', trackstarConnectionRoutes);
+  
+  // Mount webhook routes
+  app.use('/api/webhooks', webhookRoutes);
   
   // Trackstar integrations info
   const trackstarIntegrationsRoutes = await import('./routes/trackstarIntegrations.js');
@@ -418,6 +422,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(ticket);
     } catch (error) {
       res.status(500).json({ message: "Failed to create ticket" });
+    }
+  });
+
+  // Trigger manual product and inventory sync
+  app.post("/api/products/trigger-sync", isAuthenticated, async (req, res) => {
+    try {
+      console.log('🏷️ Manual product and inventory sync triggered by user');
+      const { productInventorySync } = await import('./services/productInventorySync.ts');
+      await productInventorySync.syncAllBrandsProductsAndInventory();
+      res.json({ success: true, message: 'Product and inventory sync triggered successfully' });
+    } catch (error) {
+      console.error('❌ Product sync failed:', error);
+      res.status(500).json({ error: 'Product sync failed', message: error.message });
+    }
+  });
+
+  // Clean slate product sync for a brand
+  app.post("/api/products/clean-slate/:brandId", isAuthenticated, async (req, res) => {
+    try {
+      const { brandId } = req.params;
+      console.log(`🧹 Clean slate product sync triggered for brand ${brandId}`);
+      const { productInventorySync } = await import('./services/productInventorySync.ts');
+      await productInventorySync.cleanSlateProductSync(brandId);
+      res.json({ success: true, message: 'Clean slate product sync completed successfully' });
+    } catch (error) {
+      console.error('❌ Clean slate sync failed:', error);
+      res.status(500).json({ error: 'Clean slate sync failed', message: error.message });
     }
   });
 
