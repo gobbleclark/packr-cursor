@@ -283,8 +283,8 @@ export class TrackstarService {
     }
 
     const data = await response.json();
-    console.log(`✅ Found ${data.length || 0} connections in Trackstar account`);
-    return data;
+    console.log(`✅ Found ${data.total_count || data.length || 0} connections in Trackstar account`);
+    return data.data || data;
   }
 
   /**
