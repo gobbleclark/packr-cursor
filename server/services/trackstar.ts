@@ -290,7 +290,7 @@ export class TrackstarService {
     const limit = 1000;
     
     while (true) {
-      const orders = await this.getOrdersWithToken(connectionId, accessToken, limit, offset);
+      const orders = await this.getOrdersWithToken(connectionId, accessToken);
       
       if (orders.length === 0) {
         console.log(`✅ No more orders found. Total retrieved: ${allOrders.length}`);
@@ -361,6 +361,53 @@ export class TrackstarService {
     const data = await response.json();
     console.log(`✅ Found ${data.total_count || data.length || 0} connections in Trackstar account`);
     return data.data || data;
+  }
+
+  /**
+   * Get warehouses for a connection using access token
+   */
+  async getWarehousesWithToken(connectionId: string, accessToken: string): Promise<any[]> {
+    console.log(`🏭 Getting warehouses from connection ${connectionId}...`);
+    
+    const response = await fetch(`${this.baseUrl}/wms/warehouses`, {
+      method: 'GET',
+      headers: {
+        'x-trackstar-api-key': this.apiKey,
+        'x-trackstar-access-token': accessToken,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error('❌ Failed to get warehouses:', response.statusText);
+      throw new Error(`Failed to get warehouses: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Retrieved ${data.data?.length || 0} warehouses from connection ${connectionId}`);
+    
+    return data.data || [];
+  }
+
+  /**
+   * Get a specific warehouse by ID using access token
+   */
+  async getWarehouseById(warehouseId: string, connectionId: string, accessToken: string): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/wms/warehouses/${warehouseId}`, {
+      method: 'GET',
+      headers: {
+        'x-trackstar-api-key': this.apiKey,
+        'x-trackstar-access-token': accessToken,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get warehouse ${warehouseId}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.data || null;
   }
 
   /**

@@ -155,7 +155,7 @@ export class TrackstarSyncService {
           shippingAddress: trackstarOrder.ship_to_address || null,
           // Additional Trackstar-specific fields
           warehouseId: trackstarOrder.warehouse_id,
-          warehouseName: trackstarOrder.warehouse?.name || null,
+          warehouseName: await this.getWarehouseName(trackstarOrder.warehouse_id, brand.trackstarConnectionId, brand.trackstarAccessToken),
           shippingMethod: trackstarOrder.shipping_method,
           totalTax: trackstarOrder.total_tax,
           totalShipping: trackstarOrder.total_shipping,
@@ -228,6 +228,37 @@ export class TrackstarSyncService {
     }
     
     console.log(`📊 Product processing summary for ${brand.name}: ${created} created, ${skipped} skipped (already exist)`);
+  }
+
+  /**
+   * Cache for warehouse names to avoid repeated API calls
+   */
+  private warehouseNameCache = new Map<string, string>();
+
+  /**
+   * Get warehouse name for a warehouse ID
+   */
+  private async getWarehouseName(warehouseId: string | null, connectionId: string, accessToken: string): Promise<string | null> {
+    if (!warehouseId) return null;
+    
+    // Check cache first
+    if (this.warehouseNameCache.has(warehouseId)) {
+      return this.warehouseNameCache.get(warehouseId) || null;
+    }
+    
+    try {
+      const warehouseData = await this.trackstarService.getWarehouseById(warehouseId, connectionId, accessToken);
+      const name = warehouseData?.name || null;
+      
+      // Cache the result
+      this.warehouseNameCache.set(warehouseId, name || '');
+      
+      return name;
+    } catch (error) {
+      console.log(`⚠️ Could not fetch warehouse name for ${warehouseId}:`, error.message);
+      this.warehouseNameCache.set(warehouseId, '');
+      return null;
+    }
   }
 
   /**

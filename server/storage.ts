@@ -228,6 +228,45 @@ export class DatabaseStorage implements IStorage {
       )
     );
   }
+
+  async getBrand(brandId: string): Promise<any> {
+    const result = await db.select().from(brands).where(eq(brands.id, brandId));
+    return result[0] || null;
+  }
+
+  async getOrdersWithoutWarehouseNames(brandId: string): Promise<any[]> {
+    const result = await db.select().from(orders)
+      .where(and(
+        eq(orders.brandId, brandId),
+        isNotNull(orders.warehouseId),
+        isNull(orders.warehouseName)
+      ))
+      .limit(10000);
+    return result;
+  }
+
+  async updateOrderWarehouseName(orderId: string, warehouseName: string): Promise<void> {
+    await db.update(orders)
+      .set({ warehouseName })
+      .where(eq(orders.id, orderId));
+  }
+
+  async getWarehouseUsageSummary(brandId: string): Promise<any[]> {
+    const result = await db.select({
+      warehouse_id: orders.warehouseId,
+      warehouse_name: orders.warehouseName,
+      order_count: sql<number>`count(*)::int`
+    })
+    .from(orders)
+    .where(and(
+      eq(orders.brandId, brandId),
+      isNotNull(orders.warehouseId)
+    ))
+    .groupBy(orders.warehouseId, orders.warehouseName)
+    .orderBy(sql`count(*) desc`);
+    
+    return result;
+  }
   // User operations
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db
