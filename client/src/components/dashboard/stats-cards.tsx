@@ -6,8 +6,22 @@ import { Package, Store, MessageSquare, Warehouse, TrendingUp } from "lucide-rea
 export default function StatsCards() {
   const { isAuthenticated } = useAuth();
 
+  // Set date range to include historical Trackstar data (last 90 days to capture June 2025 data)
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - 90);
+  const endDate = new Date();
+
   const { data: stats, isLoading } = useQuery<any>({
-    queryKey: ['/api/dashboard/stats'],
+    queryKey: ['/api/dashboard/stats', startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+      });
+      const response = await fetch(`/api/dashboard/stats?${params}`);
+      if (!response.ok) throw new Error("Failed to fetch stats");
+      return response.json();
+    },
     enabled: isAuthenticated,
     refetchInterval: 60000, // Refetch every minute
   });
@@ -36,6 +50,8 @@ export default function StatsCards() {
 
   const defaultStats = {
     totalOrders: 0,
+    shippedOrders: 0,
+    unfulfilledOrders: 0,
     openTickets: 0,
     urgentTickets: 0,
     activeBrands: 0,
@@ -45,19 +61,19 @@ export default function StatsCards() {
 
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-      {/* Total Orders */}
+      {/* Shipped Orders */}
       <Card className="stats-card">
         <CardContent className="p-5">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+              <div className="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
                 <Package className="h-5 w-5 text-white" />
               </div>
             </div>
             <div className="ml-5 w-0 flex-1">
               <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">Total Orders</dt>
-                <dd className="text-lg font-semibold text-gray-900">{currentStats.totalOrders.toLocaleString()}</dd>
+                <dt className="text-sm font-medium text-gray-500 truncate">Shipped Orders</dt>
+                <dd className="text-lg font-semibold text-gray-900">{currentStats.shippedOrders?.toLocaleString() || '0'}</dd>
               </dl>
             </div>
           </div>
@@ -65,7 +81,33 @@ export default function StatsCards() {
         <div className="bg-gray-50 px-5 py-3">
           <div className="text-sm">
             <span className="text-gray-600 font-medium">
-              Real-time data
+              Fulfilled via WMS
+            </span>
+          </div>
+        </div>
+      </Card>
+
+      {/* Unfulfilled Orders */}
+      <Card className="stats-card">
+        <CardContent className="p-5">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 bg-orange-500 rounded-md flex items-center justify-center">
+                <Package className="h-5 w-5 text-white" />
+              </div>
+            </div>
+            <div className="ml-5 w-0 flex-1">
+              <dl>
+                <dt className="text-sm font-medium text-gray-500 truncate">Unfulfilled Orders</dt>
+                <dd className="text-lg font-semibold text-gray-900">{currentStats.unfulfilledOrders?.toLocaleString() || '0'}</dd>
+              </dl>
+            </div>
+          </div>
+        </CardContent>
+        <div className="bg-gray-50 px-5 py-3">
+          <div className="text-sm">
+            <span className="text-gray-600 font-medium">
+              Pending fulfillment
             </span>
           </div>
         </div>
