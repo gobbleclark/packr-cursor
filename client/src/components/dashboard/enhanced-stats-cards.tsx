@@ -53,12 +53,12 @@ export default function EnhancedStatsCards({ startDate, endDate, brandId }: Enha
 
   const cards = [
     {
-      title: "Fulfilled Orders",
+      title: "Shipped Orders",
       value: stats?.shippedOrders || 0,
       icon: PackageCheck,
       color: "text-green-600",
       bgColor: "bg-green-50",
-      description: "Completed & delivered"
+      description: "Fulfilled & shipped via WMS"
     },
     {
       title: "Unfulfilled Orders",
@@ -66,7 +66,7 @@ export default function EnhancedStatsCards({ startDate, endDate, brandId }: Enha
       icon: PackageX,
       color: "text-orange-600",
       bgColor: "bg-orange-50",
-      description: "Pending & processing"
+      description: "Pending fulfillment"
     },
     {
       title: "Orders on Hold",
