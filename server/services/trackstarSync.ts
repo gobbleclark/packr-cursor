@@ -76,8 +76,8 @@ export class TrackstarSyncService {
     console.log(`🔄 Syncing real Trackstar data for ${brand.name}...`);
     
     try {
-      // Use the brand's connection to get real orders
-      const orders = await this.trackstarService.getOrdersWithToken(
+      // Use the brand's connection to get ALL orders with proper pagination
+      const orders = await this.trackstarService.getAllOrdersWithTokenFixed(
         brand.trackstarConnectionId, 
         brand.trackstarAccessToken
       );

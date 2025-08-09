@@ -204,6 +204,82 @@ export class TrackstarService {
   }
 
   /**
+   * Get ALL orders using proper Trackstar pagination with page_token parameter
+   */
+  async getAllOrdersWithTokenFixed(connectionId: string, accessToken: string): Promise<any[]> {
+    console.log(`📦 Getting ALL orders from connection ${connectionId} with proper pagination...`);
+    
+    let allOrders = [];
+    let pageToken = null;
+    let pageCount = 0;
+    
+    while (true) {
+      pageCount++;
+      console.log(`📄 Fetching page ${pageCount}...`);
+      
+      // Build URL with page_token parameter if we have one
+      let url = `${this.baseUrl}/wms/orders?limit=1000`;
+      if (pageToken) {
+        url += `&page_token=${encodeURIComponent(pageToken)}`;
+        console.log(`🔗 Using page_token for page ${pageCount}`);
+      }
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'x-trackstar-api-key': this.apiKey,
+          'x-trackstar-access-token': accessToken,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ Failed to fetch orders page ${pageCount}: ${response.status} ${errorText}`);
+        throw new Error(`Failed to fetch orders: ${response.status} ${errorText}`);
+      }
+
+      const data = await response.json();
+      const orders = data.data || data.orders || [];
+      
+      console.log(`📊 Page ${pageCount}: ${orders.length} orders, next_token: ${!!data.next_token}`);
+      
+      if (orders.length === 0) {
+        console.log(`✅ No more orders on page ${pageCount}. Total: ${allOrders.length}`);
+        break;
+      }
+      
+      // Check for duplicates to ensure we're getting new data
+      const existingIds = new Set(allOrders.map(o => o.id));
+      const newOrders = orders.filter(o => !existingIds.has(o.id));
+      
+      if (newOrders.length === 0 && pageCount > 1) {
+        console.log(`⚠️ Page ${pageCount} returned only duplicate orders - reached end or pagination issue`);
+        break;
+      }
+      
+      allOrders.push(...newOrders);
+      console.log(`📈 Added ${newOrders.length} new orders. Total: ${allOrders.length}`);
+      
+      // Check for next page
+      if (!data.next_token) {
+        console.log(`✅ No next_token - reached end. Total: ${allOrders.length}`);
+        break;
+      }
+      
+      pageToken = data.next_token;
+      
+      // Safety break to avoid infinite loops
+      if (pageCount >= 50) {
+        console.log(`⚠️ Hit page limit of 50. Total orders: ${allOrders.length}`);
+        break;
+      }
+    }
+    
+    return allOrders;
+  }
+
+  /**
    * Get ALL orders using pagination to fetch beyond 1000 limit
    */
   async getAllOrdersWithToken(connectionId: string, accessToken: string): Promise<any[]> {
