@@ -11,7 +11,7 @@ interface DateFilterProps {
   defaultRange?: string;
 }
 
-export default function DateFilter({ onDateRangeChange, defaultRange = "30" }: DateFilterProps) {
+export default function DateFilter({ onDateRangeChange, defaultRange = "all" }: DateFilterProps) {
   const [selectedRange, setSelectedRange] = useState(defaultRange);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -43,9 +43,19 @@ export default function DateFilter({ onDateRangeChange, defaultRange = "30" }: D
           start: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(),
           end: now.toISOString()
         };
+      case "90":
+        return {
+          start: new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+          end: now.toISOString()
+        };
+      case "all":
+        return {
+          start: new Date('2020-01-01').toISOString(), // All historical data
+          end: now.toISOString()
+        };
       default:
         return {
-          start: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          start: new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString(),
           end: now.toISOString()
         };
     }
@@ -95,6 +105,8 @@ export default function DateFilter({ onDateRangeChange, defaultRange = "30" }: D
           <SelectItem value="yesterday">Yesterday</SelectItem>
           <SelectItem value="7">Last 7 days</SelectItem>
           <SelectItem value="30">Last 30 days</SelectItem>
+          <SelectItem value="90">Last 90 days</SelectItem>
+          <SelectItem value="all">All time</SelectItem>
           <SelectItem value="custom">Custom range</SelectItem>
         </SelectContent>
       </Select>

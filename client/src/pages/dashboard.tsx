@@ -10,11 +10,9 @@ import RecentActivity from "@/components/dashboard/recent-activity";
 export default function Dashboard() {
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading } = useAuth();
-  // Set default to last 30 days
+  // Set default to show all historical Trackstar data
   const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 30);
-    return date.toISOString().split('T')[0];
+    return new Date('2020-01-01').toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
