@@ -523,22 +523,34 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Add date filtering for order creation (used for total orders)
+    // Use orderDate for Trackstar orders, orderCreatedAt for legacy ShipHero orders
     const dateFilter = [];
     if (dateRange?.start) {
-      dateFilter.push(gte(orders.orderCreatedAt, dateRange.start));
+      dateFilter.push(
+        or(
+          and(isNotNull(orders.orderDate), gte(orders.orderDate, dateRange.start)),
+          and(isNull(orders.orderDate), isNotNull(orders.orderCreatedAt), gte(orders.orderCreatedAt, dateRange.start))
+        )
+      );
     }
     if (dateRange?.end) {
-      dateFilter.push(lte(orders.orderCreatedAt, dateRange.end));
+      dateFilter.push(
+        or(
+          and(isNotNull(orders.orderDate), lte(orders.orderDate, dateRange.end)),
+          and(isNull(orders.orderDate), isNotNull(orders.orderCreatedAt), lte(orders.orderCreatedAt, dateRange.end))
+        )
+      );
     }
 
-    // Add date filtering for fulfilled orders based on ship date
-    // Use shippedAt if available, otherwise fall back to orderCreatedAt
+    // Add date filtering for fulfilled orders
+    // Priority: shippedAt > orderDate > orderCreatedAt
     const fulfilledDateFilter = [];
     if (dateRange?.start) {
       fulfilledDateFilter.push(
         or(
           and(isNotNull(orders.shippedAt), gte(orders.shippedAt, dateRange.start)),
-          and(isNull(orders.shippedAt), gte(orders.orderCreatedAt, dateRange.start))
+          and(isNull(orders.shippedAt), isNotNull(orders.orderDate), gte(orders.orderDate, dateRange.start)),
+          and(isNull(orders.shippedAt), isNull(orders.orderDate), isNotNull(orders.orderCreatedAt), gte(orders.orderCreatedAt, dateRange.start))
         )
       );
     }
@@ -546,7 +558,8 @@ export class DatabaseStorage implements IStorage {
       fulfilledDateFilter.push(
         or(
           and(isNotNull(orders.shippedAt), lte(orders.shippedAt, dateRange.end)),
-          and(isNull(orders.shippedAt), lte(orders.orderCreatedAt, dateRange.end))
+          and(isNull(orders.shippedAt), isNotNull(orders.orderDate), lte(orders.orderDate, dateRange.end)),
+          and(isNull(orders.shippedAt), isNull(orders.orderDate), isNotNull(orders.orderCreatedAt), lte(orders.orderCreatedAt, dateRange.end))
         )
       );
     }
