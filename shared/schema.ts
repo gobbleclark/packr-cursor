@@ -101,6 +101,24 @@ export const orders = pgTable("orders", {
   trackstarIntegrationId: varchar("trackstar_integration_id"),
   warehouseName: varchar("warehouse_name"),
   warehouseId: varchar("warehouse_id"),
+  warehouseCustomerId: varchar("warehouse_customer_id"), // Customer ID in warehouse system
+  referenceId: varchar("reference_id"), // External reference identifier
+  rawStatus: varchar("raw_status"), // Raw status from WMS
+  channel: varchar("channel"), // Sales channel identifier
+  channelObject: jsonb("channel_object"), // Full channel data object
+  orderType: varchar("order_type"), // Order type (d2c, b2b, etc.)
+  tradingPartner: varchar("trading_partner"), // Trading partner information
+  isThirdPartyFreight: boolean("is_third_party_freight").default(false), // 3PL freight handling
+  thirdPartyFreightAccountNumber: varchar("third_party_freight_account_number"), // 3PL freight account
+  firstPartyFreightAccountNumber: varchar("first_party_freight_account_number"), // Direct freight account
+  invoiceCurrencyCode: varchar("invoice_currency_code").default('USD'), // Currency for invoicing
+  saturdayDelivery: boolean("saturday_delivery").default(false), // Weekend delivery requirements
+  signatureRequired: boolean("signature_required").default(false), // Delivery signature requirements
+  internationalDutyPaidBy: varchar("international_duty_paid_by"), // International shipping duties responsibility
+  shipments: jsonb("shipments"), // Complete shipment/package data with tracking
+  externalSystemUrl: varchar("external_system_url"), // Link back to original order system
+  trackstarTags: jsonb("trackstar_tags").default('[]'), // Trackstar-specific metadata tags
+  additionalFields: jsonb("additional_fields"), // Custom WMS fields for extensibility
   
   // Core order fields for universal WMS compatibility
   fulfillmentStatus: varchar("fulfillment_status"), // Universal fulfillment status

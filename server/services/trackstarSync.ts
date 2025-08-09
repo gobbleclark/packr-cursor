@@ -139,6 +139,7 @@ export class TrackstarSyncService {
         }
         
         // Convert Trackstar order format to our database format using actual API structure
+        // COMPREHENSIVE MAPPING - Capturing every field from Trackstar API
         const orderData = {
           brandId: brand.id,
           orderNumber,
@@ -149,17 +150,50 @@ export class TrackstarSyncService {
           trackstarOrderId,
           fulfillmentStatus: trackstarOrder.status || 'pending',
           orderDate: new Date(trackstarOrder.created_date || Date.now()),
-          // Capture Trackstar shipping dates if available
-          shippedAt: trackstarOrder.shipped_date ? new Date(trackstarOrder.shipped_date) : null,
-          deliveredAt: trackstarOrder.delivered_date ? new Date(trackstarOrder.delivered_date) : null,
-          shippingAddress: trackstarOrder.ship_to_address || null,
-          // Additional Trackstar-specific fields
+          
+          // CORE TRACKSTAR FIELDS - Complete mapping
           warehouseId: trackstarOrder.warehouse_id,
           warehouseName: await this.getWarehouseName(trackstarOrder.warehouse_id, brand.trackstarConnectionId, brand.trackstarAccessToken),
+          warehouseCustomerId: trackstarOrder.warehouse_customer_id,
+          referenceId: trackstarOrder.reference_id,
+          rawStatus: trackstarOrder.raw_status,
+          channel: trackstarOrder.channel,
+          channelObject: trackstarOrder.channel_object,
+          orderType: trackstarOrder.type,
+          tradingPartner: trackstarOrder.trading_partner,
           shippingMethod: trackstarOrder.shipping_method,
+          
+          // FREIGHT AND SHIPPING DETAILS
+          isThirdPartyFreight: trackstarOrder.is_third_party_freight || false,
+          thirdPartyFreightAccountNumber: trackstarOrder.third_party_freight_account_number,
+          firstPartyFreightAccountNumber: trackstarOrder.first_party_freight_account_number,
+          invoiceCurrencyCode: trackstarOrder.invoice_currency_code || 'USD',
+          saturdayDelivery: trackstarOrder.saturday_delivery || false,
+          signatureRequired: trackstarOrder.signature_required || false,
+          internationalDutyPaidBy: trackstarOrder.international_duty_paid_by,
+          
+          // FINANCIAL DETAILS
           totalTax: trackstarOrder.total_tax,
           totalShipping: trackstarOrder.total_shipping,
           totalDiscounts: trackstarOrder.total_discount,
+          
+          // ADDRESS AND SHIPPING INFO
+          shippingAddress: trackstarOrder.ship_to_address || null,
+          requiredShipDate: trackstarOrder.required_ship_date ? new Date(trackstarOrder.required_ship_date) : null,
+          
+          // METADATA AND TRACKING - Complete capture
+          tags: trackstarOrder.tags || [],
+          trackstarTags: trackstarOrder.trackstar_tags || [],
+          shipments: trackstarOrder.shipments || null,
+          externalSystemUrl: trackstarOrder.external_system_url,
+          additionalFields: trackstarOrder.additional_fields || null,
+          
+          // TIMESTAMP FIELDS
+          shippedAt: trackstarOrder.shipped_date ? new Date(trackstarOrder.shipped_date) : null,
+          deliveredAt: trackstarOrder.delivered_date ? new Date(trackstarOrder.delivered_date) : null,
+          lastSyncAt: new Date(),
+          
+          // ORDER ITEMS AND TRACKING
           orderItems: trackstarOrder.line_items || [],
           trackingNumber: trackstarOrder.shipments?.[0]?.packages?.[0]?.tracking_number || null,
         };
