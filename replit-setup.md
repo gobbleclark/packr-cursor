@@ -43,3 +43,4 @@ npm run start
 - **Development**: Uses Vite dev server with hot reload
 - **Production**: Serves built static files from `client/dist`
 - **Replit**: Automatically uses production mode
+
