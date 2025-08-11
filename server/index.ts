@@ -79,20 +79,25 @@ app.use((req, res, next) => {
   try {
     const server = await registerRoutes(app);
 
-    // 404 handler - must be before error handler
+    // importantly only setup vite in development and after
+    // setting up all the other routes so the catch-all route
+    // doesn't interfere with the other routes
+    const environment = app.get("env");
+    logger.info(`Server environment: ${environment}`);
+    
+    if (environment === "development") {
+      logger.info("Setting up Vite development server");
+      await setupVite(app, server);
+    } else {
+      logger.info("Setting up static file serving for production");
+      serveStatic(app);
+    }
+
+    // 404 handler - must be AFTER serveStatic so React app can handle routing
     app.use(notFound);
 
     // Global error handler - must be last
     app.use(errorHandler);
-
-    // importantly only setup vite in development and after
-    // setting up all the other routes so the catch-all route
-    // doesn't interfere with the other routes
-    if (app.get("env") === "development") {
-      await setupVite(app, server);
-    } else {
-      serveStatic(app);
-    }
 
     // Setup graceful shutdown
     setupGracefulShutdown(server);
