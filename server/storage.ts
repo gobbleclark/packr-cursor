@@ -219,6 +219,41 @@ export class DatabaseStorage implements IStorage {
     return product;
   }
 
+  async getProductByTrackstarId(trackstarProductId: string): Promise<Product | undefined> {
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(eq(products.trackstarProductId, trackstarProductId));
+    return product;
+  }
+
+  async getProductBySku(brandId: string, sku: string): Promise<Product | undefined> {
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(and(
+        eq(products.brandId, brandId),
+        eq(products.sku, sku)
+      ));
+    return product;
+  }
+
+  async deleteAllProductsByBrand(brandId: string): Promise<void> {
+    await db
+      .delete(products)
+      .where(eq(products.brandId, brandId));
+  }
+
+  async getBrandsWithTrackstarConnections(): Promise<Brand[]> {
+    return await db.select().from(brands).where(
+      and(
+        isNotNull(brands.trackstarConnectionId),
+        isNotNull(brands.trackstarAccessToken),
+        eq(brands.isActive, true)
+      )
+    );
+  }
+
   async getBrandsWithShipHeroCredentials(): Promise<Brand[]> {
     return await db.select().from(brands).where(
       and(

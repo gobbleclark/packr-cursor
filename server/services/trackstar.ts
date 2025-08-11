@@ -176,6 +176,170 @@ export class TrackstarService {
   }
 
   /**
+   * Get products from Trackstar WMS
+   */
+  async getAllProducts(connectionId: string, accessToken: string): Promise<any[]> {
+    console.log(`🏷️ Getting products from connection ${connectionId}...`);
+    
+    let allProducts = [];
+    let pageToken = null;
+    let pageCount = 0;
+    
+    while (true) {
+      pageCount++;
+      console.log(`📄 Fetching products page ${pageCount}...`);
+      
+      let url = `${this.baseUrl}/wms/products?limit=1000`;
+      if (pageToken) {
+        url += `&page_token=${encodeURIComponent(pageToken)}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'x-trackstar-api-key': this.apiKey,
+          'x-trackstar-access-token': accessToken,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ Failed to fetch products: ${response.status} ${errorText}`);
+        throw new Error(`Failed to fetch products: ${response.status} ${errorText}`);
+      }
+
+      const data = await response.json();
+      const products = data.data || data.products || [];
+      
+      console.log(`📊 Products page ${pageCount}: ${products.length} products, next_token: ${!!data.next_token}`);
+      
+      if (products.length === 0) {
+        break;
+      }
+      
+      allProducts.push(...products);
+      
+      if (!data.next_token) {
+        console.log(`✅ All products retrieved. Total: ${allProducts.length}`);
+        break;
+      }
+      
+      pageToken = data.next_token;
+      
+      if (pageCount >= 50) {
+        console.log(`⚠️ Hit page limit. Total products: ${allProducts.length}`);
+        break;
+      }
+    }
+    
+    return allProducts;
+  }
+
+  /**
+   * Get inventory levels from Trackstar WMS
+   */
+  async getInventoryLevels(connectionId: string, accessToken: string): Promise<any[]> {
+    console.log(`📊 Getting inventory levels from connection ${connectionId}...`);
+    
+    let allInventory = [];
+    let pageToken = null;
+    let pageCount = 0;
+    
+    while (true) {
+      pageCount++;
+      console.log(`📄 Fetching inventory page ${pageCount}...`);
+      
+      let url = `${this.baseUrl}/wms/inventory?limit=1000`;
+      if (pageToken) {
+        url += `&page_token=${encodeURIComponent(pageToken)}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'x-trackstar-api-key': this.apiKey,
+          'x-trackstar-access-token': accessToken,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.log(`⚠️ Inventory endpoint returned ${response.status} - may not be available for this WMS`);
+        break;
+      }
+
+      const data = await response.json();
+      const inventory = data.data || data.inventory || [];
+      
+      console.log(`📊 Inventory page ${pageCount}: ${inventory.length} items, next_token: ${!!data.next_token}`);
+      
+      if (inventory.length === 0) {
+        break;
+      }
+      
+      allInventory.push(...inventory);
+      
+      if (!data.next_token) {
+        console.log(`✅ All inventory retrieved. Total: ${allInventory.length}`);
+        break;
+      }
+      
+      pageToken = data.next_token;
+      
+      if (pageCount >= 50) {
+        break;
+      }
+    }
+    
+    return allInventory;
+  }
+
+  /**
+   * Subscribe to webhooks for real-time inventory updates
+   */
+  async subscribeToWebhooks(connectionId: string, accessToken: string, webhookUrl: string): Promise<void> {
+    console.log(`🔔 Setting up webhooks for connection ${connectionId}...`);
+    
+    const webhookTypes = [
+      'inventory.updated',
+      'product.created',
+      'product.updated',
+      'order.created',
+      'order.updated',
+      'shipment.created',
+      'shipment.updated'
+    ];
+    
+    for (const eventType of webhookTypes) {
+      try {
+        const response = await fetch(`${this.baseUrl}/webhooks`, {
+          method: 'POST',
+          headers: {
+            'x-trackstar-api-key': this.apiKey,
+            'x-trackstar-access-token': accessToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            connection_id: connectionId,
+            url: webhookUrl,
+            events: [eventType],
+            active: true
+          }),
+        });
+
+        if (response.ok) {
+          console.log(`✅ Webhook subscribed: ${eventType}`);
+        } else {
+          console.log(`⚠️ Failed to subscribe to ${eventType}: ${response.status}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error subscribing to ${eventType}:`, error.message);
+      }
+    }
+  }
+
+  /**
    * Get orders using brand's access token (basic version - no filtering supported by Trackstar API)
    */
   async getOrdersWithToken(connectionId: string, accessToken: string): Promise<any[]> {
