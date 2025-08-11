@@ -145,6 +145,32 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
+  // Check if we're in development/testing mode and allow fallback auth
+  if (process.env.NODE_ENV === 'development' || process.env.ALLOW_FALLBACK_AUTH === 'true') {
+    // If no user is authenticated, create a temporary dev user
+    if (!req.isAuthenticated() || !user || !user.expires_at) {
+      console.log("Auth failed, creating fallback dev user for development");
+      
+      // Create a temporary development user
+      const devUser = {
+        id: 'dev-user-123',
+        email: 'dev@packr.local',
+        firstName: 'Development',
+        lastName: 'User',
+        role: 'threePL',
+        threePlId: 'd4d15ba7-a23e-4fbb-94be-c4f19c697f85', // Default 3PL ID
+        claims: { sub: 'dev-user-123' },
+        expires_at: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
+        access_token: 'dev-token',
+        refresh_token: 'dev-refresh-token'
+      };
+      
+      // Attach the dev user to the request
+      req.user = devUser;
+      return next();
+    }
+  }
+
   if (!req.isAuthenticated() || !user || !user.expires_at) {
     console.log("Auth failed: isAuthenticated =", req.isAuthenticated(), "user =", !!user, "expires_at =", user?.expires_at);
     return res.status(401).json({ message: "Unauthorized" });

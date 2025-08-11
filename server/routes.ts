@@ -116,6 +116,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Auth routes
+  app.get('/api/auth/status', (req, res) => {
+    const user = req.user as any;
+    res.json({
+      isAuthenticated: req.isAuthenticated(),
+      hasUser: !!user,
+      userInfo: user ? {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        expiresAt: user.expires_at
+      } : null,
+      environment: process.env.NODE_ENV,
+      allowFallbackAuth: process.env.ALLOW_FALLBACK_AUTH === 'true'
+    });
+  });
+
   app.get('/api/auth/user', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user?.claims?.sub;
@@ -202,7 +218,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const brands = await storage.getBrandsByThreePL('d4d15ba7-a23e-4fbb-94be-c4f19c697f85');
       res.json(brands);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch brands" });
+      console.error("Error fetching brands:", error);
+      res.status(500).json({ message: "Failed to fetch brands", error: (error as Error).message });
     }
   });
 
