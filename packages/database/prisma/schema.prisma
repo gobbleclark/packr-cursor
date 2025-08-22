@@ -1,0 +1,423 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  firstName String
+  lastName  String
+  password  String?  // Optional for existing users, required for new brand users
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  memberships    Membership[]
+  comments       Comment[]
+  mentions       Mention[]
+  passwordResets PasswordReset[]
+
+  @@map("users")
+}
+
+model ThreePL {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  memberships       Membership[]
+  brands            Brand[]
+  integrations      Integration[]
+  products         Product[]
+  orders           Order[]
+  shipments        Shipment[]
+  inventorySnapshots InventorySnapshot[]
+  webhookEvents    WebhookEvent[]
+  jobRuns          JobRun[]
+  messageStatuses  MessageStatus[]
+  messages         Message[]
+  brandInvitations BrandInvitation[]
+
+  @@map("threepls")
+}
+
+model Brand {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String
+  threeplId String
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  threepl   ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+  memberships Membership[]
+  products  Product[]
+  orders    Order[]
+  shipments Shipment[]
+  inventorySnapshots InventorySnapshot[]
+  messages  Message[]
+  invitations BrandInvitation[]
+
+  @@unique([threeplId, slug])
+  @@map("brands")
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  threeplId String?
+  brandId   String?
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  threepl ThreePL? @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+  brand   Brand?  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, threeplId, brandId])
+  @@map("memberships")
+}
+
+model Integration {
+  id        String   @id @default(cuid())
+  threeplId String
+  provider  IntegrationProvider
+  status    IntegrationStatus
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  threepl ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+
+  @@map("integrations")
+}
+
+model Product {
+  id        String   @id @default(cuid())
+  threeplId String
+  brandId   String?
+  sku       String
+  name      String
+  description String?
+  category  String?
+  price     Float?
+  cost      Float?
+  weight    Float?
+  dimensions Json?
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  threepl ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+  brand   Brand?  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@unique([threeplId, sku])
+  @@map("products")
+}
+
+model Order {
+  id        String   @id @default(cuid())
+  threeplId String
+  brandId   String?
+  orderNumber String
+  customerId String
+  customerEmail String?
+  customerName String?
+  status    OrderStatus
+  total     Float
+  subtotal  Float
+  tax       Float?
+  shipping  Float?
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  threepl   ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+  brand     Brand?  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+  shipments Shipment[]
+
+  @@unique([threeplId, orderNumber])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+  total     Float
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model Shipment {
+  id        String   @id @default(cuid())
+  threeplId String
+  brandId   String?
+  orderId   String?
+  trackingNumber String?
+  carrier   String?
+  status    String
+  shippedAt DateTime?
+  deliveredAt DateTime?
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  threepl ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+  brand   Brand?  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("shipments")
+}
+
+model InventorySnapshot {
+  id        String   @id @default(cuid())
+  threeplId String
+  brandId   String?
+  productId String?
+  quantity  Int
+  location  String?
+  timestamp DateTime @default(now())
+  metadata  Json     @default("{}")
+
+  // Relationships
+  threepl ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+  brand   Brand?  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@map("inventory_snapshots")
+}
+
+model WebhookEvent {
+  id        String   @id @default(cuid())
+  threeplId String
+  provider  String
+  event     String
+  status    WebhookEventStatus
+  payload   Json
+  response  Json?
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  threepl ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_events")
+}
+
+model JobRun {
+  id        String   @id @default(cuid())
+  threeplId String
+  jobType   String
+  status    JobRunStatus
+  startedAt DateTime @default(now())
+  completedAt DateTime?
+  result    Json?
+  error     String?
+  metadata  Json     @default("{}")
+
+  // Relationships
+  threepl ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+
+  @@map("job_runs")
+}
+
+model MessageStatus {
+  id        String   @id @default(cuid())
+  threeplId String
+  name      String
+  color     String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  threepl ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([threeplId, name])
+  @@map("message_statuses")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  threeplId String
+  brandId   String?
+  customerId String
+  customerEmail String?
+  customerName String?
+  subject   String?
+  content   String
+  statusId  String?
+  priority  String?
+  assignedTo String?
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  threepl     ThreePL      @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+  brand       Brand?       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  status      MessageStatus? @relation(fields: [statusId], references: [id])
+  attachments MessageAttachment[]
+  comments    Comment[]
+  mentions    Mention[]
+
+  @@map("messages")
+}
+
+model MessageAttachment {
+  id        String   @id @default(cuid())
+  messageId String
+  filename  String
+  url       String
+  size      Int
+  mimeType  String?
+  createdAt DateTime @default(now())
+
+  // Relationships
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("message_attachments")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+model Mention {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  // Relationships
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mentions")
+}
+
+model BrandInvitation {
+  id        String   @id @default(cuid())
+  email     String
+  brandId   String
+  threeplId String
+  role      UserRole
+  token     String   @unique
+  expiresAt DateTime
+  accepted  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  brand   Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  threepl ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+
+  @@unique([email, brandId])
+  @@map("brand_invitations")
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_resets")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  THREEPL_ADMIN
+  THREEPL_USER
+  BRAND_ADMIN
+  BRAND_USER
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum IntegrationProvider {
+  TRACKSTAR
+  SHIPHERO
+  SHOPIFY
+  WOOCOMMERCE
+  CUSTOM
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+  PENDING
+}
+
+enum WebhookEventStatus {
+  PENDING
+  PROCESSED
+  FAILED
+  RETRY
+}
+
+enum JobRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
