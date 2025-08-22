@@ -66,6 +66,7 @@ model Brand {
   // Relationships
   threepl   ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
   memberships Membership[]
+  integrations BrandIntegration[]
   products  Product[]
   orders    Order[]
   shipments Shipment[]
@@ -110,10 +111,41 @@ model Integration {
   @@map("integrations")
 }
 
+// Brand-level integration for Trackstar
+model BrandIntegration {
+  id        String   @id @default(cuid())
+  brandId   String
+  provider  IntegrationProvider @default(TRACKSTAR)
+  status    IntegrationStatus @default(PENDING)
+  
+  // Trackstar-specific fields
+  accessToken String
+  connectionId String
+  integrationName String
+  availableActions Json @default("[]")
+  
+  // Sync tracking
+  lastSyncedAt DateTime?
+  lastWebhookAt DateTime?
+  
+  // Configuration
+  config Json @default("{}")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, provider])
+  @@map("brand_integrations")
+}
+
 model Product {
   id        String   @id @default(cuid())
   threeplId String
   brandId   String?
+  externalId String? // Trackstar product ID
   sku       String
   name      String
   description String?
@@ -123,6 +155,7 @@ model Product {
   weight    Float?
   dimensions Json?
   metadata  Json     @default("{}")
+  rawData   Json?    // Full Trackstar response
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -130,8 +163,10 @@ model Product {
   threepl ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
   brand   Brand?  @relation(fields: [brandId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
+  inventorySnapshots InventorySnapshot[]
 
   @@unique([threeplId, sku])
+  @@unique([brandId, externalId])
   @@map("products")
 }
 
@@ -139,6 +174,7 @@ model Order {
   id        String   @id @default(cuid())
   threeplId String
   brandId   String?
+  externalId String? // Trackstar order ID
   orderNumber String
   customerId String
   customerEmail String?
@@ -149,6 +185,8 @@ model Order {
   tax       Float?
   shipping  Float?
   metadata  Json     @default("{}")
+  rawData   Json?    // Full Trackstar response
+  updatedAtRemote DateTime? // Trackstar updated_at
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -159,6 +197,7 @@ model Order {
   shipments Shipment[]
 
   @@unique([threeplId, orderNumber])
+  @@unique([brandId, externalId])
   @@map("orders")
 }
 
@@ -185,12 +224,15 @@ model Shipment {
   threeplId String
   brandId   String?
   orderId   String?
+  externalId String? // Trackstar shipment ID
   trackingNumber String?
   carrier   String?
+  service   String?
   status    String
   shippedAt DateTime?
   deliveredAt DateTime?
   metadata  Json     @default("{}")
+  rawData   Json?    // Full Trackstar response
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -199,6 +241,7 @@ model Shipment {
   brand   Brand?  @relation(fields: [brandId], references: [id], onDelete: Cascade)
   order   Order?  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
+  @@unique([brandId, externalId])
   @@map("shipments")
 }
 
@@ -207,14 +250,17 @@ model InventorySnapshot {
   threeplId String
   brandId   String?
   productId String?
-  quantity  Int
+  quantityFulfillable Int @default(0)
+  quantityOnHand Int @default(0)
   location  String?
-  timestamp DateTime @default(now())
+  asOf      DateTime @default(now())
   metadata  Json     @default("{}")
+  rawData   Json?    // Full Trackstar response
 
   // Relationships
   threepl ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
   brand   Brand?  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("inventory_snapshots")
 }
@@ -235,6 +281,25 @@ model WebhookEvent {
   threepl ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
 
   @@map("webhook_events")
+}
+
+// Trackstar-specific webhook events
+model TrackstarWebhookEvent {
+  id        String   @id @default(cuid())
+  provider  String @default("trackstar")
+  eventType String
+  connectionId String
+  integrationName String
+  deliveryId String @unique // Svix delivery ID for idempotency
+  signatureValid Boolean @default(false)
+  payload   Json
+  processedAt DateTime?
+  status    WebhookEventStatus @default(PENDING)
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("trackstar_webhook_events")
 }
 
 model JobRun {

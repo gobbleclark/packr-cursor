@@ -16,6 +16,10 @@ import pinoPretty from 'pino-pretty';
 // Import routes
 import authRoutes from './routes/auth';
 import brandRoutes from './routes/brands';
+import trackstarRoutes from './routes/trackstar';
+
+// Import services
+import { periodicSyncService } from './services/periodicSync';
 
 const logger = pino(
   pinoPretty({
@@ -58,6 +62,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/brands', brandRoutes);
+app.use('/api', trackstarRoutes);
 
 // API root endpoint
 app.get('/api', (req, res) => {
@@ -68,6 +73,8 @@ app.get('/api', (req, res) => {
               endpoints: {
             auth: '/api/auth',
             brands: '/api/brands',
+            trackstar: '/api/brands/:brandId/integrations/trackstar',
+            webhooks: '/api/webhooks/trackstar',
             health: '/health',
           },
   });
@@ -95,6 +102,25 @@ app.listen(PORT, () => {
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`Health check: http://localhost:${PORT}/health`);
   logger.info(`API docs: http://localhost:${PORT}/api`);
+  
+  // Start periodic sync service
+  if (process.env.NODE_ENV !== 'test') {
+    periodicSyncService.start();
+    logger.info('🔄 Periodic sync service started');
+  }
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  logger.info('Shutting down server...');
+  periodicSyncService.stop();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  logger.info('Shutting down server...');
+  periodicSyncService.stop();
+  process.exit(0);
 });
 
 export default app;
