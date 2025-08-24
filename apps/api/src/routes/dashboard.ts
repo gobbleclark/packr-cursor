@@ -6,6 +6,17 @@ import { authenticateToken } from '../middleware/auth';
 const router = express.Router();
 
 /**
+ * Test endpoint to verify API is working
+ * GET /api/dashboard/test
+ */
+router.get('/test', (req, res) => {
+  res.json({ 
+    message: 'Dashboard API is working',
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
  * Get dashboard statistics
  * GET /api/dashboard/stats
  */
@@ -13,6 +24,9 @@ router.get('/stats', authenticateToken, async (req, res) => {
   try {
     const user = (req as any).user;
     const { brandId, startDate, endDate } = req.query;
+    
+    // Debug logging
+    logger.info(`Dashboard stats request - brandId: ${brandId}, startDate: ${startDate}, endDate: ${endDate}`);
     
     // Get user's memberships to determine accessible brands
     const memberships = await prisma.membership.findMany({
@@ -104,9 +118,30 @@ router.get('/stats', authenticateToken, async (req, res) => {
       });
     }
 
-    // Get total orders
-    const totalOrders = await prisma.order.count({
+    // Get total orders that have shipments in the date range (for date-filtered metrics)
+    // Debug the where clause
+    logger.info(`Order where clause: ${JSON.stringify(orderWhereClause, null, 2)}`);
+    
+    const totalOrdersInDateRange = await prisma.order.count({
       where: orderWhereClause
+    });
+
+    // Get fulfilled orders in the date range (orders with shipped/delivered shipments in date range)
+    const fulfilledOrdersInDateRange = await prisma.order.count({
+      where: {
+        ...orderWhereClause,
+        shipments: {
+          some: {
+            status: { in: ['shipped', 'delivered'] },
+            ...(startDate || endDate ? {
+              shippedAt: {
+                ...(startDate ? { gte: new Date(startDate as string) } : {}),
+                ...(endDate ? { lte: new Date(endDate as string) } : {})
+              }
+            } : {})
+          }
+        }
+      }
     });
 
     // Build separate where clause for current pending orders (no date filtering)
@@ -160,66 +195,142 @@ router.get('/stats', authenticateToken, async (req, res) => {
       }
     });
 
-    // Get fulfilled orders
-    const fulfilledOrders = totalOrders - unfulfilledOrders;
+    // Debug logging
+    logger.info(`Query results - Total in date range: ${totalOrdersInDateRange}, Fulfilled in date range: ${fulfilledOrdersInDateRange}, Current pending: ${unfulfilledOrders}`);
 
-    // Get late orders (required ship date < current date and not shipped)
-    const now = new Date();
-    const lateOrders = await prisma.order.count({
-      where: {
-        ...orderWhereClause,
-        metadata: {
-          path: ['required_ship_date_parsed'],
-          lt: now.toISOString()
-        },
-        OR: [
-          { shipments: { none: {} } },
-          {
-            shipments: {
-              every: {
-                status: { notIn: ['shipped', 'delivered'] }
-              }
-            }
-          }
-        ]
+    // Get late orders - orders that were shipped after their required ship date within the date range
+    // EXCLUDE orders flagged as having backorder items (inventory constraints)
+    let lateOrdersQuery = `
+      SELECT COUNT(DISTINCT o.id) as count
+      FROM orders o
+      JOIN shipments s ON o.id = s."orderId"
+      WHERE s.status IN ('shipped', 'delivered')
+        AND o.metadata->>'required_ship_date_parsed' IS NOT NULL
+        AND s."shippedAt" > (o.metadata->>'required_ship_date_parsed')::timestamp
+        AND (o.metadata->'backorder_info'->>'has_backorder_items')::boolean IS NOT TRUE
+    `;
+    
+    const queryParams: any[] = [];
+    let paramIndex = 1;
+    
+    // Add date filtering
+    if (startDate) {
+      lateOrdersQuery += ` AND s."shippedAt" >= $${paramIndex}`;
+      queryParams.push(new Date(startDate as string));
+      paramIndex++;
+    }
+    if (endDate) {
+      lateOrdersQuery += ` AND s."shippedAt" <= $${paramIndex}`;
+      queryParams.push(new Date(endDate as string));
+      paramIndex++;
+    }
+    
+    // Add brand/3PL filtering
+    if (threeplIds.length > 0) {
+      lateOrdersQuery += ` AND (o."brandId" IN (SELECT id FROM brands WHERE "threeplId" = ANY($${paramIndex}))`;
+      queryParams.push(threeplIds);
+      paramIndex++;
+      
+      if (brandIds.length > 0) {
+        lateOrdersQuery += ` OR o."brandId" = ANY($${paramIndex})`;
+        queryParams.push(brandIds);
+        paramIndex++;
       }
-    });
+      lateOrdersQuery += ')';
+    } else if (brandIds.length > 0) {
+      lateOrdersQuery += ` AND o."brandId" = ANY($${paramIndex})`;
+      queryParams.push(brandIds);
+      paramIndex++;
+    }
+    
+    logger.info(`Late orders query: ${lateOrdersQuery}`);
+    logger.info(`Late orders params: ${JSON.stringify(queryParams)}`);
+    
+    const lateOrdersResult = await prisma.$queryRawUnsafe(lateOrdersQuery, ...queryParams);
+    const lateOrders = parseInt((lateOrdersResult as any)[0]?.count || '0');
+    
+    logger.info(`Late orders result: ${lateOrders}`);
 
     // Get accessible brands count
     let totalBrands = 0;
-    if (threeplIds.length > 0) {
-      totalBrands = await prisma.brand.count({
-        where: { threeplId: { in: threeplIds } }
-      });
-    } else {
-      totalBrands = brandIds.length;
+    try {
+      if (threeplIds.length > 0) {
+        totalBrands = await prisma.brand.count({
+          where: { threeplId: { in: threeplIds } }
+        });
+      } else {
+        totalBrands = brandIds.length;
+      }
+      logger.info(`Total brands: ${totalBrands}`);
+    } catch (error) {
+      logger.error('Error getting total brands:', error);
+      throw error;
     }
 
-    // Get orders by brand
-    const ordersByBrand = await prisma.order.groupBy({
-      by: ['brandId'],
-      where: orderWhereClause,
-      _count: {
-        id: true
-      },
-      orderBy: {
+    // Get orders by brand (simplified query to avoid complex where clause issues)
+    let ordersByBrand: any[] = [];
+    try {
+      let ordersByBrandWhereClause: any = {};
+      
+      // Add brand/3PL filtering for orders by brand
+      if (threeplIds.length > 0) {
+        const accessConditions = [
+          { brand: { threeplId: { in: threeplIds } } },
+          ...(brandIds.length > 0 ? [{ brandId: { in: brandIds } }] : [])
+        ];
+        ordersByBrandWhereClause.OR = accessConditions;
+      } else if (brandIds.length > 0) {
+        ordersByBrandWhereClause.brandId = { in: brandIds };
+      }
+      
+      // Add brand filtering if specified
+      if (brandId && brandId !== 'all') {
+        ordersByBrandWhereClause.brandId = brandId as string;
+      }
+      
+      logger.info(`Orders by brand where clause: ${JSON.stringify(ordersByBrandWhereClause, null, 2)}`);
+      
+      ordersByBrand = await prisma.order.groupBy({
+        by: ['brandId'],
+        where: ordersByBrandWhereClause,
         _count: {
-          id: 'desc'
-        }
-      },
-      take: 10 // Top 10 brands
-    });
+          id: true
+        },
+        orderBy: {
+          _count: {
+            id: 'desc'
+          }
+        },
+        take: 10 // Top 10 brands
+      });
+      
+      logger.info(`Orders by brand result: ${ordersByBrand.length} brands`);
+    } catch (error) {
+      logger.error('Error getting orders by brand:', error);
+      throw error;
+    }
 
     // Get brand details for the grouped results
-    const brandDetails = await prisma.brand.findMany({
-      where: {
-        id: { in: ordersByBrand.map(item => item.brandId) }
-      },
-      select: {
-        id: true,
-        name: true
-      }
-    });
+    let brandDetails: any[] = [];
+    try {
+      const brandIds = ordersByBrand.map(item => item.brandId);
+      logger.info(`Getting brand details for IDs: ${JSON.stringify(brandIds)}`);
+      
+      brandDetails = await prisma.brand.findMany({
+        where: {
+          id: { in: brandIds }
+        },
+        select: {
+          id: true,
+          name: true
+        }
+      });
+      
+      logger.info(`Brand details result: ${brandDetails.length} brands found`);
+    } catch (error) {
+      logger.error('Error getting brand details:', error);
+      throw error;
+    }
 
     // Combine brand details with order counts
     const ordersByBrandWithNames = ordersByBrand.map(item => {
@@ -238,7 +349,6 @@ router.get('/stats', authenticateToken, async (req, res) => {
     for (const brandStat of ordersByBrandWithNames) {
       const unfulfilled = await prisma.order.count({
         where: {
-          ...orderWhereClause,
           brandId: brandStat.brandId,
           OR: [
             { shipments: { none: {} } },
@@ -255,11 +365,10 @@ router.get('/stats', authenticateToken, async (req, res) => {
 
       const late = await prisma.order.count({
         where: {
-          ...orderWhereClause,
           brandId: brandStat.brandId,
           metadata: {
             path: ['required_ship_date_parsed'],
-            lt: now.toISOString()
+            lt: new Date().toISOString()
           },
           OR: [
             { shipments: { none: {} } },
@@ -286,9 +395,9 @@ router.get('/stats', authenticateToken, async (req, res) => {
       .slice(0, 5);
 
     res.json({
-      totalOrders,
+      totalOrders: totalOrdersInDateRange,
       unfulfilledOrders,
-      fulfilledOrders,
+      fulfilledOrders: fulfilledOrdersInDateRange,
       lateOrders,
       totalBrands,
       ordersByBrand: ordersByBrandWithNames,
@@ -297,6 +406,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
 
   } catch (error) {
     logger.error('Error fetching dashboard stats:', error);
+    logger.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     res.status(500).json({ 
       error: 'Failed to fetch dashboard statistics',
       message: error instanceof Error ? error.message : 'Unknown error'

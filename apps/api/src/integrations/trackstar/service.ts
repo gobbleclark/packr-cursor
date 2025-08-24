@@ -193,6 +193,10 @@ export class TrackstarIntegrationService {
         await this.processIncrementalSync(brandId, lookbackHours);
       } else if (job.name === 'delayed-backfill') {
         await this.processDelayedBackfill(brandId);
+      } else if (job.name === 'delayed-backfill-retry') {
+        await this.processDelayedBackfill(brandId);
+      } else if (job.name === 'nightly-reconciliation') {
+        await this.processNightlyReconciliation();
       } else {
         // Legacy sync job handling
         switch (func) {
@@ -286,17 +290,151 @@ export class TrackstarIntegrationService {
 
       logger.info(`Starting delayed backfill for brand ${brandId} - pulling all historical data`);
 
+      // Check if we should retry backfill (in case Trackstar is still syncing)
+      const shouldRetry = await this.shouldRetryBackfill(brandId, integration.accessToken);
+      if (shouldRetry) {
+        logger.info(`Trackstar may still be syncing for brand ${brandId}, scheduling retry in 2 hours`);
+        await this.scheduleBackfillRetry(brandId);
+        return;
+      }
+
       // Full backfill of all data types with proper sequencing
       await this.syncProducts(brandId, integration.accessToken, true);
       await this.syncInventory(brandId, integration.accessToken, true);
       await this.syncOrders(brandId, integration.accessToken, true);
       await this.syncShipments(brandId, integration.accessToken, true);
 
+      // Mark backfill as completed
+      await prisma.brandIntegration.update({
+        where: { id: integration.id },
+        data: { 
+          lastSyncedAt: new Date(),
+          config: {
+            ...((integration.config as any) || {}),
+            initialBackfillCompleted: true,
+            initialBackfillCompletedAt: new Date().toISOString()
+          }
+        }
+      });
+
       logger.info(`Completed delayed backfill for brand ${brandId}`);
     } catch (error) {
       logger.error(`Failed delayed backfill for brand ${brandId}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Check if we should retry the backfill (Trackstar might still be syncing)
+   */
+  private async shouldRetryBackfill(brandId: string, accessToken: string): Promise<boolean> {
+    try {
+      // Try to get a small sample of orders to see if Trackstar has data
+      const testFilters: TrackstarFilters = { limit: 10 };
+      const response = await trackstarClient.instance.getOrders(accessToken, testFilters);
+      
+      // If we get 0 orders, Trackstar might still be syncing
+      // This is a heuristic - in production you might want to call a Trackstar status API
+      if (!response.data || response.data.length === 0) {
+        logger.warn(`No orders returned from Trackstar for brand ${brandId} - may still be syncing`);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      logger.error(`Error checking Trackstar sync status for brand ${brandId}:`, error);
+      return false; // Proceed with backfill anyway
+    }
+  }
+
+  /**
+   * Schedule a backfill retry in 2 hours
+   */
+  private async scheduleBackfillRetry(brandId: string): Promise<void> {
+    const retryJob = await this.syncQueue.add(
+      'delayed-backfill-retry',
+      { brandId },
+      {
+        delay: 2 * 60 * 60 * 1000, // 2 hours
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 60000, // 1 minute base delay
+        },
+      }
+    );
+    
+    logger.info(`Scheduled backfill retry for brand ${brandId} in 2 hours (job: ${retryJob.id})`);
+  }
+
+  /**
+   * Nightly reconciliation sync - runs every night at 2 AM
+   * Syncs last 30 days of data to ensure integrity
+   */
+  async processNightlyReconciliation(): Promise<void> {
+    try {
+      logger.info('Starting nightly reconciliation sync for all Trackstar integrations');
+
+      // Get all active Trackstar integrations
+      const integrations = await prisma.brandIntegration.findMany({
+        where: {
+          provider: 'TRACKSTAR',
+          status: 'ACTIVE'
+        },
+        include: {
+          brand: true
+        }
+      });
+
+      logger.info(`Found ${integrations.length} active Trackstar integrations for nightly reconciliation`);
+
+      for (const integration of integrations) {
+        try {
+          await this.processNightlyReconciliationForBrand(integration.brandId, integration.accessToken);
+        } catch (error) {
+          logger.error(`Nightly reconciliation failed for brand ${integration.brandId}:`, error);
+          // Continue with other brands even if one fails
+        }
+      }
+
+      logger.info('Completed nightly reconciliation sync for all integrations');
+    } catch (error) {
+      logger.error('Failed to run nightly reconciliation:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process nightly reconciliation for a specific brand
+   * Syncs last 30 days of all data types
+   */
+  private async processNightlyReconciliationForBrand(brandId: string, accessToken: string): Promise<void> {
+    logger.info(`Starting nightly reconciliation for brand ${brandId}`);
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Sync all data types with 30-day lookback
+    await this.syncProductsWithDateFilter(brandId, accessToken, thirtyDaysAgo);
+    await this.syncInventoryWithDateFilter(brandId, accessToken, thirtyDaysAgo);
+    await this.syncOrdersWithDateFilter(brandId, accessToken, thirtyDaysAgo);
+    await this.syncShipmentsWithDateFilter(brandId, accessToken, thirtyDaysAgo);
+
+    // Update last reconciliation timestamp
+    await prisma.brandIntegration.update({
+      where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } },
+      data: { 
+        lastSyncedAt: new Date(),
+        config: {
+          ...((await prisma.brandIntegration.findUnique({
+            where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } }
+          }))?.config as any || {}),
+          lastNightlyReconciliation: new Date().toISOString()
+        }
+      }
+    });
+
+    logger.info(`Completed nightly reconciliation for brand ${brandId}`);
   }
 
   /**
@@ -533,6 +671,9 @@ export class TrackstarIntegrationService {
       const orders = response.data || [];
       
       for (const order of orders) {
+        // Check for backorder items by cross-referencing with inventory
+        const backorderInfo = await this.checkBackorderStatus(brandId, order.line_items || []);
+
         // Map comprehensive order data from Trackstar API response
         const orderData = {
           orderNumber: order.order_number || order.reference_id || order.id,
@@ -570,7 +711,8 @@ export class TrackstarIntegrationService {
             has_shipments: order.shipments && order.shipments.length > 0,
             shipment_count: order.shipments ? order.shipments.length : 0,
             is_fulfilled: order.shipments && order.shipments.some(s => s.shipped_date),
-            required_ship_date_parsed: order.required_ship_date ? new Date(order.required_ship_date) : null
+            required_ship_date_parsed: order.required_ship_date ? new Date(order.required_ship_date) : null,
+            backorder_info: backorderInfo
           },
           rawData: order, // Store complete raw response
           updatedAtRemote: order.updated_date ? new Date(order.updated_date) : null
@@ -773,6 +915,175 @@ export class TrackstarIntegrationService {
     // Shipments are now processed as part of orders in syncOrderShipments()
     // This method is kept for compatibility but does nothing
     logger.info(`Shipments are processed as part of orders for brand ${brandId}`);
+  }
+
+  /**
+   * Date-filtered sync methods for nightly reconciliation
+   */
+  private async syncProductsWithDateFilter(brandId: string, accessToken: string, fromDate: Date): Promise<void> {
+    logger.info(`Syncing products for brand ${brandId} from ${fromDate.toISOString()}`);
+    // For now, just call the regular sync - we can optimize with date filters later
+    await this.syncProducts(brandId, accessToken, false);
+  }
+
+  private async syncInventoryWithDateFilter(brandId: string, accessToken: string, fromDate: Date): Promise<void> {
+    logger.info(`Syncing inventory for brand ${brandId} from ${fromDate.toISOString()}`);
+    // For now, just call the regular sync - we can optimize with date filters later
+    await this.syncInventory(brandId, accessToken, false);
+  }
+
+  private async syncOrdersWithDateFilter(brandId: string, accessToken: string, fromDate: Date): Promise<void> {
+    logger.info(`Syncing orders for brand ${brandId} from ${fromDate.toISOString()}`);
+    
+    const brand = await prisma.brand.findUnique({
+      where: { id: brandId },
+      include: { threepl: true }
+    });
+
+    if (!brand) return;
+
+    const filters: TrackstarFilters = {
+      limit: 1000,
+      updated_date: { gte: fromDate.toISOString() }
+    };
+
+    logger.info(`Getting orders from WMS with 30-day filter from ${fromDate.toISOString()}`);
+    
+    try {
+      const response = await trackstarClient.instance.getOrders(accessToken, filters);
+      const orders = response.data || [];
+      
+      logger.info(`Successfully fetched ${orders.length} orders from Trackstar for reconciliation`);
+      
+      // Process orders same as regular sync
+      for (const order of orders) {
+        // Check for backorder items by cross-referencing with inventory
+        const backorderInfo = await this.checkBackorderStatus(brandId, order.line_items || []);
+
+        const orderData = {
+          orderNumber: order.order_number,
+          customerEmail: order.ship_to_address?.email_address,
+          customerName: order.ship_to_address?.full_name || order.ship_to_address?.company,
+          status: this.mapOrderStatus(order.status, order.raw_status),
+          total: order.total_price || 0,
+          subtotal: (order.total_price || 0) - (order.total_tax || 0) - (order.total_shipping || 0),
+          tax: order.total_tax,
+          shipping: order.total_shipping,
+          metadata: {
+            warehouse_id: order.warehouse_id,
+            reference_id: order.reference_id,
+            channel: order.channel,
+            required_ship_date: order.required_ship_date,
+            has_shipments: order.shipments && order.shipments.length > 0,
+            shipment_count: order.shipments ? order.shipments.length : 0,
+            is_fulfilled: order.shipments && order.shipments.some(s => s.shipped_date),
+            required_ship_date_parsed: order.required_ship_date ? new Date(order.required_ship_date) : null,
+            backorder_info: backorderInfo
+          },
+          rawData: order,
+          updatedAtRemote: order.updated_date ? new Date(order.updated_date) : null
+        };
+
+        await prisma.order.upsert({
+          where: {
+            brandId_externalId: {
+              brandId,
+              externalId: order.id
+            }
+          },
+          update: {
+            ...orderData,
+            updatedAt: new Date()
+          },
+          create: {
+            threeplId: brand.threeplId,
+            brandId,
+            externalId: order.id,
+            ...orderData
+          }
+        });
+
+        // Process order line items and shipments
+        if (order.line_items && order.line_items.length > 0) {
+          await this.syncOrderItems(brandId, order.id, order.line_items);
+        }
+        if (order.shipments && order.shipments.length > 0) {
+          await this.syncOrderShipments(brandId, order.id, order.shipments);
+        }
+      }
+      
+      logger.info(`Reconciliation synced ${orders.length} orders for brand ${brandId}`);
+    } catch (error) {
+      logger.error(`Failed to sync orders for reconciliation for brand ${brandId}:`, error);
+      throw error;
+    }
+  }
+
+  private async syncShipmentsWithDateFilter(brandId: string, accessToken: string, fromDate: Date): Promise<void> {
+    logger.info(`Syncing shipments for brand ${brandId} from ${fromDate.toISOString()}`);
+    // Shipments are processed as part of orders, so this is a no-op
+    logger.info(`Shipments are processed as part of orders for brand ${brandId} reconciliation`);
+  }
+
+  /**
+   * Check if an order has backorder items by cross-referencing with inventory
+   * If ANY line item has 0 available inventory, flag the entire order
+   */
+  private async checkBackorderStatus(brandId: string, lineItems: any[]): Promise<any> {
+    const backorderInfo = {
+      has_backorder_items: false,
+      backorder_items: [],
+      inventory_check_date: new Date().toISOString(),
+      total_backorder_qty: 0
+    };
+
+    try {
+      for (const lineItem of lineItems) {
+        if (!lineItem.sku) continue;
+
+        // Get the most recent inventory snapshot for this SKU
+        const inventory = await prisma.inventorySnapshot.findFirst({
+          where: {
+            brandId,
+            product: { 
+              sku: lineItem.sku 
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        });
+
+        const availableQty = inventory?.quantityFulfillable || 0;
+        const orderedQty = lineItem.quantity || 0;
+
+        // If available inventory is 0 OR less than ordered quantity, flag as backorder
+        if (availableQty === 0 || availableQty < orderedQty) {
+          backorderInfo.has_backorder_items = true;
+          const backorderQty = Math.max(0, orderedQty - availableQty);
+          backorderInfo.total_backorder_qty += backorderQty;
+          
+          backorderInfo.backorder_items.push({
+            sku: lineItem.sku,
+            product_id: lineItem.product_id,
+            ordered_qty: orderedQty,
+            available_qty: availableQty,
+            backorder_qty: backorderQty,
+            reason: availableQty === 0 ? 'out_of_stock' : 'insufficient_inventory'
+          });
+
+          logger.info(`Backorder detected - SKU: ${lineItem.sku}, Ordered: ${orderedQty}, Available: ${availableQty}`);
+        }
+      }
+
+      if (backorderInfo.has_backorder_items) {
+        logger.info(`Order flagged as backorder - ${backorderInfo.backorder_items.length} items affected, total backorder qty: ${backorderInfo.total_backorder_qty}`);
+      }
+
+    } catch (error) {
+      logger.error('Error checking backorder status:', error);
+      // If we can't check inventory, assume no backorder to avoid false positives
+    }
+
+    return backorderInfo;
   }
 
   private mapOrderStatus(trackstarStatus: string, rawStatus?: string): 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'RETURNED' {

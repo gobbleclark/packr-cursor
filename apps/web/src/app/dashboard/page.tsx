@@ -177,6 +177,16 @@ export default function DashboardPage() {
     router.push('/');
   };
 
+  const getLateOrdersPercentageColor = (percentage: number) => {
+    if (percentage < 4) {
+      return 'text-green-600'; // Green for under 4%
+    } else if (percentage >= 4 && percentage <= 5) {
+      return 'text-yellow-600'; // Yellow for 4-5%
+    } else {
+      return 'text-red-600'; // Red for over 5%
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -313,9 +323,6 @@ export default function DashboardPage() {
                 <p className="text-2xl font-semibold text-gray-900">
                   {statsLoading ? '...' : stats?.unfulfilledOrders || 0}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  *Not affected by date range filter
-                </p>
               </div>
             </div>
           </div>
@@ -345,11 +352,15 @@ export default function DashboardPage() {
                   <p className="text-2xl font-semibold text-gray-900">
                     {statsLoading ? '...' : stats?.lateOrders || 0}
                   </p>
-                  {stats && stats.totalOrders > 0 && (
-                    <p className="text-2xl font-semibold text-orange-600">
-                      ({((stats.lateOrders / stats.totalOrders) * 100).toFixed(1)}%)
-                    </p>
-                  )}
+                  {stats && stats.totalOrders > 0 && (() => {
+                    const percentage = (stats.lateOrders / stats.totalOrders) * 100;
+                    const colorClass = getLateOrdersPercentageColor(percentage);
+                    return (
+                      <p className={`text-2xl font-semibold ${colorClass}`}>
+                        ({percentage.toFixed(1)}%)
+                      </p>
+                    );
+                  })()}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   *If you do pre-sales or have out of stock items late score can be higher
