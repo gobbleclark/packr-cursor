@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { trackstarIntegrationService } from '../integrations/trackstar/service';
 import { authenticateToken, requireRole } from '../middleware/auth';
 import { logger } from '../utils/logger';
-import { prisma } from '../../lib/prisma';
+import { prisma } from '@packr/database';
 import { svix } from '../lib/svix';
 
 const router = Router();

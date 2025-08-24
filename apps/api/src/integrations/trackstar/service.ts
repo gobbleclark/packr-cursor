@@ -1,4 +1,4 @@
-import { prisma } from '../../../lib/prisma';
+import { prisma } from '@packr/database';
 import { trackstarClient, TrackstarFilters } from './client';
 import { logger } from '../../utils/logger';
 import { Queue, Worker, Job } from 'bullmq';
@@ -9,20 +9,20 @@ export class TrackstarIntegrationService {
   private webhookQueue: Queue;
 
   constructor() {
-    this.syncQueue = new Queue('trackstar:sync', { connection: redis });
-    this.webhookQueue = new Queue('trackstar:webhook', { connection: redis });
+    this.syncQueue = new Queue('trackstar-sync', { connection: redis });
+    this.webhookQueue = new Queue('trackstar-webhook', { connection: redis });
     
     this.setupWorkers();
   }
 
   private setupWorkers() {
     // Sync worker
-    new Worker('trackstar:sync', async (job: Job) => {
+    new Worker('trackstar-sync', async (job: Job) => {
       await this.processSyncJob(job);
     }, { connection: redis });
 
     // Webhook worker
-    new Worker('trackstar:webhook', async (job: Job) => {
+    new Worker('trackstar-webhook', async (job: Job) => {
       await this.processWebhookJob(job);
     }, { connection: redis });
   }
