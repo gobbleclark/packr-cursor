@@ -1,404 +1,377 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, ExternalLink, RefreshCw, Trash2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings, CheckCircle, AlertCircle, Trash2, RefreshCw } from 'lucide-react';
+import { TrackstarConnectButton } from '@trackstar/react-trackstar-link';
+import { authService } from '../../lib/auth';
 
 interface TrackstarIntegrationProps {
   brandId: string;
-  onIntegrationChange?: () => void;
+  onIntegrationUpdate?: () => void;
 }
 
-interface IntegrationData {
+interface TrackstarConnection {
   id: string;
-  status: string;
-  integrationName: string;
   connectionId: string;
-  lastSyncedAt: string | null;
-  lastWebhookAt: string | null;
-  availableActions: string[];
+  integrationName: string;
+  status: string;
+  createdAt: string;
+  lastSyncAt?: string;
 }
 
-interface HealthData {
-  integration: {
-    status: string;
-    lastSyncedAt: string | null;
-    lastWebhookAt: string | null;
-    connectionId: string;
-    integrationName: string;
-  };
-  connection: any;
-  queues: {
-    sync: any;
-    webhook: any;
-  };
-  recentWebhooks: Array<{
-    eventType: string;
-    status: string;
-    createdAt: string;
-    error: string | null;
-  }>;
-}
-
-export default function TrackstarIntegration({ brandId, onIntegrationChange }: TrackstarIntegrationProps) {
-  const [integration, setIntegration] = useState<IntegrationData | null>(null);
-  const [health, setHealth] = useState<HealthData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
+export default function TrackstarIntegration({ brandId, onIntegrationUpdate }: TrackstarIntegrationProps) {
+  const [connection, setConnection] = useState<TrackstarConnection | null>(null);
+  const [isLoadingConnection, setIsLoadingConnection] = useState(true);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showTrackstarLink, setShowTrackstarLink] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
 
+  // Check for existing connection
   useEffect(() => {
-    loadIntegration();
+    fetchConnection();
   }, [brandId]);
 
-  const loadIntegration = async () => {
+  const fetchConnection = async () => {
     try {
-      setIsLoading(true);
-      setError(null);
-
-      const response = await fetch(`/api/brands/${brandId}/integrations/trackstar`, {
+      setIsLoadingConnection(true);
+      const token = authService.getToken();
+      const response = await fetch(`http://localhost:4000/api/brands/${brandId}/integrations/trackstar`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
 
       if (response.ok) {
         const data = await response.json();
-        setIntegration(data.integration);
-        await loadHealth();
-      } else if (response.status === 404) {
-        setIntegration(null);
-      } else {
-        throw new Error('Failed to load integration');
+        // Map the integration data to connection format
+        if (data.integration) {
+          setConnection({
+            id: data.integration.id,
+            connectionId: data.integration.connectionId,
+            integrationName: data.integration.integrationName,
+            status: data.integration.status,
+            createdAt: data.integration.createdAt,
+            lastSyncAt: data.integration.lastSyncedAt
+          });
+        }
+      } else if (response.status !== 404) {
+        console.error('Failed to fetch connection');
       }
     } catch (error) {
-      setError('Failed to load integration details');
-      console.error('Error loading integration:', error);
+      console.error('Error fetching connection:', error);
     } finally {
-      setIsLoading(false);
+      setIsLoadingConnection(false);
     }
   };
 
-  const loadHealth = async () => {
+  // Function to get link token for Trackstar component
+  const getLinkToken = async (): Promise<string> => {
     try {
-      const response = await fetch(`/api/brands/${brandId}/integrations/trackstar/health`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setHealth(data.health);
-      }
-    } catch (error) {
-      console.error('Error loading health:', error);
-    }
-  };
-
-  const createLinkToken = async () => {
-    try {
-      setIsConnecting(true);
-      setError(null);
-
-      const response = await fetch(`/api/brands/${brandId}/integrations/trackstar/link-token`, {
+      const token = authService.getToken();
+      const response = await fetch(`http://localhost:4000/api/brands/${brandId}/integrations/trackstar/link-token`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({})
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        // Open Trackstar Link in a new window
-        const trackstarLinkUrl = `https://link.trackstarhq.com?link_token=${data.linkToken}`;
-        window.open(trackstarLinkUrl, '_blank', 'width=800,height=600');
-        
-        // Show instructions for completing the connection
-        setShowTrackstarLink(true);
-      } else {
-        throw new Error('Failed to create link token');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create link token');
       }
+
+      const data = await response.json();
+      return data.linkToken;
     } catch (error) {
-      setError('Failed to create link token');
-      console.error('Error creating link token:', error);
-    } finally {
-      setIsConnecting(false);
+      console.error('Error getting link token:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create link token');
+      throw error;
     }
   };
 
-  const handleManualSync = async (functions: string[]) => {
+  // Function to handle successful connection
+  const onSuccess = async (authCode: string, integrationName: string) => {
     try {
-      setIsLoading(true);
       setError(null);
-
-      const response = await fetch(`/api/brands/${brandId}/integrations/trackstar/sync`, {
+      const token = authService.getToken();
+      const response = await fetch(`http://localhost:4000/api/brands/${brandId}/integrations/trackstar/exchange`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ functionsToSync: functions }),
+        body: JSON.stringify({
+          authCode,
+          integrationName
+        })
       });
 
-      if (response.ok) {
-        // Reload health data after sync
-        await loadHealth();
-        onIntegrationChange?.();
-      } else {
-        throw new Error('Failed to trigger sync');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to complete integration');
       }
+
+      setSuccess(`Successfully connected to ${integrationName}!`);
+      
+      // Refresh connection data
+      await fetchConnection();
+      
+      // Notify parent component
+      if (onIntegrationUpdate) {
+        onIntegrationUpdate();
+      }
+
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccess(null), 5000);
     } catch (error) {
-      setError('Failed to trigger manual sync');
-      console.error('Error triggering sync:', error);
-    } finally {
-      setIsLoading(false);
+      console.error('Error completing integration:', error);
+      setError(error instanceof Error ? error.message : 'Failed to complete integration');
     }
   };
 
-  const disconnectIntegration = async () => {
-    if (!confirm('Are you sure you want to disconnect this integration? This will stop all data synchronization.')) {
+  const handleDisconnect = async () => {
+    if (!connection || !confirm('Are you sure you want to disconnect from Trackstar? This will stop all data syncing.')) {
       return;
     }
 
     try {
-      setIsLoading(true);
+      setIsDisconnecting(true);
       setError(null);
-
-      const response = await fetch(`/api/brands/${brandId}/integrations/trackstar`, {
+      
+      const token = authService.getToken();
+      const response = await fetch(`http://localhost:4000/api/brands/${brandId}/integrations/trackstar/disconnect`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
 
-      if (response.ok) {
-        setIntegration(null);
-        setHealth(null);
-        onIntegrationChange?.();
-      } else {
-        throw new Error('Failed to disconnect integration');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to disconnect');
       }
+
+      setConnection(null);
+      setSuccess('Successfully disconnected from Trackstar');
+      
+      if (onIntegrationUpdate) {
+        onIntegrationUpdate();
+      }
+
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccess(null), 5000);
     } catch (error) {
-      setError('Failed to disconnect integration');
-      console.error('Error disconnecting integration:', error);
+      console.error('Error disconnecting:', error);
+      setError(error instanceof Error ? error.message : 'Failed to disconnect');
     } finally {
-      setIsLoading(false);
+      setIsDisconnecting(false);
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'ACTIVE':
-        return <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>;
-      case 'PENDING':
-        return <Badge variant="secondary">Pending</Badge>;
-      case 'ERROR':
-        return <Badge variant="destructive">Error</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+  const handleSync = async () => {
+    if (!connection) return;
+
+    try {
+      setIsSyncing(true);
+      setError(null);
+      
+      const token = authService.getToken();
+      const response = await fetch(`http://localhost:4000/api/brands/${brandId}/integrations/trackstar/sync`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to sync');
+      }
+
+      setSuccess('Sync initiated successfully');
+      
+      // Refresh connection data to get updated lastSyncAt
+      await fetchConnection();
+
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (error) {
+      console.error('Error syncing:', error);
+      setError(error instanceof Error ? error.message : 'Failed to sync');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
-  const getWebhookStatusIcon = (status: string) => {
-    switch (status) {
-      case 'PROCESSED':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'FAILED':
-        return <XCircle className="w-4 h-4 text-red-600" />;
-      case 'PENDING':
-        return <Clock className="w-4 h-4 text-yellow-600" />;
-      default:
-        return <Clock className="w-4 h-4 text-gray-600" />;
-    }
+  const onClose = () => {
+    console.log('Trackstar modal closed');
   };
 
-  if (isLoading) {
+  const onLoad = () => {
+    console.log('Trackstar modal loaded');
+  };
+
+  if (isLoadingConnection) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center p-6">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span className="ml-2">Loading integration...</span>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!integration) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ExternalLink className="w-5 h-5" />
-            Trackstar Integration
-          </CardTitle>
-          <CardDescription>
-            Connect your WMS through Trackstar to automatically sync orders, products, inventory, and shipments.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          
-          <Button 
-            onClick={createLinkToken} 
-            disabled={isConnecting}
-            className="w-full"
-          >
-            {isConnecting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Connecting...
-              </>
-            ) : (
-              <>
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Connect WMS via Trackstar
-              </>
-            )}
-          </Button>
-
-          {showTrackstarLink && (
-            <Alert className="mt-4">
-              <AlertDescription>
-                <strong>Trackstar Link opened!</strong> Complete the connection in the new window. 
-                Once connected, return here and refresh to see your integration status.
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center space-x-3">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          <span className="text-gray-600">Loading Trackstar integration...</span>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Integration Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <ExternalLink className="w-5 h-5" />
-              Trackstar Integration
-            </span>
-            {getStatusBadge(integration.status)}
-          </CardTitle>
-          <CardDescription>
-            Connected to {integration.integrationName}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-medium">Connection ID:</span>
-              <p className="text-gray-600 font-mono text-xs">{integration.connectionId}</p>
-            </div>
-            <div>
-              <span className="font-medium">Last Synced:</span>
-              <p className="text-gray-600">
-                {integration.lastSyncedAt 
-                  ? new Date(integration.lastSyncedAt).toLocaleString()
-                  : 'Never'
-                }
-              </p>
-            </div>
-            <div>
-              <span className="font-medium">Last Webhook:</span>
-              <p className="text-gray-600">
-                {integration.lastWebhookAt 
-                  ? new Date(integration.lastWebhookAt).toLocaleString()
-                  : 'Never'
-                }
-              </p>
-            </div>
-            <div>
-              <span className="font-medium">Available Actions:</span>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {integration.availableActions.map((action, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {action}
-                  </Badge>
-                ))}
-              </div>
-            </div>
+    <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <Settings className="w-5 h-5 text-blue-600" />
           </div>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => handleManualSync(['get_orders', 'get_products', 'get_inventory', 'get_shipments'])}
-              disabled={isLoading}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Sync All Data
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleManualSync(['get_orders'])}
-              disabled={isLoading}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Sync Orders
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={disconnectIntegration}
-              disabled={isLoading}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Disconnect
-            </Button>
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">Trackstar Integration</h3>
+            <p className="text-sm text-gray-500">Connect to your WMS for automated order management</p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+        
+        {connection && (
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="w-5 h-5 text-green-500" />
+            <span className="text-sm font-medium text-green-700">Connected</span>
+          </div>
+        )}
+      </div>
 
-      {/* Health Status */}
-      {health && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Integration Health</CardTitle>
-            <CardDescription>
-              Real-time status of your Trackstar integration
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="font-medium">Queue Status:</span>
-                <div className="text-sm text-gray-600 mt-1">
-                  <p>Sync: {health.queues.sync.waiting || 0} waiting</p>
-                  <p>Webhook: {health.queues.webhook.waiting || 0} waiting</p>
-                </div>
-              </div>
-              <div>
-                <span className="font-medium">Recent Webhooks:</span>
-                <div className="text-sm text-gray-600 mt-1">
-                  {health.recentWebhooks.slice(0, 3).map((webhook, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      {getWebhookStatusIcon(webhook.status)}
-                      <span className="text-xs">{webhook.eventType}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+          <div className="flex items-center">
+            <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        </div>
       )}
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+      {/* Success Message */}
+      {success && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+          <div className="flex items-center">
+            <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+            <p className="text-sm text-green-700">{success}</p>
+          </div>
+        </div>
+      )}
+
+      {connection ? (
+        /* Connected State */
+        <div className="space-y-4">
+          <div className="bg-gray-50 rounded-md p-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-gray-700">Integration:</span>
+                <p className="text-gray-900 capitalize">{connection.integrationName}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Status:</span>
+                <p className="text-gray-900 capitalize">{connection.status}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Connected:</span>
+                <p className="text-gray-900">{new Date(connection.createdAt).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Last Sync:</span>
+                <p className="text-gray-900">
+                  {connection.lastSyncAt 
+                    ? new Date(connection.lastSyncAt).toLocaleString()
+                    : 'Never'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex space-x-3">
+            <button
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSyncing ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Sync Now
+                </>
+              )}
+            </button>
+            
+            <button
+              onClick={handleDisconnect}
+              disabled={isDisconnecting}
+              className="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isDisconnecting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Disconnecting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Disconnect
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Not Connected State */
+        <div className="text-center py-6">
+          <p className="text-gray-600 mb-6">
+            Connect your WMS to automatically sync orders, inventory, and shipments.
+          </p>
+          
+          {/* Official Trackstar Connect Button */}
+          <TrackstarConnectButton
+            getLinkToken={getLinkToken}
+            onSuccess={onSuccess}
+            onClose={onClose}
+            onLoad={onLoad}
+            integrationType="wms"
+            style={{
+              backgroundColor: '#2563eb',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.375rem',
+              padding: '0.75rem 1.5rem',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background-color 0.2s'
+            }}
+          >
+            Connect to Trackstar
+          </TrackstarConnectButton>
+          
+          <p className="text-xs text-gray-500 mt-4">
+            You'll be guided through connecting your WMS credentials securely.
+          </p>
+        </div>
       )}
     </div>
   );

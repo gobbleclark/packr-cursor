@@ -18,6 +18,10 @@ import authRoutes from './routes/auth';
 import brandRoutes from './routes/brands';
 import trackstarRoutes from './routes/trackstar';
 import dashboardRoutes from './routes/dashboard';
+import messageRoutes from './routes/messages';
+import userRoutes from './routes/users';
+import settingsRoutes from './routes/settings';
+import orderRoutes from './routes/orders';
 
 // Import services
 import { periodicSyncService } from './services/periodicSync';
@@ -64,6 +68,10 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/orders', orderRoutes);
 app.use('/api', trackstarRoutes);
 
 // API root endpoint
@@ -75,6 +83,11 @@ app.get('/api', (req, res) => {
               endpoints: {
             auth: '/api/auth',
             brands: '/api/brands',
+            messages: '/api/messages',
+            users: '/api/users',
+            settings: '/api/settings',
+            orders: '/api/orders',
+            dashboard: '/api/dashboard',
             trackstar: '/api/brands/:brandId/integrations/trackstar',
             webhooks: '/api/webhooks/trackstar',
             health: '/health',

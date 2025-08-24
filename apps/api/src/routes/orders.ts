@@ -3,6 +3,7 @@ import { prisma } from '@packr/database';
 import { logger } from '../utils/logger';
 import { trackstarIntegrationService } from '../integrations/trackstar/service';
 import { trackstarClient } from '../integrations/trackstar/client';
+import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -10,7 +11,7 @@ const router = express.Router();
  * Get all orders with filtering and pagination
  * GET /api/orders?status=pending&brandId=xxx&page=1&limit=50
  */
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { 
       status, 
@@ -22,10 +23,10 @@ router.get('/', async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    // Get user info from auth headers
-    const userRole = req.headers['x-user-role'] || 'THREEPL_USER';
-    const userThreeplId = req.headers['x-threepl-id'] as string;
-    const userBrandId = req.headers['x-brand-id'] as string;
+    // Get user info from auth middleware
+    const userRole = req.user.role;
+    const userThreeplId = req.user.threeplId;
+    const userBrandId = req.user.brandId;
 
     // Build where clause based on user role
     let whereClause: any = {};

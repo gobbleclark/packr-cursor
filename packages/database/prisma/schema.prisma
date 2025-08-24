@@ -17,6 +17,12 @@ model User {
   firstName String
   lastName  String
   password  String?  // Optional for existing users, required for new brand users
+  isActive  Boolean  @default(true)
+  lastLoginAt DateTime?
+  
+  // Brand access control
+  allowedBrandIds String[] @default([])
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -340,14 +346,23 @@ model Message {
   id        String   @id @default(cuid())
   threeplId String
   brandId   String?
-  customerId String
-  customerEmail String?
-  customerName String?
-  subject   String?
-  content   String
+  title     String
+  body      String
   statusId  String?
-  priority  String?
+  priority  MessagePriority @default(NORMAL)
+  isUrgent  Boolean  @default(false)
+  createdBy String
   assignedTo String?
+  
+  // Integration references
+  orderId   String?
+  shipmentId String?
+  productId String?
+  
+  // Completion tracking
+  completedAt DateTime?
+  completedBy String?
+  
   metadata  Json     @default("{}")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -441,6 +456,24 @@ model PasswordReset {
   @@map("password_resets")
 }
 
+model UserInvitation {
+  id        String   @id @default(cuid())
+  email     String
+  firstName String
+  lastName  String
+  role      UserRole
+  allowedBrandIds String[] @default([])
+  threeplId String
+  token     String   @unique
+  expiresAt DateTime
+  accepted  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([email, threeplId])
+  @@map("user_invitations")
+}
+
 enum UserRole {
   SUPER_ADMIN
   THREEPL_ADMIN
@@ -485,4 +518,11 @@ enum JobRunStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+enum MessagePriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }

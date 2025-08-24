@@ -38,12 +38,9 @@ export class TrackstarIntegrationService {
         throw new Error('Brand not found');
       }
 
-      const request = {
-        customer_id: customerId || brand.threepl.slug,
-        integration_name: `${brand.name} - ${brand.threepl.name}`
-      };
-
-      const response = await trackstarClient.createLinkToken(request);
+      // According to Trackstar docs, /link/token endpoint works with just API key
+      // Let's try without additional parameters first
+      const response = await trackstarClient.instance.createLinkToken();
       return { linkToken: response.link_token };
     } catch (error) {
       logger.error('Failed to create link token:', error);
@@ -67,7 +64,7 @@ export class TrackstarIntegrationService {
         customer_id: customerId || brand.threepl.slug
       };
 
-      const response = await trackstarClient.exchangeAuthCode(request);
+      const response = await trackstarClient.instance.exchangeAuthCode(request);
 
       // Store integration details
       await prisma.brandIntegration.upsert({
@@ -99,8 +96,68 @@ export class TrackstarIntegrationService {
 
       // Kick off initial backfill
       await this.queueInitialBackfill(brandId, response.access_token);
+      
+      // Schedule incremental sync job (every 5 minutes, 2-hour lookback)
+      await this.scheduleIncrementalSync(brandId);
+      
+      // Schedule delayed backfill job (5 hours after integration)
+      await this.scheduleDelayedBackfill(brandId);
+      
+      // Subscribe to all available webhooks
+      await this.subscribeToWebhooks(response.connection_id, response.access_token);
+      
     } catch (error) {
       logger.error('Failed to exchange auth code:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Schedule incremental sync job that runs every 5 minutes with 2-hour lookback
+   */
+  private async scheduleIncrementalSync(brandId: string): Promise<void> {
+    try {
+      // Add recurring job for incremental sync
+      await this.syncQueue.add(
+        'incremental-sync',
+        { brandId, lookbackHours: 2 },
+        {
+          repeat: {
+            every: 5 * 60 * 1000, // 5 minutes in milliseconds
+          },
+          jobId: `incremental-sync-${brandId}`, // Unique job ID to prevent duplicates
+          removeOnComplete: 10, // Keep last 10 completed jobs
+          removeOnFail: 5, // Keep last 5 failed jobs
+        }
+      );
+      
+      logger.info(`Scheduled incremental sync for brand ${brandId} - every 5 minutes with 2-hour lookback`);
+    } catch (error) {
+      logger.error('Failed to schedule incremental sync:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Schedule delayed backfill job that runs 5 hours after integration
+   */
+  private async scheduleDelayedBackfill(brandId: string): Promise<void> {
+    try {
+      // Add delayed job for full backfill
+      await this.syncQueue.add(
+        'delayed-backfill',
+        { brandId },
+        {
+          delay: 5 * 60 * 60 * 1000, // 5 hours in milliseconds
+          jobId: `delayed-backfill-${brandId}`, // Unique job ID
+          removeOnComplete: 1, // Keep only the completed job
+          removeOnFail: 1, // Keep only the failed job
+        }
+      );
+      
+      logger.info(`Scheduled delayed backfill for brand ${brandId} - will run in 5 hours`);
+    } catch (error) {
+      logger.error('Failed to schedule delayed backfill:', error);
       throw error;
     }
   }
@@ -126,38 +183,172 @@ export class TrackstarIntegrationService {
   }
 
   async processSyncJob(job: Job): Promise<void> {
-    const { brandId, accessToken, function: func, type } = job.data;
+    const { brandId, accessToken, function: func, type, lookbackHours } = job.data;
 
     try {
-      logger.info(`Processing sync job for brand ${brandId}, function: ${func}, type: ${type}`);
+      logger.info(`Processing sync job for brand ${brandId}, function: ${func}, type: ${type}, lookback: ${lookbackHours}h`);
 
-      switch (func) {
-        case 'get_products':
-          await this.syncProducts(brandId, accessToken, type === 'initial');
-          break;
-        case 'get_inventory':
-          await this.syncInventory(brandId, accessToken, type === 'initial');
-          break;
-        case 'get_orders':
-          await this.syncOrders(brandId, accessToken, type === 'initial');
-          break;
-        case 'get_shipments':
-          await this.syncShipments(brandId, accessToken, type === 'initial');
-          break;
-        default:
-          logger.warn(`Unknown sync function: ${func}`);
+      // Handle different job types
+      if (job.name === 'incremental-sync') {
+        await this.processIncrementalSync(brandId, lookbackHours);
+      } else if (job.name === 'delayed-backfill') {
+        await this.processDelayedBackfill(brandId);
+      } else {
+        // Legacy sync job handling
+        switch (func) {
+          case 'get_products':
+            await this.syncProducts(brandId, accessToken, type === 'initial');
+            break;
+          case 'get_inventory':
+            await this.syncInventory(brandId, accessToken, type === 'initial');
+            break;
+          case 'get_orders':
+            await this.syncOrders(brandId, accessToken, type === 'initial', lookbackHours);
+            break;
+          case 'get_shipments':
+            await this.syncShipments(brandId, accessToken, type === 'initial');
+            break;
+          default:
+            logger.warn(`Unknown sync function: ${func}`);
+        }
+
+        // Update last synced timestamp for legacy jobs
+        await prisma.brandIntegration.update({
+          where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } },
+          data: { lastSyncedAt: new Date() }
+        });
       }
-
-      // Update last synced timestamp
-      await prisma.brandIntegration.update({
-        where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } },
-        data: { lastSyncedAt: new Date() }
-      });
 
       logger.info(`Sync job completed for brand ${brandId}, function: ${func}`);
     } catch (error) {
       logger.error(`Sync job failed for brand ${brandId}, function: ${func}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Process incremental sync with 2-hour lookback for orders only
+   * Based on Trackstar API docs: 10 requests/second rate limit, 1000 items default pagination
+   */
+  private async processIncrementalSync(brandId: string, lookbackHours: number = 2): Promise<void> {
+    try {
+      const integration = await prisma.brandIntegration.findUnique({
+        where: {
+          brandId_provider: {
+            brandId,
+            provider: 'TRACKSTAR',
+          },
+        },
+      });
+
+      if (!integration || integration.status !== 'ACTIVE') {
+        logger.warn(`No active Trackstar integration found for brand ${brandId}`);
+        return;
+      }
+
+      logger.info(`Starting incremental sync for brand ${brandId} with ${lookbackHours}h lookback`);
+
+      // Only sync orders for incremental updates (most critical for real-time)
+      await this.syncOrders(brandId, integration.accessToken, false, lookbackHours);
+      
+      // Update last sync time
+      await prisma.brandIntegration.update({
+        where: { id: integration.id },
+        data: { lastSyncedAt: new Date() }
+      });
+
+      logger.info(`Completed incremental sync for brand ${brandId}`);
+    } catch (error) {
+      logger.error(`Failed incremental sync for brand ${brandId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process delayed backfill for all historical data
+   * Runs 5 hours after integration to allow Trackstar to pull WMS data
+   */
+  private async processDelayedBackfill(brandId: string): Promise<void> {
+    try {
+      const integration = await prisma.brandIntegration.findUnique({
+        where: {
+          brandId_provider: {
+            brandId,
+            provider: 'TRACKSTAR',
+          },
+        },
+      });
+
+      if (!integration || integration.status !== 'ACTIVE') {
+        logger.warn(`No active Trackstar integration found for brand ${brandId}`);
+        return;
+      }
+
+      logger.info(`Starting delayed backfill for brand ${brandId} - pulling all historical data`);
+
+      // Full backfill of all data types with proper sequencing
+      await this.syncProducts(brandId, integration.accessToken, true);
+      await this.syncInventory(brandId, integration.accessToken, true);
+      await this.syncOrders(brandId, integration.accessToken, true);
+      await this.syncShipments(brandId, integration.accessToken, true);
+
+      logger.info(`Completed delayed backfill for brand ${brandId}`);
+    } catch (error) {
+      logger.error(`Failed delayed backfill for brand ${brandId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Subscribe to all available webhooks for real-time updates
+   * This ensures we get notified immediately when orders/shipments change
+   */
+  private async subscribeToWebhooks(connectionId: string, accessToken: string): Promise<void> {
+    try {
+      logger.info(`Subscribing to webhooks for connection ${connectionId}`);
+
+      // Get the webhook URL for our API
+      const webhookUrl = `${process.env.API_BASE_URL || 'http://localhost:4000'}/api/webhooks/trackstar`;
+      
+      // Skip webhook subscriptions in development (localhost URLs won't work)
+      if (webhookUrl.includes('localhost') || webhookUrl.includes('127.0.0.1')) {
+        logger.warn('Skipping webhook subscriptions in development - localhost URLs not accessible to Trackstar');
+        return;
+      }
+      
+      // Subscribe to all critical webhook events
+      const webhookEvents = [
+        'order.created',
+        'order.updated', 
+        'order.cancelled',
+        'shipment.created',
+        'shipment.updated',
+        'shipment.shipped',
+        'shipment.delivered',
+        'product.created',
+        'product.updated',
+        'inventory.updated'
+      ];
+
+      for (const eventType of webhookEvents) {
+        try {
+          await trackstarClient.instance.subscribeToWebhook(accessToken, {
+            event_type: eventType,
+            url: webhookUrl,
+            connection_id: connectionId
+          });
+          
+          logger.info(`Successfully subscribed to webhook: ${eventType}`);
+        } catch (webhookError) {
+          logger.warn(`Failed to subscribe to webhook ${eventType}:`, webhookError);
+          // Continue with other webhooks even if one fails
+        }
+      }
+
+      logger.info(`Completed webhook subscription for connection ${connectionId}`);
+    } catch (error) {
+      logger.error(`Failed to subscribe to webhooks for connection ${connectionId}:`, error);
+      // Don't throw error - webhook subscription failure shouldn't break integration
     }
   }
 
@@ -186,7 +377,10 @@ export class TrackstarIntegrationService {
       }
     }
 
-    await trackstarClient.paginate('/wms/products', accessToken, filters, async (products, pageNumber) => {
+    try {
+      const response = await trackstarClient.instance.getProducts(accessToken, filters);
+      const products = response.data || [];
+      
       for (const product of products) {
         await prisma.product.upsert({
           where: {
@@ -223,7 +417,12 @@ export class TrackstarIntegrationService {
           }
         });
       }
-    });
+      
+      logger.info(`Synced ${products.length} products for brand ${brandId}`);
+    } catch (error) {
+      logger.error(`Failed to sync products for brand ${brandId}:`, error);
+      throw error;
+    }
   }
 
   private async syncInventory(brandId: string, accessToken: string, isInitial: boolean): Promise<void> {
@@ -250,7 +449,10 @@ export class TrackstarIntegrationService {
       }
     }
 
-    await trackstarClient.paginate('/wms/inventory', accessToken, filters, async (inventoryItems, pageNumber) => {
+    try {
+      const response = await trackstarClient.instance.getInventory(accessToken, filters);
+      const inventoryItems = response.data || [];
+      
       for (const item of inventoryItems) {
         // Find or create product first
         const product = await prisma.product.findUnique({
@@ -276,10 +478,15 @@ export class TrackstarIntegrationService {
           });
         }
       }
-    });
+      
+      logger.info(`Synced ${inventoryItems.length} inventory items for brand ${brandId}`);
+    } catch (error) {
+      logger.error(`Failed to sync inventory for brand ${brandId}:`, error);
+      throw error;
+    }
   }
 
-  private async syncOrders(brandId: string, accessToken: string, isInitial: boolean): Promise<void> {
+  private async syncOrders(brandId: string, accessToken: string, isInitial: boolean, lookbackHours?: number): Promise<void> {
     const brand = await prisma.brand.findUnique({
       where: { id: brandId },
       include: { threepl: true }
@@ -288,23 +495,79 @@ export class TrackstarIntegrationService {
     if (!brand) return;
 
     const filters: TrackstarFilters = {
-      limit: 1000
+      limit: 1000 // Trackstar API default: 1000 items per page
     };
 
     if (!isInitial) {
-      const integration = await prisma.brandIntegration.findUnique({
-        where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } }
-      });
-      
-      if (integration?.lastSyncedAt) {
+      if (lookbackHours) {
+        // Use specified lookback hours (for incremental sync)
+        const lookbackTime = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
         filters.updated_date = {
-          gte: new Date(integration.lastSyncedAt.getTime() - 2 * 60 * 1000).toISOString()
+          gte: lookbackTime.toISOString()
         };
+        logger.info(`Syncing orders with ${lookbackHours}h lookback from ${lookbackTime.toISOString()}`);
+      } else {
+        // Use last sync time with 2-minute overlap (legacy behavior)
+        const integration = await prisma.brandIntegration.findUnique({
+          where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } }
+        });
+        
+        if (integration?.lastSyncedAt) {
+          filters.updated_date = {
+            gte: new Date(integration.lastSyncedAt.getTime() - 2 * 60 * 1000).toISOString()
+          };
+        }
       }
     }
 
-    await trackstarClient.paginate('/wms/orders', accessToken, filters, async (orders, pageNumber) => {
+    try {
+      const response = await trackstarClient.instance.getOrders(accessToken, filters);
+      const orders = response.data || [];
+      
       for (const order of orders) {
+        // Map comprehensive order data from Trackstar API response
+        const orderData = {
+          orderNumber: order.order_number || order.reference_id || order.id,
+          customerId: order.warehouse_customer_id || 'unknown',
+          customerEmail: order.ship_to_address?.email_address,
+          customerName: order.ship_to_address?.full_name || order.ship_to_address?.company,
+          status: this.mapOrderStatus(order.status, order.raw_status),
+          total: order.total_price || 0,
+          subtotal: (order.total_price || 0) - (order.total_tax || 0) - (order.total_shipping || 0),
+          tax: order.total_tax,
+          shipping: order.total_shipping,
+          metadata: {
+            // Store all additional Trackstar fields in metadata
+            warehouse_id: order.warehouse_id,
+            reference_id: order.reference_id,
+            channel: order.channel,
+            channel_object: order.channel_object,
+            type: order.type,
+            trading_partner: order.trading_partner,
+            shipping_method: order.shipping_method,
+            is_third_party_freight: order.is_third_party_freight,
+            third_party_freight_account_number: order.third_party_freight_account_number,
+            first_party_freight_account_number: order.first_party_freight_account_number,
+            invoice_currency_code: order.invoice_currency_code,
+            total_discount: order.total_discount,
+            ship_to_address: order.ship_to_address,
+            tags: order.tags,
+            required_ship_date: order.required_ship_date,
+            saturday_delivery: order.saturday_delivery,
+            signature_required: order.signature_required,
+            international_duty_paid_by: order.international_duty_paid_by,
+            external_system_url: order.external_system_url,
+            additional_fields: order.additional_fields,
+            // Track fulfillment status for dashboard logic
+            has_shipments: order.shipments && order.shipments.length > 0,
+            shipment_count: order.shipments ? order.shipments.length : 0,
+            is_fulfilled: order.shipments && order.shipments.some(s => s.shipped_date),
+            required_ship_date_parsed: order.required_ship_date ? new Date(order.required_ship_date) : null
+          },
+          rawData: order, // Store complete raw response
+          updatedAtRemote: order.updated_date ? new Date(order.updated_date) : null
+        };
+
         await prisma.order.upsert({
           where: {
             brandId_externalId: {
@@ -313,38 +576,189 @@ export class TrackstarIntegrationService {
             }
           },
           update: {
-            orderNumber: order.order_number || order.id,
-            customerId: order.customer_id || 'unknown',
-            customerEmail: order.customer_email,
-            customerName: order.customer_name,
-            status: this.mapOrderStatus(order.status),
-            total: order.total || 0,
-            subtotal: order.subtotal || 0,
-            tax: order.tax,
-            shipping: order.shipping,
-            rawData: order,
-            updatedAtRemote: order.updated_at ? new Date(order.updated_at) : null,
+            ...orderData,
             updatedAt: new Date()
           },
           create: {
             threeplId: brand.threeplId,
             brandId,
             externalId: order.id,
-            orderNumber: order.order_number || order.id,
-            customerId: order.customer_id || 'unknown',
-            customerEmail: order.customer_email,
-            customerName: order.customer_name,
-            status: this.mapOrderStatus(order.status),
-            total: order.total || 0,
-            subtotal: order.subtotal || 0,
-            tax: order.tax,
-            shipping: order.shipping,
-            rawData: order,
-            updatedAtRemote: order.updated_at ? new Date(order.updated_at) : null
+            ...orderData
+          }
+        });
+
+        // Process order line items
+        if (order.line_items && order.line_items.length > 0) {
+          await this.syncOrderItems(brandId, order.id, order.line_items);
+        }
+
+        // Process shipments if they exist (fulfilled orders)
+        if (order.shipments && order.shipments.length > 0) {
+          await this.syncOrderShipments(brandId, order.id, order.shipments);
+        }
+      }
+      
+      logger.info(`Synced ${orders.length} orders for brand ${brandId}`);
+    } catch (error) {
+      logger.error(`Failed to sync orders for brand ${brandId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync order line items from Trackstar order data
+   */
+  private async syncOrderItems(brandId: string, orderExternalId: string, lineItems: any[]): Promise<void> {
+    try {
+      // Get the order from our database
+      const order = await prisma.order.findUnique({
+        where: {
+          brandId_externalId: {
+            brandId,
+            externalId: orderExternalId
+          }
+        }
+      });
+
+      if (!order) {
+        logger.warn(`Order not found for line items sync: ${orderExternalId}`);
+        return;
+      }
+
+      // Delete existing order items to avoid duplicates
+      await prisma.orderItem.deleteMany({
+        where: { orderId: order.id }
+      });
+
+      // Create new order items
+      for (const item of lineItems) {
+        // Find or create product
+        let product = await prisma.product.findFirst({
+          where: {
+            brandId,
+            sku: item.sku
+          }
+        });
+
+        if (!product && item.product_id) {
+          // Try to find by external ID
+          product = await prisma.product.findUnique({
+            where: {
+              brandId_externalId: {
+                brandId,
+                externalId: item.product_id
+              }
+            }
+          });
+        }
+
+        if (product) {
+          await prisma.orderItem.create({
+            data: {
+              orderId: order.id,
+              productId: product.id,
+              quantity: item.quantity || 0,
+              price: item.unit_price || 0,
+              total: (item.unit_price || 0) * (item.quantity || 0) - (item.discount_amount || 0),
+              metadata: {
+                sku: item.sku,
+                discount_amount: item.discount_amount,
+                is_picked: item.is_picked,
+                product_id: item.product_id
+              }
+            }
+          });
+        } else {
+          logger.warn(`Product not found for order item: SKU ${item.sku}, Product ID ${item.product_id}`);
+        }
+      }
+    } catch (error) {
+      logger.error(`Failed to sync order items for order ${orderExternalId}:`, error);
+    }
+  }
+
+  /**
+   * Sync shipments from Trackstar order data
+   */
+  private async syncOrderShipments(brandId: string, orderExternalId: string, shipments: any[]): Promise<void> {
+    try {
+      // Get the order from our database
+      const order = await prisma.order.findUnique({
+        where: {
+          brandId_externalId: {
+            brandId,
+            externalId: orderExternalId
+          }
+        }
+      });
+
+      if (!order) {
+        logger.warn(`Order not found for shipments sync: ${orderExternalId}`);
+        return;
+      }
+
+      for (const shipment of shipments) {
+        // Extract tracking information from packages
+        const trackingNumbers = [];
+        const carriers = [];
+        
+        if (shipment.packages) {
+          for (const pkg of shipment.packages) {
+            if (pkg.tracking_number) trackingNumbers.push(pkg.tracking_number);
+            if (pkg.carrier) carriers.push(pkg.carrier);
+          }
+        }
+
+        await prisma.shipment.upsert({
+          where: {
+            brandId_externalId: {
+              brandId,
+              externalId: shipment.shipment_id
+            }
+          },
+          update: {
+            orderId: order.id,
+            trackingNumber: trackingNumbers.join(', ') || null,
+            carrier: carriers.join(', ') || null,
+            service: shipment.shipping_method,
+            status: shipment.status || 'unknown',
+            shippedAt: shipment.shipped_date ? new Date(shipment.shipped_date) : null,
+            metadata: {
+              warehouse_id: shipment.warehouse_id,
+              raw_status: shipment.raw_status,
+              ship_from_address: shipment.ship_from_address,
+              ship_to_address: shipment.ship_to_address,
+              line_items: shipment.line_items,
+              packages: shipment.packages
+            },
+            rawData: shipment,
+            updatedAt: new Date()
+          },
+          create: {
+            threeplId: order.threeplId,
+            brandId,
+            orderId: order.id,
+            externalId: shipment.shipment_id,
+            trackingNumber: trackingNumbers.join(', ') || null,
+            carrier: carriers.join(', ') || null,
+            service: shipment.shipping_method,
+            status: shipment.status || 'unknown',
+            shippedAt: shipment.shipped_date ? new Date(shipment.shipped_date) : null,
+            metadata: {
+              warehouse_id: shipment.warehouse_id,
+              raw_status: shipment.raw_status,
+              ship_from_address: shipment.ship_from_address,
+              ship_to_address: shipment.ship_to_address,
+              line_items: shipment.line_items,
+              packages: shipment.packages
+            },
+            rawData: shipment
           }
         });
       }
-    });
+    } catch (error) {
+      logger.error(`Failed to sync shipments for order ${orderExternalId}:`, error);
+    }
   }
 
   private async syncShipments(brandId: string, accessToken: string, isInitial: boolean): Promise<void> {
@@ -371,7 +785,10 @@ export class TrackstarIntegrationService {
       }
     }
 
-    await trackstarClient.paginate('/wms/shipments', accessToken, filters, async (shipments, pageNumber) => {
+    try {
+      const response = await trackstarClient.instance.getShipments(accessToken, filters);
+      const shipments = response.data || [];
+      
       for (const shipment of shipments) {
         // Find the order this shipment belongs to
         const order = await prisma.order.findUnique({
@@ -424,20 +841,50 @@ export class TrackstarIntegrationService {
           });
         }
       }
-    });
+      
+      logger.info(`Synced ${shipments.length} shipments for brand ${brandId}`);
+    } catch (error) {
+      logger.error(`Failed to sync shipments for brand ${brandId}:`, error);
+      throw error;
+    }
   }
 
-  private mapOrderStatus(trackstarStatus: string): string {
-    const statusMap: { [key: string]: string } = {
+  private mapOrderStatus(trackstarStatus: string, rawStatus?: string): 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'RETURNED' {
+    // Map Trackstar order statuses to our internal statuses
+    // Use raw_status for more granular information if available
+    
+    const status = rawStatus || trackstarStatus;
+    
+    if (!status) return 'PENDING';
+    
+    const statusLower = status.toLowerCase();
+    
+    // Handle Trackstar-specific statuses based on the API response structure
+            const statusMap: { [key: string]: 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'RETURNED' } = {
+      // Standard statuses
       'pending': 'PENDING',
       'processing': 'PROCESSING',
       'shipped': 'SHIPPED',
       'delivered': 'DELIVERED',
       'cancelled': 'CANCELLED',
-      'returned': 'RETURNED'
+      'returned': 'RETURNED',
+      
+      // Trackstar-specific statuses from API
+      'open': 'PENDING',
+      'allocated': 'PROCESSING',
+      'picked': 'PROCESSING',
+      'packed': 'PROCESSING', // Packed but not yet shipped
+      'fulfilled': 'SHIPPED',
+      'complete': 'DELIVERED',
+      'closed': 'DELIVERED',
+      
+      // Handle various fulfillment states
+      'ready_to_ship': 'PROCESSING',
+      'in_transit': 'SHIPPED',
+      'out_for_delivery': 'SHIPPED'
     };
 
-    return statusMap[trackstarStatus.toLowerCase()] || 'PENDING';
+    return statusMap[statusLower] || 'PENDING';
   }
 
   async processWebhookJob(job: Job): Promise<void> {
@@ -511,7 +958,7 @@ export class TrackstarIntegrationService {
         customerId: data.customer_id || 'unknown',
         customerEmail: data.customer_email,
         customerName: data.customer_name,
-        status: this.mapOrderStatus(data.status),
+        status: this.mapOrderStatus(data.status, data.fulfillment_status),
         total: data.total || 0,
         subtotal: data.subtotal || 0,
         tax: data.tax,
@@ -528,7 +975,7 @@ export class TrackstarIntegrationService {
         customerId: data.customer_id || 'unknown',
         customerEmail: data.customer_email,
         customerName: data.customer_name,
-        status: this.mapOrderStatus(data.status),
+        status: this.mapOrderStatus(data.status, data.fulfillment_status),
         total: data.total || 0,
         subtotal: data.subtotal || 0,
         tax: data.tax,
@@ -698,24 +1145,38 @@ export class TrackstarIntegrationService {
       throw new Error('Trackstar integration not found for this brand');
     }
 
-    // Call Trackstar's sync endpoint
-    await trackstarClient.syncConnection(integration.accessToken, functionsToSync);
-
-    // Queue our sync jobs
+    // Use our own sync methods instead of Trackstar's sync endpoint
     for (const func of functionsToSync) {
-      await this.syncQueue.add('manual-sync', {
-        brandId,
-        accessToken: integration.accessToken,
-        function: func,
-        type: 'manual'
-      }, {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000
+      try {
+        logger.info(`Manual sync: ${func} for brand ${brandId}`);
+        
+        switch (func) {
+          case 'get_products':
+            await this.syncProducts(brandId, integration.accessToken, false);
+            break;
+          case 'get_inventory':
+            await this.syncInventory(brandId, integration.accessToken, false);
+            break;
+          case 'get_orders':
+            await this.syncOrders(brandId, integration.accessToken, false);
+            break;
+          case 'get_shipments':
+            await this.syncShipments(brandId, integration.accessToken, false);
+            break;
+          default:
+            logger.warn(`Unknown sync function: ${func}`);
         }
-      });
+      } catch (error) {
+        logger.error(`Manual sync failed for ${func}:`, error);
+        // Continue with other functions even if one fails
+      }
     }
+    
+    // Update last synced timestamp
+    await prisma.brandIntegration.update({
+      where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } },
+      data: { lastSyncedAt: new Date() }
+    });
   }
 
   async getSyncHealth(brandId: string): Promise<any> {
@@ -728,7 +1189,7 @@ export class TrackstarIntegrationService {
     }
 
     // Get connection details from Trackstar
-    const connectionDetails = await trackstarClient.getConnection(integration.accessToken);
+    const connectionDetails = await trackstarClient.instance.getConnection(integration.accessToken);
 
     // Get recent webhook events
     const recentWebhooks = await prisma.trackstarWebhookEvent.findMany({

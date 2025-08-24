@@ -41,7 +41,7 @@ export default function DashboardPage() {
   const fetchBrands = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('/api/brands', {
+      const response = await fetch('http://localhost:4000/api/brands', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -74,7 +74,7 @@ export default function DashboardPage() {
         params.append('startDate', startDate.toISOString());
       }
 
-      const url = `/api/dashboard/stats${params.toString() ? '?' + params.toString() : ''}`;
+      const url = `http://localhost:4000/api/dashboard/stats${params.toString() ? '?' + params.toString() : ''}`;
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,

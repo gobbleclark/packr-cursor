@@ -30,6 +30,20 @@ const webhookSchema = z.object({
   previous_attributes: z.any().optional(),
 });
 
+// Debug endpoint to test Trackstar client directly
+router.post('/debug/trackstar/test', async (req, res) => {
+  try {
+    logger.info('Testing Trackstar client directly...');
+    const { trackstarClient } = require('../integrations/trackstar/client');
+    const result = await trackstarClient.instance.createLinkToken();
+    logger.info('Direct Trackstar test successful:', result);
+    res.json({ success: true, result });
+  } catch (error) {
+    logger.error('Direct Trackstar test failed:', error);
+    res.status(500).json({ error: 'Direct test failed', details: error.message });
+  }
+});
+
 // Create link token for Trackstar Link
 router.post('/brands/:brandId/integrations/trackstar/link-token', 
   authenticateToken, 
@@ -39,6 +53,8 @@ router.post('/brands/:brandId/integrations/trackstar/link-token',
       const { brandId } = req.params;
       const { customerId } = linkTokenSchema.parse(req.body);
 
+      logger.info('Creating link token for brand:', { brandId, customerId, userId: req.user.id, threeplId: req.user.threeplId });
+
       // Verify the brand belongs to the authenticated 3PL
       const brand = await prisma.brand.findFirst({
         where: {
@@ -47,12 +63,17 @@ router.post('/brands/:brandId/integrations/trackstar/link-token',
         },
       });
 
+      logger.info('Brand lookup result:', { brand: brand ? { id: brand.id, name: brand.name, threeplId: brand.threeplId } : null });
+
       if (!brand) {
+        logger.error('Brand not found or access denied:', { brandId, userThreeplId: req.user.threeplId });
         return res.status(404).json({ error: 'Brand not found' });
       }
 
+      logger.info('Calling trackstarIntegrationService.createLinkToken...');
       const { linkToken } = await trackstarIntegrationService.createLinkToken(brandId, customerId);
       
+      logger.info('Successfully created link token:', { linkToken: linkToken.substring(0, 8) + '...' });
       res.json({ success: true, linkToken });
     } catch (error) {
       logger.error('Failed to create link token:', error);

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Building2, Save, ArrowLeft, Upload, Settings, Users } from 'lucide-react';
-import TrackstarIntegration from '@/components/integrations/TrackstarIntegration';
+import TrackstarIntegration from '../../../../components/integrations/TrackstarIntegration';
 
 interface Brand {
   id: string;
@@ -236,7 +236,7 @@ export default function EditBrandPage() {
           {/* Trackstar Integration */}
           <TrackstarIntegration 
             brandId={brandId} 
-            onIntegrationChange={() => {
+            onIntegrationUpdate={() => {
               // Refresh any data if needed when integration changes
             }}
           />
