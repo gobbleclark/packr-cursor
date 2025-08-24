@@ -129,7 +129,10 @@ router.get('/stats', authenticateToken, async (req, res) => {
     const lateOrders = await prisma.order.count({
       where: {
         ...orderWhereClause,
-        requiredShipDate: { lt: now },
+        metadata: {
+          path: ['required_ship_date_parsed'],
+          lt: now.toISOString()
+        },
         OR: [
           { shipments: { none: {} } },
           {
@@ -215,7 +218,10 @@ router.get('/stats', authenticateToken, async (req, res) => {
         where: {
           ...orderWhereClause,
           brandId: brandStat.brandId,
-          requiredShipDate: { lt: now },
+          metadata: {
+            path: ['required_ship_date_parsed'],
+            lt: now.toISOString()
+          },
           OR: [
             { shipments: { none: {} } },
             {
