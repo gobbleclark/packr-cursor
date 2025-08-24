@@ -1050,7 +1050,7 @@ export class TrackstarIntegrationService {
             }
           },
           orderBy: { createdAt: 'desc' }
-        });
+        }).catch(() => null); // Handle case where product doesn't exist yet
 
         const availableQty = inventory?.quantityFulfillable || 0;
         const orderedQty = lineItem.quantity || 0;
