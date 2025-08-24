@@ -321,4 +321,45 @@ router.delete('/brands/:brandId/integrations/trackstar',
   }
 );
 
+// Manual webhook subscription endpoint
+router.post('/brands/:brandId/integrations/trackstar/webhooks/subscribe',
+  authenticateToken,
+  requireRole('THREEPL_ADMIN'),
+  async (req, res) => {
+    try {
+      const { brandId } = req.params;
+
+      // Verify the brand belongs to the authenticated 3PL
+      const brand = await prisma.brand.findFirst({
+        where: {
+          id: brandId,
+          threeplId: req.user.threeplId,
+        },
+      });
+
+      if (!brand) {
+        return res.status(404).json({ error: 'Brand not found' });
+      }
+
+      // Get the integration
+      const integration = await prisma.brandIntegration.findUnique({
+        where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } }
+      });
+
+      if (!integration) {
+        return res.status(404).json({ error: 'Trackstar integration not found' });
+      }
+
+      // Subscribe to webhooks
+      const service = new TrackstarIntegrationService();
+      await service.subscribeToWebhooks(integration.connectionId, integration.accessToken);
+
+      res.json({ success: true, message: 'Webhooks subscribed successfully' });
+    } catch (error) {
+      logger.error('Failed to subscribe to webhooks:', error);
+      res.status(500).json({ error: 'Failed to subscribe to webhooks' });
+    }
+  }
+);
+
 export default router;

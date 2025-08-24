@@ -303,16 +303,18 @@ export class TrackstarIntegrationService {
    * Subscribe to all available webhooks for real-time updates
    * This ensures we get notified immediately when orders/shipments change
    */
-  private async subscribeToWebhooks(connectionId: string, accessToken: string): Promise<void> {
+  async subscribeToWebhooks(connectionId: string, accessToken: string): Promise<void> {
     try {
       logger.info(`Subscribing to webhooks for connection ${connectionId}`);
 
-      // Get the webhook URL for our API
-      const webhookUrl = `${process.env.API_BASE_URL || 'http://localhost:4000'}/api/webhooks/trackstar`;
+      // Get the webhook URL for our API - use ngrok URL in development
+      const webhookUrl = process.env.NGROK_URL 
+        ? `${process.env.NGROK_URL}/api/webhooks/trackstar`
+        : `${process.env.API_BASE_URL || 'http://localhost:4000'}/api/webhooks/trackstar`;
       
-      // Skip webhook subscriptions in development (localhost URLs won't work)
-      if (webhookUrl.includes('localhost') || webhookUrl.includes('127.0.0.1')) {
-        logger.warn('Skipping webhook subscriptions in development - localhost URLs not accessible to Trackstar');
+      // Skip webhook subscriptions only if no ngrok URL is provided in development
+      if (!process.env.NGROK_URL && (webhookUrl.includes('localhost') || webhookUrl.includes('127.0.0.1'))) {
+        logger.warn('Skipping webhook subscriptions in development - set NGROK_URL environment variable to enable webhooks');
         return;
       }
       
@@ -454,12 +456,18 @@ export class TrackstarIntegrationService {
       const inventoryItems = response.data || [];
       
       for (const item of inventoryItems) {
+        // Skip items without product_id
+        if (!item.product_id) {
+          logger.warn(`Skipping inventory item without product_id:`, item);
+          continue;
+        }
+
         // Find or create product first
         const product = await prisma.product.findUnique({
           where: {
             brandId_externalId: {
               brandId,
-              externalId: item.product_id
+              externalId: String(item.product_id)
             }
           }
         });
@@ -762,91 +770,9 @@ export class TrackstarIntegrationService {
   }
 
   private async syncShipments(brandId: string, accessToken: string, isInitial: boolean): Promise<void> {
-    const brand = await prisma.brand.findUnique({
-      where: { id: brandId },
-      include: { threepl: true }
-    });
-
-    if (!brand) return;
-
-    const filters: TrackstarFilters = {
-      limit: 1000
-    };
-
-    if (!isInitial) {
-      const integration = await prisma.brandIntegration.findUnique({
-        where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } }
-      });
-      
-      if (integration?.lastSyncedAt) {
-        filters.updated_date = {
-          gte: new Date(integration.lastSyncedAt.getTime() - 2 * 60 * 1000).toISOString()
-        };
-      }
-    }
-
-    try {
-      const response = await trackstarClient.instance.getShipments(accessToken, filters);
-      const shipments = response.data || [];
-      
-      for (const shipment of shipments) {
-        // Find the order this shipment belongs to
-        const order = await prisma.order.findUnique({
-          where: {
-            brandId_externalId: {
-              brandId,
-              externalId: shipment.order_id
-            }
-          }
-        });
-
-        await prisma.shipment.upsert({
-          where: {
-            brandId_externalId: {
-              brandId,
-              externalId: shipment.id
-            }
-          },
-          update: {
-            orderId: order?.id,
-            trackingNumber: shipment.tracking_number,
-            carrier: shipment.carrier,
-            service: shipment.service,
-            status: shipment.status,
-            shippedAt: shipment.shipped_at ? new Date(shipment.shipped_at) : null,
-            deliveredAt: shipment.delivered_at ? new Date(shipment.delivered_at) : null,
-            rawData: shipment,
-            updatedAt: new Date()
-          },
-          create: {
-            threeplId: brand.threeplId,
-            brandId,
-            externalId: shipment.id,
-            orderId: order?.id,
-            trackingNumber: shipment.tracking_number,
-            carrier: shipment.carrier,
-            service: shipment.service,
-            status: shipment.status,
-            shippedAt: shipment.shipped_at ? new Date(shipment.shipped_at) : null,
-            deliveredAt: shipment.delivered_at ? new Date(shipment.delivered_at) : null,
-            rawData: shipment
-          }
-        });
-
-        // Update order status to SHIPPED if we have shipment data
-        if (order && shipment.status === 'shipped') {
-          await prisma.order.update({
-            where: { id: order.id },
-            data: { status: 'SHIPPED' }
-          });
-        }
-      }
-      
-      logger.info(`Synced ${shipments.length} shipments for brand ${brandId}`);
-    } catch (error) {
-      logger.error(`Failed to sync shipments for brand ${brandId}:`, error);
-      throw error;
-    }
+    // Shipments are now processed as part of orders in syncOrderShipments()
+    // This method is kept for compatibility but does nothing
+    logger.info(`Shipments are processed as part of orders for brand ${brandId}`);
   }
 
   private mapOrderStatus(trackstarStatus: string, rawStatus?: string): 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'RETURNED' {
@@ -1151,17 +1077,21 @@ export class TrackstarIntegrationService {
         logger.info(`Manual sync: ${func} for brand ${brandId}`);
         
         switch (func) {
+          case 'products':
           case 'get_products':
-            await this.syncProducts(brandId, integration.accessToken, false);
+            await this.syncProducts(brandId, integration.accessToken, true); // Full historical sync
             break;
+          case 'inventory':
           case 'get_inventory':
-            await this.syncInventory(brandId, integration.accessToken, false);
+            await this.syncInventory(brandId, integration.accessToken, true); // Full historical sync
             break;
+          case 'orders':
           case 'get_orders':
-            await this.syncOrders(brandId, integration.accessToken, false);
+            await this.syncOrders(brandId, integration.accessToken, true); // Full historical sync
             break;
+          case 'shipments':
           case 'get_shipments':
-            await this.syncShipments(brandId, integration.accessToken, false);
+            await this.syncShipments(brandId, integration.accessToken, true); // Full historical sync
             break;
           default:
             logger.warn(`Unknown sync function: ${func}`);
