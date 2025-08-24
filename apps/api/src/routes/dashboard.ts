@@ -41,16 +41,21 @@ router.get('/stats', authenticateToken, async (req, res) => {
     // Build base where clause for orders
     let orderWhereClause: any = {};
     
-    // Add date filtering
-    if (startDate) {
-      orderWhereClause.createdAt = {
-        gte: new Date(startDate as string)
-      };
-    }
-    if (endDate) {
-      orderWhereClause.createdAt = {
-        ...orderWhereClause.createdAt,
-        lte: new Date(endDate as string)
+    // Add date filtering based on shipped date
+    if (startDate || endDate) {
+      const shipmentDateFilter: any = {};
+      if (startDate) {
+        shipmentDateFilter.gte = new Date(startDate as string);
+      }
+      if (endDate) {
+        shipmentDateFilter.lte = new Date(endDate as string);
+      }
+      
+      // Filter orders that have shipments within the date range
+      orderWhereClause.shipments = {
+        some: {
+          shippedAt: shipmentDateFilter
+        }
       };
     }
     
@@ -104,10 +109,44 @@ router.get('/stats', authenticateToken, async (req, res) => {
       where: orderWhereClause
     });
 
-    // Get unfulfilled orders (orders without shipments or with incomplete shipments)
+    // Build separate where clause for current pending orders (no date filtering)
+    let currentPendingWhereClause: any = {};
+    
+    // Add brand filtering if specified
+    if (brandId && brandId !== 'all') {
+      currentPendingWhereClause.brandId = brandId as string;
+    }
+    
+    // Apply same access control logic for current pending orders
+    if (threeplIds.length > 0) {
+      const accessConditions = [
+        { brand: { threeplId: { in: threeplIds } } },
+        ...(brandIds.length > 0 ? [{ brandId: { in: brandIds } }] : [])
+      ];
+      
+      if (currentPendingWhereClause.brandId) {
+        currentPendingWhereClause.AND = [
+          { brandId: currentPendingWhereClause.brandId },
+          { OR: accessConditions }
+        ];
+        delete currentPendingWhereClause.brandId;
+      } else {
+        currentPendingWhereClause.OR = accessConditions;
+      }
+    } else if (brandIds.length > 0) {
+      if (currentPendingWhereClause.brandId) {
+        if (!brandIds.includes(currentPendingWhereClause.brandId)) {
+          currentPendingWhereClause.brandId = { in: [] };
+        }
+      } else {
+        currentPendingWhereClause.brandId = { in: brandIds };
+      }
+    }
+
+    // Get current pending orders (orders without shipments or with incomplete shipments) - no date filtering
     const unfulfilledOrders = await prisma.order.count({
       where: {
-        ...orderWhereClause,
+        ...currentPendingWhereClause,
         OR: [
           { shipments: { none: {} } }, // No shipments
           { 

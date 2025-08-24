@@ -36,6 +36,8 @@ export default function DashboardPage() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
   const [dateRange, setDateRange] = useState<string>('30');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
   const [brands, setBrands] = useState<Array<{id: string, name: string}>>([]);
 
   const fetchBrands = async () => {
@@ -67,11 +69,56 @@ export default function DashboardPage() {
       if (selectedBrand !== 'all') {
         params.append('brandId', selectedBrand);
       }
+      
+      // Handle date filtering
       if (dateRange !== 'all') {
-        const days = parseInt(dateRange);
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
+        let startDate: Date;
+        let endDate: Date | null = null;
+        
+        switch (dateRange) {
+          case 'today':
+            startDate = new Date();
+            startDate.setHours(0, 0, 0, 0);
+            endDate = new Date();
+            endDate.setHours(23, 59, 59, 999);
+            break;
+          case 'yesterday':
+            startDate = new Date();
+            startDate.setDate(startDate.getDate() - 1);
+            startDate.setHours(0, 0, 0, 0);
+            endDate = new Date();
+            endDate.setDate(endDate.getDate() - 1);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+          case 'custom':
+            if (customStartDate) {
+              startDate = new Date(customStartDate);
+              startDate.setHours(0, 0, 0, 0);
+            } else {
+              startDate = new Date();
+              startDate.setDate(startDate.getDate() - 30);
+            }
+            if (customEndDate) {
+              endDate = new Date(customEndDate);
+              endDate.setHours(23, 59, 59, 999);
+            }
+            break;
+          default:
+            // Handle numeric days (7, 30, 90, 365)
+            const days = parseInt(dateRange);
+            if (!isNaN(days)) {
+              startDate = new Date();
+              startDate.setDate(startDate.getDate() - days);
+              startDate.setHours(0, 0, 0, 0);
+            } else {
+              return; // Invalid date range
+            }
+        }
+        
         params.append('startDate', startDate.toISOString());
+        if (endDate) {
+          params.append('endDate', endDate.toISOString());
+        }
       }
 
       const url = `http://localhost:4000/api/dashboard/stats${params.toString() ? '?' + params.toString() : ''}`;
@@ -185,26 +232,52 @@ export default function DashboardPage() {
 
             <div className="flex items-center space-x-2">
               <Calendar className="h-4 w-4 text-gray-500" />
-              <label htmlFor="date-filter" className="text-sm text-gray-600">Date Range:</label>
+              <label htmlFor="date-filter" className="text-sm text-gray-600">Shipped Date Range:</label>
               <Select
                 id="date-filter"
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value)}
                 className="w-40"
               >
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
                 <option value="7">Last 7 days</option>
                 <option value="30">Last 30 days</option>
                 <option value="90">Last 90 days</option>
                 <option value="365">Last year</option>
+                <option value="custom">Custom Range</option>
                 <option value="all">All time</option>
               </Select>
             </div>
 
-            {(selectedBrand !== 'all' || dateRange !== '30') && (
+            {/* Custom Date Range Inputs */}
+            {dateRange === 'custom' && (
+              <div className="flex items-center space-x-2">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Start Date"
+                />
+                <span className="text-sm text-gray-500">to</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="End Date"
+                />
+              </div>
+            )}
+
+            {(selectedBrand !== 'all' || dateRange !== '30' || customStartDate || customEndDate) && (
               <button
                 onClick={() => {
                   setSelectedBrand('all');
                   setDateRange('30');
+                  setCustomStartDate('');
+                  setCustomEndDate('');
                 }}
                 className="text-sm text-blue-600 hover:text-blue-800 underline"
               >
@@ -236,9 +309,12 @@ export default function DashboardPage() {
                 <Clock className="h-6 w-6 text-red-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Unfulfilled Orders</p>
+                <p className="text-sm font-medium text-gray-600">Current Pending Orders</p>
                 <p className="text-2xl font-semibold text-gray-900">
                   {statsLoading ? '...' : stats?.unfulfilledOrders || 0}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  *Not affected by date range filter
                 </p>
               </div>
             </div>
@@ -264,15 +340,20 @@ export default function DashboardPage() {
                 <AlertTriangle className="h-6 w-6 text-orange-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Late Orders (Filtered)</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {statsLoading ? '...' : stats?.lateOrders || 0}
-                </p>
-                {stats && stats.totalOrders > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {((stats.lateOrders / stats.totalOrders) * 100).toFixed(1)}% of total orders
+                <p className="text-sm font-medium text-gray-600">Late Orders</p>
+                <div className="flex items-baseline space-x-2">
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {statsLoading ? '...' : stats?.lateOrders || 0}
                   </p>
-                )}
+                  {stats && stats.totalOrders > 0 && (
+                    <p className="text-2xl font-semibold text-orange-600">
+                      ({((stats.lateOrders / stats.totalOrders) * 100).toFixed(1)}%)
+                    </p>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  *If you do pre-sales or have out of stock items late score can be higher
+                </p>
               </div>
             </div>
           </div>
