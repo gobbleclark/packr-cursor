@@ -17,6 +17,7 @@ import pinoPretty from 'pino-pretty';
 import authRoutes from './routes/auth';
 import brandRoutes from './routes/brands';
 import trackstarRoutes from './routes/trackstar';
+import dashboardRoutes from './routes/dashboard';
 
 // Import services
 import { periodicSyncService } from './services/periodicSync';
@@ -62,6 +63,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/brands', brandRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api', trackstarRoutes);
 
 // API root endpoint
