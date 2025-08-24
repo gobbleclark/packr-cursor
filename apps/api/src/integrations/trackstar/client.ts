@@ -1,36 +1,19 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import { logger } from '../../utils/logger';
 
-export interface TrackstarListResponse<T> {
-  data: T[];
-  next_token: string | null;
-  total_count?: number;
-}
+// Rate limiting: 10 requests per second per access token
+const RATE_LIMIT = 10;
+const RATE_LIMIT_WINDOW = 1000; // 1 second in milliseconds
 
-export interface TrackstarFilters {
-  limit?: number;
-  page_token?: string;
-  updated_date?: {
-    gte?: string;
-    lte?: string;
-  };
-  ids?: string[];
-  [key: string]: any;
-}
-
-export interface TrackstarSyncRequest {
-  accessToken: string;
-  functions_to_sync: string[];
-}
-
-export interface TrackstarLinkTokenRequest {
-  customer_id?: string;
-  integration_name?: string;
+// Trackstar API Types
+export interface TrackstarLinkTokenResponse {
+  link_token: string;
+  expires_at: string;
 }
 
 export interface TrackstarExchangeRequest {
   auth_code: string;
-  customer_id?: string;
+  integration_name?: string; // Make optional since not all exchanges require it
 }
 
 export interface TrackstarExchangeResponse {
@@ -40,181 +23,575 @@ export interface TrackstarExchangeResponse {
   available_actions: string[];
 }
 
+export interface TrackstarListResponse<T> {
+  data: T[];
+  next_token?: string | null;
+  total_count?: number;
+}
+
+export interface TrackstarFilters {
+  limit?: number;
+  page_token?: string;
+  [key: string]: any;
+}
+
+// Rate limiter class for each access token
+class RateLimiter {
+  private requests: number[] = [];
+  private readonly limit: number;
+  private readonly window: number;
+
+  constructor(limit: number, window: number) {
+    this.limit = limit;
+    this.window = window;
+  }
+
+  async waitForSlot(): Promise<void> {
+    const now = Date.now();
+    
+    // Remove old requests outside the window
+    this.requests = this.requests.filter(time => now - time < this.window);
+    
+    // If we're at the limit, wait until we can make another request
+    if (this.requests.length >= this.limit) {
+      const oldestRequest = this.requests[0];
+      const waitTime = this.window - (now - oldestRequest);
+      if (waitTime > 0) {
+        logger.info(`Rate limit reached, waiting ${waitTime}ms for next request slot`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+    
+    // Add current request
+    this.requests.push(now);
+  }
+}
+
 export class TrackstarClient {
   private axiosInstance: AxiosInstance;
-  private rateLimiters: Map<string, { count: number; resetTime: number }> = new Map();
-  private readonly RATE_LIMIT_PER_SECOND = 10;
+  private rateLimiters: Map<string, RateLimiter> = new Map();
 
   constructor() {
+    // Hardcoded values as per previous fixes
+    const apiKey = 'f9bc96aa7e0145b899b713d83a61ad3d';
+    const baseURL = 'https://production.trackstarhq.com';
+    
     this.axiosInstance = axios.create({
-      baseURL: process.env.TRACKSTAR_BASE_URL || 'https://production.trackstarhq.com',
-      timeout: 30000,
+      baseURL,
       headers: {
-        'x-trackstar-api-key': process.env.TRACKSTAR_API_KEY,
-        'Content-Type': 'application/json',
-      },
+        'x-trackstar-api-key': apiKey,
+        'Content-Type': 'application/json'
+      }
     });
 
-    // Add response interceptor for rate limiting
+    // Add response interceptor to handle rate limit headers
     this.axiosInstance.interceptors.response.use(
-      (response) => response,
-      async (error) => {
+      (response) => {
+        // Log rate limit info if available
+        const rateLimitRemaining = response.headers['x-rate-limit-remaining'];
+        const rateLimitReset = response.headers['x-rate-limit-reset'];
+        
+        if (rateLimitRemaining !== undefined) {
+          logger.debug(`Rate limit remaining: ${rateLimitRemaining}, reset at: ${rateLimitReset}`);
+        }
+        
+        return response;
+      },
+      (error) => {
         if (error.response?.status === 429) {
           const retryAfter = error.response.headers['x-rate-limit-retry-after'];
-          if (retryAfter) {
-            const waitTime = parseInt(retryAfter) * 1000;
-            logger.info(`Rate limited, waiting ${waitTime}ms before retry`);
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-            return this.axiosInstance.request(error.config);
-          }
+          logger.warn(`Rate limit exceeded. Retry after ${retryAfter} seconds`);
         }
         return Promise.reject(error);
       }
     );
   }
 
-  private async checkRateLimit(accessToken: string): Promise<void> {
-    const now = Date.now();
-    const limiter = this.rateLimiters.get(accessToken) || { count: 0, resetTime: now + 1000 };
-
-    if (now >= limiter.resetTime) {
-      limiter.count = 0;
-      limiter.resetTime = now + 1000;
+  /**
+   * Get or create rate limiter for an access token
+   */
+  private getRateLimiter(accessToken: string): RateLimiter {
+    if (!this.rateLimiters.has(accessToken)) {
+      this.rateLimiters.set(accessToken, new RateLimiter(RATE_LIMIT, RATE_LIMIT_WINDOW));
     }
-
-    if (limiter.count >= this.RATE_LIMIT_PER_SECOND) {
-      const waitTime = limiter.resetTime - now;
-      logger.info(`Rate limit reached for token ${accessToken}, waiting ${waitTime}ms`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-      limiter.count = 0;
-      limiter.resetTime = Date.now() + 1000;
-    }
-
-    limiter.count++;
-    this.rateLimiters.set(accessToken, limiter);
+    return this.rateLimiters.get(accessToken)!;
   }
 
-  private async makeRequest<T>(
-    method: 'GET' | 'POST',
-    path: string,
-    accessToken?: string,
-    data?: any,
-    params?: any
-  ): Promise<T> {
-    if (accessToken) {
-      await this.checkRateLimit(accessToken);
+  /**
+   * Fetch all pages of data with proper pagination and rate limiting
+   */
+  private async fetchAllPages<T>(
+    accessToken: string,
+    endpoint: string,
+    filters: TrackstarFilters = {},
+    maxPages: number = 200 // Increased to handle more orders (200 pages * 1000 orders = 200,000 max)
+  ): Promise<T[]> {
+    const rateLimiter = this.getRateLimiter(accessToken);
+    const allData: T[] = [];
+    let pageToken: string | undefined = undefined;
+    let pageCount = 0;
+    let finished = false;
+
+    while (pageCount < maxPages && !finished) {
+      // Wait for rate limit slot
+      await rateLimiter.waitForSlot();
+
+      let attempt = 0;
+      while (attempt < 3) {
+        try {
+          const params = { 
+            ...filters,
+            limit: 1000 // Use Trackstar's default of 1000 records per page
+          };
+          if (pageToken) {
+            params.page_token = pageToken;
+          }
+
+          logger.info(`Fetching page ${pageCount + 1} from ${endpoint}`, { 
+            pageToken, 
+            pageCount, 
+            expectedRecords: 1000,
+            totalSoFar: allData.length,
+            attempt: attempt + 1
+          });
+
+          const response = await this.axiosInstance.get<TrackstarListResponse<T>>(endpoint, {
+            headers: {
+              'x-trackstar-access-token': accessToken
+            },
+            params
+          });
+
+          const { data, next_token } = response.data;
+          
+          if (data && Array.isArray(data)) {
+            allData.push(...data);
+            logger.info(`Received ${data.length} records from page ${pageCount + 1} (expected up to 1000)`);
+          }
+
+          // Check if there are more pages
+          if (!next_token) {
+            logger.info(`No more pages available, total records: ${allData.length}`);
+            finished = true;
+          } else {
+            pageToken = next_token;
+            pageCount++;
+          }
+
+          // Small delay between pages to be respectful (reduced since we're getting more data per page)
+          await new Promise(resolve => setTimeout(resolve, 50));
+          break; // success, exit retry loop
+
+        } catch (error: any) {
+          attempt++;
+          logger.warn(`Attempt ${attempt} failed to fetch page ${pageCount + 1} from ${endpoint}`, {
+            error: error.message,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            pageToken,
+            pageCount,
+            totalSoFar: allData.length
+          });
+
+          if (attempt >= 3) {
+            logger.error(`Failed to fetch page ${pageCount + 1} after ${attempt} attempts`);
+            throw error;
+          }
+
+          // Exponential backoff between retries
+          const backoffMs = attempt * 500;
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+        }
+      }
     }
 
-    const config: any = {
-      method,
-      url: path,
-      headers: accessToken ? { 'x-trackstar-access-token': accessToken } : {},
-    };
+    logger.info(`Completed fetching ${pageCount} pages, total records: ${allData.length}`);
+    return allData;
+  }
 
-    if (data) config.data = data;
-    if (params) config.params = params;
-
+  /**
+   * Create a Trackstar Link token for WMS connection
+   * This is the first step in the integration process
+   * According to Trackstar docs: /link/token only needs API key, no request body
+   */
+  async createLinkToken(): Promise<TrackstarLinkTokenResponse> {
     try {
-      const response: AxiosResponse<T> = await this.axiosInstance.request(config);
+      logger.info('Creating Trackstar link token (no request body needed)');
+      
+      // Log the request details
+      logger.info('Making Trackstar API request:', {
+        method: 'POST',
+        url: `${this.axiosInstance.defaults.baseURL}/link/token`,
+        headers: {
+          'x-trackstar-api-key': 'f9bc96aa...',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const response = await this.axiosInstance.post<TrackstarLinkTokenResponse>('/link/token');
+      
+      logger.info('Successfully created Trackstar link token');
       return response.data;
     } catch (error: any) {
-      logger.error(`Trackstar API error for ${path}:`, error.response?.data || error.message);
+      logger.error('Failed to create Trackstar link token:', error);
+      
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        logger.error('Trackstar API response error:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+      } else if (error.request) {
+        // The request was made but no response was received
+        logger.error('Trackstar API request error - no response received:', error.request);
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        logger.error('Trackstar API setup error:', error.message);
+      }
+      
       throw error;
     }
   }
 
-  async paginate<T>(
-    path: string,
-    accessToken: string,
-    filters: TrackstarFilters = {},
-    onPage?: (data: T[], pageNumber: number) => Promise<void>
-  ): Promise<T[]> {
-    const allData: T[] = [];
-    let pageToken: string | null = null;
-    let pageNumber = 1;
-
-    do {
-      const params = { ...filters };
-      if (pageToken) {
-        params.page_token = pageToken;
-      }
-
-      const response = await this.makeRequest<TrackstarListResponse<T>>(
-        'GET',
-        path,
-        accessToken,
-        undefined,
-        params
-      );
-
-      allData.push(...response.data);
-      
-      if (onPage) {
-        await onPage(response.data, pageNumber);
-      }
-
-      pageToken = response.next_token;
-      pageNumber++;
-
-      // Safety check to prevent infinite loops
-      if (pageNumber > 100) {
-        logger.warn(`Pagination limit reached for ${path}, stopping at page ${pageNumber}`);
-        break;
-      }
-    } while (pageToken);
-
-    return allData;
-  }
-
-  // WMS Endpoints
-  async getProducts(accessToken: string, filters: TrackstarFilters = {}): Promise<TrackstarListResponse<any>> {
-    return this.makeRequest<TrackstarListResponse<any>>('GET', '/wms/products', accessToken, undefined, filters);
-  }
-
-  async getProduct(accessToken: string, productId: string): Promise<any> {
-    return this.makeRequest<any>('GET', `/wms/products/${productId}`, accessToken);
-  }
-
-  async getInventory(accessToken: string, filters: TrackstarFilters = {}): Promise<TrackstarListResponse<any>> {
-    return this.makeRequest<TrackstarListResponse<any>>('GET', '/wms/inventory', accessToken, undefined, filters);
-  }
-
-  async getOrders(accessToken: string, filters: TrackstarFilters = {}): Promise<TrackstarListResponse<any>> {
-    return this.makeRequest<TrackstarListResponse<any>>('GET', '/wms/orders', accessToken, undefined, filters);
-  }
-
-  async getOrder(accessToken: string, orderId: string): Promise<any> {
-    return this.makeRequest<any>('GET', `/wms/orders/${orderId}`, accessToken);
-  }
-
-  async getShipments(accessToken: string, filters: TrackstarFilters = {}): Promise<TrackstarListResponse<any>> {
-    return this.makeRequest<TrackstarListResponse<any>>('GET', '/wms/shipments', accessToken, undefined, filters);
-  }
-
-  async getShipment(accessToken: string, shipmentId: string): Promise<any> {
-    return this.makeRequest<any>('GET', `/wms/shipments/${shipmentId}`, accessToken);
-  }
-
-  // Connection Management
-  async createLinkToken(request: TrackstarLinkTokenRequest): Promise<{ link_token: string }> {
-    return this.makeRequest<{ link_token: string }>('POST', '/link/token', undefined, request);
-  }
-
+  /**
+   * Exchange auth code for access token
+   * This is the second step after user completes WMS connection
+   */
   async exchangeAuthCode(request: TrackstarExchangeRequest): Promise<TrackstarExchangeResponse> {
-    return this.makeRequest<TrackstarExchangeResponse>('POST', '/link/exchange', undefined, request);
+    try {
+      logger.info('Exchanging auth code for access token');
+      
+      const response = await this.axiosInstance.post<TrackstarExchangeResponse>('/link/exchange', request);
+      
+      logger.info('Successfully exchanged auth code for access token');
+      return response.data;
+    } catch (error: any) {
+      logger.error('Failed to exchange auth code:', error);
+      throw error;
+    }
   }
 
-  // Sync Management
-  async syncConnection(accessToken: string, functionsToSync: string[]): Promise<any> {
-    return this.makeRequest<any>('POST', '/connections/sync', accessToken, {
-      functions_to_sync: functionsToSync
-    });
-  }
-
-  // Get connection details
+  /**
+   * Get connection details using access token
+   */
   async getConnection(accessToken: string): Promise<any> {
-    return this.makeRequest<any>('GET', '/connections', accessToken);
+    try {
+      logger.info('Getting connection details');
+      
+      const response = await this.axiosInstance.get('/connections', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      logger.error('Failed to get connection details:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync connection data
+   */
+  async syncConnection(accessToken: string, functionsToSync: string[]): Promise<any> {
+    try {
+      logger.info('Syncing connection data:', { functionsToSync });
+      
+      const response = await this.axiosInstance.post('/connections/sync', {
+        functions_to_sync: functionsToSync
+      }, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      logger.error('Failed to sync connection:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get products from WMS
+   */
+  async getProducts(accessToken: string, filters: TrackstarFilters = {}): Promise<TrackstarListResponse<any>> {
+    try {
+      logger.info('Getting products from WMS with filters:', filters);
+      
+      // Use pagination to fetch all products
+      const allProducts = await this.fetchAllPages(accessToken, '/wms/products', filters);
+      
+      logger.info(`Successfully fetched ${allProducts.length} products from Trackstar`);
+      
+      return {
+        data: allProducts,
+        next_token: null,
+        total_count: allProducts.length
+      };
+    } catch (error: any) {
+      logger.error('Failed to get products from Trackstar:', {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get a specific order from WMS by order number
+   */
+  async getOrderByNumber(accessToken: string, orderNumber: string): Promise<any> {
+    try {
+      logger.info(`Getting order ${orderNumber} from WMS`);
+      
+      const response = await this.getOrders(accessToken, { 
+        order_number: orderNumber,
+        limit: 1 
+      });
+      
+      if (response.data && response.data.length > 0) {
+        logger.info(`Found order ${orderNumber} in Trackstar`);
+        return response.data[0];
+      } else {
+        logger.warn(`Order ${orderNumber} not found in Trackstar`);
+        return null;
+      }
+    } catch (error: any) {
+      logger.error(`Failed to fetch order ${orderNumber} from Trackstar:`, {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
+  }
+
+  async getOrderById(accessToken: string, orderId: string): Promise<any> {
+    try {
+      logger.info(`Getting order by ID ${orderId} from WMS using direct endpoint`);
+      
+      const response = await this.axiosInstance.get(`/wms/orders/${orderId}`, {
+        headers: {
+          'x-trackstar-access-token': accessToken
+        }
+      });
+      
+      logger.info(`Successfully fetched order ${orderId} from Trackstar`);
+      return response.data;
+    } catch (error: any) {
+      logger.error(`Failed to fetch order ${orderId} from Trackstar:`, {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        orderId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get orders from WMS
+   */
+  async getOrders(accessToken: string, filters: TrackstarFilters = {}): Promise<TrackstarListResponse<any>> {
+    try {
+      logger.info('Getting orders from WMS with filters:', filters);
+      
+      // Use pagination to fetch all orders
+      const allOrders = await this.fetchAllPages(accessToken, '/wms/orders', filters);
+      
+      logger.info(`Successfully fetched ${allOrders.length} orders from Trackstar`);
+      
+      return {
+        data: allOrders,
+        next_token: null,
+        total_count: allOrders.length
+      };
+    } catch (error: any) {
+      logger.error('Failed to get orders from Trackstar:', {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get inventory from WMS
+   */
+  async getInventory(accessToken: string, filters: TrackstarFilters = {}): Promise<TrackstarListResponse<any>> {
+    try {
+      logger.info('Getting inventory from WMS with filters:', filters);
+      
+      // Use pagination to fetch all inventory
+      const allInventory = await this.fetchAllPages(accessToken, '/wms/inventory', filters);
+      
+      logger.info(`Successfully fetched ${allInventory.length} inventory records from Trackstar`);
+      
+      return {
+        data: allInventory,
+        next_token: null,
+        total_count: allInventory.length
+      };
+    } catch (error: any) {
+      logger.error('Failed to get inventory from Trackstar:', {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get shipments from WMS - NOT AVAILABLE
+   * Shipments are embedded within orders, not a separate endpoint
+   */
+  async getShipments(accessToken: string, filters: TrackstarFilters = {}): Promise<TrackstarListResponse<any>> {
+    throw new Error('Shipments endpoint not available - shipments are embedded within orders');
+  }
+
+  /**
+   * Get ship methods from WMS
+   */
+  async getShipMethods(accessToken: string, filters: TrackstarFilters = {}): Promise<TrackstarListResponse<any>> {
+    try {
+      logger.info('Getting ship methods from WMS with filters:', filters);
+      
+      const response = await this.fetchAllPages<any>(
+        '/wms/shipmethods',
+        accessToken,
+        filters
+      );
+      
+      logger.info(`Successfully fetched ${response.data.length} ship methods from Trackstar`);
+      return response;
+    } catch (error: any) {
+      logger.error('Failed to fetch ship methods from Trackstar:', {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Update order status in WMS
+   */
+  async updateOrderStatus(accessToken: string, externalOrderId: string, status: string): Promise<any> {
+    try {
+      logger.info(`Updating order status in Trackstar: ${externalOrderId} -> ${status}`);
+      
+      const response = await this.axiosInstance.put(`/wms/orders/${externalOrderId}`, {
+        status: status
+      }, {
+        headers: {
+          'x-trackstar-access-token': accessToken
+        }
+      });
+      
+      logger.info('Successfully updated order status in Trackstar');
+      return response.data;
+    } catch (error: any) {
+      logger.error('Failed to update order status in Trackstar:', {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Update order shipping address in WMS
+   */
+  async updateOrderAddress(accessToken: string, externalOrderId: string, address: any): Promise<any> {
+    try {
+      logger.info(`Updating order address in Trackstar: ${externalOrderId}`);
+      
+      const response = await this.axiosInstance.put(`/wms/orders/${externalOrderId}`, {
+        ship_to_address: {
+          full_name: address.fullName,
+          company: address.company,
+          address1: address.address1,
+          address2: address.address2,
+          city: address.city,
+          state: address.state,
+          zip_code: address.zipCode,
+          country: address.country,
+          phone: address.phone,
+          email: address.email
+        }
+      }, {
+        headers: {
+          'x-trackstar-access-token': accessToken
+        }
+      });
+      
+      logger.info('Successfully updated order address in Trackstar');
+      return response.data;
+    } catch (error: any) {
+      logger.error('Failed to update order address in Trackstar:', {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Update order shipping method in WMS
+   */
+  async updateOrderShipping(accessToken: string, externalOrderId: string, shipping: { carrier: string, service: string }): Promise<any> {
+    try {
+      logger.info(`Updating order shipping method in Trackstar: ${externalOrderId}`);
+      
+      const response = await this.axiosInstance.put(`/wms/orders/${externalOrderId}`, {
+        shipping_method: {
+          carrier: shipping.carrier,
+          service: shipping.service
+        }
+      }, {
+        headers: {
+          'x-trackstar-access-token': accessToken
+        }
+      });
+      
+      logger.info('Successfully updated order shipping method in Trackstar');
+      return response.data;
+    } catch (error: any) {
+      logger.error('Failed to update order shipping method in Trackstar:', {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
   }
 }
 
-export const trackstarClient = new TrackstarClient();
+// Singleton instance
+let _trackstarClient: TrackstarClient | null = null;
+
+export const trackstarClient = {
+  get instance() {
+    if (!_trackstarClient) {
+      logger.info('Creating new Trackstar client instance');
+      _trackstarClient = new TrackstarClient();
+    }
+    return _trackstarClient;
+  },
+  
+  reset() {
+    logger.info('Resetting Trackstar client singleton');
+    _trackstarClient = null;
+  }
+};
