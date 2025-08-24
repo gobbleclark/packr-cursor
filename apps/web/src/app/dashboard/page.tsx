@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '../../lib/auth';
-import { Building2, Users, Package, MessageSquare, LogOut, TrendingUp, AlertTriangle, CheckCircle, Clock, Filter, Calendar } from 'lucide-react';
+import { Building2, Users, Package, MessageSquare, LogOut, TrendingUp, AlertTriangle, CheckCircle, Clock, Filter, Calendar, Eye } from 'lucide-react';
 import { Select } from '../../components/ui/select';
 import { AuthenticatedLayout } from '../../components/layout/AuthenticatedLayout';
 
@@ -264,10 +264,15 @@ export default function DashboardPage() {
                 <AlertTriangle className="h-6 w-6 text-orange-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Late Orders</p>
+                <p className="text-sm font-medium text-gray-600">Late Orders (Filtered)</p>
                 <p className="text-2xl font-semibold text-gray-900">
                   {statsLoading ? '...' : stats?.lateOrders || 0}
                 </p>
+                {stats && stats.totalOrders > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {((stats.lateOrders / stats.totalOrders) * 100).toFixed(1)}% of total orders
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -324,28 +329,47 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Late Orders Alert */}
+        {/* Current Late Orders Alert - Clickable */}
         {stats && stats.lateOrders > 0 && (
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-8">
-            <div className="flex items-center">
-              <AlertTriangle className="h-6 w-6 text-orange-600 mr-3" />
-              <div>
-                <h3 className="text-lg font-medium text-orange-900">
-                  {stats.lateOrders} Late Orders Require Attention
-                </h3>
-                <p className="text-sm text-orange-700 mt-1">
-                  These orders have passed their required ship date and need immediate action.
-                </p>
+          <div 
+            className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8 cursor-pointer hover:bg-red-100 transition-colors"
+            onClick={() => {
+              // Navigate to orders page with late orders filter
+              const params = new URLSearchParams();
+              params.set('status', 'late');
+              if (selectedBrand !== 'all') {
+                params.set('brandId', selectedBrand);
+              }
+              router.push(`/orders?${params.toString()}`);
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <AlertTriangle className="h-6 w-6 text-red-600 mr-3" />
+                <div>
+                  <h3 className="text-lg font-medium text-red-900">
+                    {stats.lateOrders} Current Pending Orders Potentially Late
+                  </h3>
+                  <p className="text-sm text-red-700 mt-1">
+                    These unfulfilled orders have passed their required ship date and need immediate attention.
+                  </p>
+                  <p className="text-xs text-red-600 mt-2 font-medium">
+                    Click here to view details and export to CSV
+                  </p>
+                </div>
+              </div>
+              <div className="text-red-600">
+                <Eye className="h-5 w-5" />
               </div>
             </div>
             {stats.lateOrdersByBrand.length > 0 && (
               <div className="mt-4">
-                <h4 className="text-sm font-medium text-orange-900 mb-2">Late Orders by Brand:</h4>
+                <h4 className="text-sm font-medium text-red-900 mb-2">Current Late Orders by Brand:</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {stats.lateOrdersByBrand.map((brand) => (
-                    <div key={brand.brandId} className="bg-white rounded-md p-3 border border-orange-200">
+                    <div key={brand.brandId} className="bg-white rounded-md p-3 border border-red-200">
                       <p className="text-sm font-medium text-gray-900">{brand.brandName}</p>
-                      <p className="text-sm text-orange-600">{brand.lateOrders} late orders</p>
+                      <p className="text-sm text-red-600">{brand.lateOrders} late orders</p>
                     </div>
                   ))}
                 </div>

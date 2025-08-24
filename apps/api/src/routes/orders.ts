@@ -44,16 +44,48 @@ router.get('/', authenticateToken, async (req, res) => {
 
     // Apply status filter
     if (status && status !== 'all') {
-      whereClause.status = status;
+      if (status === 'late') {
+        // Special handling for late orders - orders past required ship date and not shipped
+        const now = new Date();
+        whereClause.AND = [
+          ...(whereClause.AND || []),
+          {
+            metadata: {
+              path: ['required_ship_date_parsed'],
+              lt: now.toISOString()
+            }
+          },
+          {
+            OR: [
+              { shipments: { none: {} } },
+              {
+                shipments: {
+                  every: {
+                    status: { notIn: ['shipped', 'delivered'] }
+                  }
+                }
+              }
+            ]
+          }
+        ];
+      } else {
+        whereClause.status = status;
+      }
     }
 
     // Apply search filter
     if (search) {
-      whereClause.OR = [
+      const searchConditions = [
         { orderNumber: { contains: search as string, mode: 'insensitive' } },
         { customerName: { contains: search as string, mode: 'insensitive' } },
         { customerEmail: { contains: search as string, mode: 'insensitive' } }
       ];
+      
+      if (whereClause.AND) {
+        whereClause.AND.push({ OR: searchConditions });
+      } else {
+        whereClause.OR = searchConditions;
+      }
     }
 
     // Calculate pagination

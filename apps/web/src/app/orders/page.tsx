@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { authService } from '../../lib/auth';
-import { Package, Search, Filter, Eye, Calendar, Building2 } from 'lucide-react';
+import { Package, Search, Filter, Eye, Calendar, Building2, Download } from 'lucide-react';
 import { AuthenticatedLayout } from '../../components/layout/AuthenticatedLayout';
 import { Select } from '../../components/ui/select';
 
@@ -27,15 +27,16 @@ interface Order {
 
 export default function OrdersPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [brands, setBrands] = useState<Array<{id: string, name: string}>>([]);
   
-  // Filter states
-  const [selectedBrand, setSelectedBrand] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  // Filter states - initialize from URL params
+  const [selectedBrand, setSelectedBrand] = useState<string>(searchParams?.get('brandId') || 'all');
+  const [selectedStatus, setSelectedStatus] = useState<string>(searchParams?.get('status') || 'all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -153,6 +154,63 @@ export default function OrdersPage() {
     return requiredDate < now && !hasShipped;
   };
 
+  const exportToCSV = () => {
+    if (orders.length === 0) {
+      alert('No orders to export');
+      return;
+    }
+
+    // Create CSV headers
+    const headers = [
+      'Order Number',
+      'Brand',
+      'Status',
+      'Total Amount',
+      'Required Ship Date',
+      'Created Date',
+      'Is Late',
+      'Tracking Numbers'
+    ];
+
+    // Create CSV rows
+    const rows = orders.map(order => [
+      order.orderNumber,
+      order.brand.name,
+      order.status,
+      `$${order.totalAmount.toFixed(2)}`,
+      new Date(order.requiredShipDate).toLocaleDateString(),
+      new Date(order.createdAt).toLocaleDateString(),
+      isOrderLate(order) ? 'Yes' : 'No',
+      order.shipments.map(s => s.trackingNumber).filter(Boolean).join('; ') || 'N/A'
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    
+    // Generate filename with current filters
+    let filename = 'orders';
+    if (selectedStatus !== 'all') filename += `_${selectedStatus}`;
+    if (selectedBrand !== 'all') {
+      const brandName = brands.find(b => b.id === selectedBrand)?.name || selectedBrand;
+      filename += `_${brandName.replace(/\s+/g, '_')}`;
+    }
+    filename += `_${new Date().toISOString().split('T')[0]}.csv`;
+    
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -177,8 +235,18 @@ export default function OrdersPage() {
           <p className="text-gray-600">View and manage all orders</p>
         </div>
 
-        {/* Filters */}
+        {/* Filters and Actions */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <div className="flex justify-between items-start mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Filter Orders</h3>
+            <button
+              onClick={exportToCSV}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export to CSV
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Search */}
             <div className="relative">
@@ -219,6 +287,7 @@ export default function OrdersPage() {
                 <option value="shipped">Shipped</option>
                 <option value="delivered">Delivered</option>
                 <option value="cancelled">Cancelled</option>
+                <option value="late">Late Orders</option>
               </Select>
             </div>
 
