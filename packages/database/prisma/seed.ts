@@ -40,10 +40,8 @@ async function main() {
   });
 
   // Create membership for 3PL user
-  await prisma.membership.upsert({
-    where: { userId_threeplId_brandId: { userId: threeplUser.id, threeplId: threepl.id, brandId: null } },
-    update: {},
-    create: {
+  await prisma.membership.create({
+    data: {
       userId: threeplUser.id,
       threeplId: threepl.id,
       role: 'THREEPL_ADMIN',
@@ -64,10 +62,8 @@ async function main() {
   });
 
   // Create membership for brand user
-  await prisma.membership.upsert({
-    where: { userId_threeplId_brandId: { userId: brandUser.id, threeplId: threepl.id, brandId: brand.id } },
-    update: {},
-    create: {
+  await prisma.membership.create({
+    data: {
       userId: brandUser.id,
       threeplId: threepl.id,
       brandId: brand.id,

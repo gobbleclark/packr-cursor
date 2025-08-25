@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authService } from '../../lib/auth';
 import { Package, Search, Filter, Eye, Calendar, Building2, Download } from 'lucide-react';
@@ -25,7 +25,7 @@ interface Order {
   }>;
 }
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
@@ -175,7 +175,7 @@ export default function OrdersPage() {
     // Create CSV rows
     const rows = orders.map(order => [
       order.orderNumber,
-      order.brand.name,
+      order.brand?.name || 'Unknown Brand',
       order.status,
       `$${order.totalAmount.toFixed(2)}`,
       new Date(order.requiredShipDate).toLocaleDateString(),
@@ -374,7 +374,7 @@ export default function OrdersPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <Building2 className="h-4 w-4 text-gray-400 mr-2" />
-                            <span className="text-sm text-gray-900">{order.brand.name}</span>
+                            <span className="text-sm text-gray-900">{order.brand?.name || 'Unknown Brand'}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -458,5 +458,20 @@ export default function OrdersPage() {
         </div>
       </div>
     </AuthenticatedLayout>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading orders...</p>
+        </div>
+      </div>
+    }>
+      <OrdersPageContent />
+    </Suspense>
   );
 }
