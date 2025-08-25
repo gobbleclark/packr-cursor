@@ -24,6 +24,7 @@ import settingsRoutes from './routes/settings';
 import orderRoutes from './routes/orders';
 import inventoryRoutes from './routes/inventory';
 import inventoryWebhookRoutes from './routes/webhooks/inventory';
+import notificationRoutes from './routes/notifications';
 
 // Import services
 import { periodicSyncService } from './services/periodicSync';
@@ -78,6 +79,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/webhooks', inventoryWebhookRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api', trackstarRoutes);
 
 // API root endpoint

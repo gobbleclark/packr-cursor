@@ -10,13 +10,16 @@ import {
   CheckCircle2, 
   Clock,
   ChevronDown,
-  RefreshCw
+  RefreshCw,
+  EyeOff,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 
 interface InventoryItem {
   id: string;
@@ -64,6 +67,8 @@ export default function InventoryPage() {
   });
 
   const [searchDebounce, setSearchDebounce] = useState('');
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   // Debounce search input
   useEffect(() => {
@@ -168,26 +173,96 @@ export default function InventoryPage() {
     console.log('View item details:', item);
   };
 
+  const handleSelectItem = (itemId: string, checked: boolean) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(itemId);
+      } else {
+        newSet.delete(itemId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedItems(new Set(items.map(item => item.id)));
+    } else {
+      setSelectedItems(new Set());
+    }
+  };
+
+  const handleBulkHideProducts = async () => {
+    if (selectedItems.size === 0) return;
+
+    try {
+      setBulkActionLoading(true);
+      
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:4000/api/inventory/bulk-hide', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          itemIds: Array.from(selectedItems)
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to hide products');
+      }
+
+      // Remove hidden items from the current view
+      setItems(prev => prev.filter(item => !selectedItems.has(item.id)));
+      setSelectedItems(new Set());
+      
+      // Show success message
+      alert(`Successfully hid ${selectedItems.size} products`);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to hide products');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Package2 className="h-6 w-6" />
-            Inventory
-          </h1>
-          <p className="text-gray-600">Track and manage stock levels across warehouses</p>
+    <AuthenticatedLayout>
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <Package2 className="h-6 w-6" />
+              Inventory
+            </h1>
+            <p className="text-gray-600">Track and manage stock levels across warehouses</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {selectedItems.size > 0 && (
+              <Button 
+                onClick={handleBulkHideProducts}
+                disabled={bulkActionLoading}
+                variant="destructive"
+                className="flex items-center gap-2"
+              >
+                <EyeOff className={`h-4 w-4 ${bulkActionLoading ? 'animate-spin' : ''}`} />
+                Hide {selectedItems.size} Products
+              </Button>
+            )}
+            <Button 
+              onClick={() => fetchInventory(true)}
+              disabled={loading}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
-        <Button 
-          onClick={() => fetchInventory(true)}
-          disabled={loading}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
 
       {/* Filters */}
       <Card className="p-4">
@@ -273,12 +348,20 @@ export default function InventoryPage() {
             {/* Table Header */}
             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
+                <div className="col-span-1 flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={items.length > 0 && selectedItems.size === items.length}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </div>
                 <div className="col-span-3">Product</div>
                 <div className="col-span-2">On Hand</div>
                 <div className="col-span-2">Available</div>
                 <div className="col-span-1">Incoming</div>
                 <div className="col-span-2">Updated</div>
-                <div className="col-span-2">Brand</div>
+                <div className="col-span-1">Brand</div>
               </div>
             </div>
 
@@ -287,12 +370,27 @@ export default function InventoryPage() {
               {items.map((item) => (
                 <div
                   key={item.id}
-                  onClick={() => handleItemClick(item)}
-                  className="px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="px-6 py-4 hover:bg-gray-50 transition-colors"
                 >
                   <div className="grid grid-cols-12 gap-4 items-center">
+                    {/* Checkbox */}
+                    <div className="col-span-1 flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.has(item.id)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleSelectItem(item.id, e.target.checked);
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </div>
+
                     {/* Product */}
-                    <div className="col-span-3">
+                    <div 
+                      className="col-span-3 cursor-pointer"
+                      onClick={() => handleItemClick(item)}
+                    >
                       <div className="font-medium text-gray-900">{item.sku}</div>
                       <div className="text-sm text-gray-500 truncate">
                         {item.productName || 'No name'}
@@ -333,7 +431,7 @@ export default function InventoryPage() {
                     </div>
 
                     {/* Brand */}
-                    <div className="col-span-2">
+                    <div className="col-span-1">
                       {item.brand && (
                         <span className="text-sm text-gray-900">{item.brand.name}</span>
                       )}
@@ -376,6 +474,7 @@ export default function InventoryPage() {
           </>
         )}
       </Card>
-    </div>
+      </div>
+    </AuthenticatedLayout>
   );
 }

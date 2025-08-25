@@ -8,7 +8,6 @@ import { Button } from '../ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Select } from '../ui/select';
 import { RichTextEditor } from './RichTextEditor';
-import { UserMentions } from './UserMentions';
 import { FileUpload } from './FileUpload';
 import { TrackstarOrderSearch } from './TrackstarOrderSearch';
 
@@ -68,7 +67,6 @@ export function MessageForm({ messageId, onSuccess, onCancel }: MessageFormProps
   const [brandId, setBrandId] = useState('');
   const [statusId, setStatusId] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
-  const [mentionedUsers, setMentionedUsers] = useState<User[]>([]);
   const [attachments, setAttachments] = useState<UploadedFile[]>([]);
   const [linkedOrder, setLinkedOrder] = useState<TrackstarOrder | null>(null);
   
@@ -184,11 +182,6 @@ export function MessageForm({ messageId, onSuccess, onCancel }: MessageFormProps
         setStatusId(message.statusId || '');
         setAssignedTo(message.assignedTo || '');
         
-        // Set mentioned users
-        if (message.mentions) {
-          setMentionedUsers(message.mentions.map((m: any) => m.user));
-        }
-        
         // Note: Existing attachments would need to be handled differently
         // as they're already uploaded and stored
       }
@@ -244,7 +237,6 @@ export function MessageForm({ messageId, onSuccess, onCancel }: MessageFormProps
         statusId: statusId || undefined,
         assignedTo: assignedTo || undefined,
         orderId: linkedOrder?.id || undefined,
-        mentions: mentionedUsers.map(user => user.id),
       };
 
       const url = messageId 
@@ -338,6 +330,16 @@ export function MessageForm({ messageId, onSuccess, onCancel }: MessageFormProps
               minHeight="200px"
             />
           </div>
+
+          {/* Trackstar Order Link - Compact */}
+          <div>
+            <TrackstarOrderSearch
+              selectedOrder={linkedOrder}
+              onOrderSelect={setLinkedOrder}
+              brandId={brandId}
+              className="compact"
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -425,42 +427,10 @@ export function MessageForm({ messageId, onSuccess, onCancel }: MessageFormProps
                 </option>
               ))}
             </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              Assigned users will be notified about this message
+            </p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Mentions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <User className="h-5 w-5 mr-2" />
-            Mention Users
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <UserMentions
-            users={allUsers}
-            selectedUsers={mentionedUsers}
-            onUsersChange={setMentionedUsers}
-            placeholder="Type @ to mention users..."
-          />
-        </CardContent>
-      </Card>
-
-      {/* Trackstar Order Link */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Package className="h-5 w-5 mr-2" />
-            Trackstar Integration
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TrackstarOrderSearch
-            selectedOrder={linkedOrder}
-            onOrderSelect={setLinkedOrder}
-            brandId={brandId}
-          />
         </CardContent>
       </Card>
 

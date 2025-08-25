@@ -25,6 +25,10 @@ const inventoryBySkuSchema = z.object({
   sku: z.string().min(1),
 });
 
+const bulkHideSchema = z.object({
+  itemIds: z.array(z.string().cuid()),
+});
+
 /**
  * GET /api/inventory
  * List inventory items with filters and keyset pagination
@@ -38,6 +42,7 @@ router.get('/', authenticateToken, async (req, res) => {
     // Build base where clause with tenant scoping
     let whereClause: any = {
       tenantId: user.threeplId,
+      active: true, // Only show active (non-hidden) items
     };
 
     // RBAC: Brand users can only see their brand's inventory
@@ -330,6 +335,107 @@ router.get('/sku/:sku', authenticateToken, async (req, res) => {
   } catch (error) {
     logger.error('Failed to fetch inventory by SKU:', error);
     res.status(500).json({ error: 'Failed to fetch inventory by SKU' });
+  }
+});
+
+/**
+ * POST /api/inventory/bulk-hide
+ * Bulk hide inventory items - removes from sync, search, and reports
+ * RBAC: Users can only hide items from their accessible brands
+ */
+router.post('/bulk-hide', authenticateToken, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    const { itemIds } = bulkHideSchema.parse(req.body);
+
+    if (itemIds.length === 0) {
+      return res.status(400).json({ error: 'No items specified' });
+    }
+
+    // Build where clause with RBAC
+    let whereClause: any = {
+      id: { in: itemIds },
+      tenantId: user.threeplId,
+    };
+
+    // Brand users can only hide their brand's inventory
+    if (user.role === 'BRAND_ADMIN' || user.role === 'BRAND_USER') {
+      if (!user.brandId) {
+        return res.status(403).json({ error: 'Brand user must be associated with a brand' });
+      }
+      whereClause.brandId = user.brandId;
+    }
+
+    // First, verify all items exist and user has access
+    const itemsToHide = await prisma.inventoryItem.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        sku: true,
+        productName: true,
+        brandId: true,
+        brand: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (itemsToHide.length !== itemIds.length) {
+      return res.status(404).json({ 
+        error: 'Some items not found or access denied',
+        found: itemsToHide.length,
+        requested: itemIds.length,
+      });
+    }
+
+    // Mark items as hidden (soft delete approach)
+    const result = await prisma.inventoryItem.updateMany({
+      where: whereClause,
+      data: {
+        active: false, // This will exclude them from sync and search
+      },
+    });
+
+    // Also mark related products as inactive to exclude from sync jobs
+    const skus = itemsToHide.map(item => item.sku);
+    await prisma.product.updateMany({
+      where: {
+        sku: { in: skus },
+        brandId: { in: itemsToHide.map(item => item.brandId) },
+      },
+      data: {
+        // Add a hidden flag to metadata to exclude from sync
+        metadata: {
+          hidden: true,
+          hiddenAt: new Date().toISOString(),
+          hiddenBy: user.id,
+        },
+      },
+    });
+
+    logger.info('Bulk hide products completed', {
+      userId: user.id,
+      itemCount: result.count,
+      skus: skus,
+      brands: [...new Set(itemsToHide.map(item => item.brand?.name))],
+    });
+
+    res.json({
+      success: true,
+      hiddenCount: result.count,
+      items: itemsToHide.map(item => ({
+        id: item.id,
+        sku: item.sku,
+        productName: item.productName,
+        brandName: item.brand?.name,
+      })),
+    });
+
+  } catch (error) {
+    logger.error('Failed to bulk hide inventory items:', error);
+    res.status(500).json({ error: 'Failed to hide inventory items' });
   }
 });
 

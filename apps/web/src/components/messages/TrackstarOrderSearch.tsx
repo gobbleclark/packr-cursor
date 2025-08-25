@@ -149,25 +149,29 @@ export function TrackstarOrderSearch({
     }).format(amount);
   };
 
+  const isCompact = className?.includes('compact');
+
   return (
     <div className={`relative ${className}`}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        Link to Trackstar Order
+      <label className={`block text-sm font-medium text-gray-700 ${isCompact ? 'mb-1' : 'mb-2'}`}>
+        {isCompact ? 'Link to Order (Optional)' : 'Link to Trackstar Order'}
       </label>
       
       {selectedOrder ? (
         /* Selected Order Display */
-        <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className={`flex items-center justify-between ${isCompact ? 'p-2' : 'p-3'} bg-blue-50 border border-blue-200 rounded-lg`}>
           <div className="flex items-center space-x-3">
-            <Package className="h-5 w-5 text-blue-600" />
+            <Package className={`${isCompact ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
             <div>
-              <p className="text-sm font-medium text-blue-900">
+              <p className={`${isCompact ? 'text-xs' : 'text-sm'} font-medium text-blue-900`}>
                 Order #{selectedOrder.orderNumber}
               </p>
-              <p className="text-xs text-blue-700">
-                {selectedOrder.customerName && `${selectedOrder.customerName} • `}
-                {formatCurrency(selectedOrder.total)} • {selectedOrder.status}
-              </p>
+              {!isCompact && (
+                <p className="text-xs text-blue-700">
+                  {selectedOrder.customerName && `${selectedOrder.customerName} • `}
+                  {formatCurrency(selectedOrder.total)} • {selectedOrder.status}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex items-center space-x-2">

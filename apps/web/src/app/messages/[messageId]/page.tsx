@@ -29,6 +29,7 @@ import { Button } from '../../../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
+import { RichTextEditor } from '../../../components/messages/RichTextEditor';
 
 interface Message {
   id: string;
@@ -102,6 +103,7 @@ export default function MessageDetailPage() {
   const [statuses, setStatuses] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [showActions, setShowActions] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -290,6 +292,40 @@ export default function MessageDetailPage() {
     router.push('/');
   };
 
+  const handleEdit = () => {
+    router.push(`/messages/${messageId}/edit`);
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this message? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const token = authService.getToken();
+      const response = await fetch(`http://localhost:4000/api/messages/${messageId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        router.push('/messages');
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to delete message: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+      alert('Failed to delete message. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const getPriorityColor = (priority: string, isUrgent: boolean) => {
     if (isUrgent) return 'bg-red-100 text-red-800 border-red-200';
     switch (priority) {
@@ -368,13 +404,20 @@ export default function MessageDetailPage() {
               {showActions && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border">
                   <div className="py-1">
-                    <button className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
+                    <button 
+                      onClick={handleEdit}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                    >
                       <Edit className="h-4 w-4 inline mr-2" />
                       Edit Message
                     </button>
-                    <button className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left">
+                    <button 
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left disabled:opacity-50"
+                    >
                       <Trash2 className="h-4 w-4 inline mr-2" />
-                      Delete Message
+                      {deleting ? 'Deleting...' : 'Delete Message'}
                     </button>
                   </div>
                 </div>
@@ -415,7 +458,7 @@ export default function MessageDetailPage() {
                 </div>
                 
                 <div className="prose max-w-none">
-                  <p className="text-gray-900 whitespace-pre-wrap">{message.body}</p>
+                  <div className="text-gray-900" dangerouslySetInnerHTML={{ __html: message.body }} />
                 </div>
 
                 {/* Mentions */}
@@ -491,7 +534,7 @@ export default function MessageDetailPage() {
                               {new Date(comment.createdAt).toLocaleString()}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                          <div className="text-sm text-gray-700 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: comment.content }} />
                         </div>
                       </div>
                     ))
@@ -507,14 +550,14 @@ export default function MessageDetailPage() {
                       </div>
                     </div>
                     <div className="flex-1">
-                      <textarea
+                      <RichTextEditor
                         value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
+                        onChange={setNewComment}
                         placeholder="Add a comment..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                        rows={3}
+                        minHeight="120px"
+                        className="mb-2"
                       />
-                      <div className="flex justify-end mt-2">
+                      <div className="flex justify-end">
                         <Button 
                           type="submit" 
                           disabled={submittingComment || !newComment.trim()}
