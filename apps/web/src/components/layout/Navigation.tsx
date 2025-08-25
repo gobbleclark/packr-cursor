@@ -6,6 +6,7 @@ import {
   BarChart3, 
   Building2, 
   Package, 
+  Package2,
   MessageSquare, 
   Users, 
   Settings, 
@@ -37,6 +38,12 @@ export function Navigation({ user, onLogout }: NavigationProps) {
       href: '/orders',
       icon: Package,
       description: 'View and manage orders'
+    },
+    {
+      name: 'Inventory',
+      href: '/inventory',
+      icon: Package2,
+      description: 'Track stock levels'
     },
     {
       name: 'Brands',

@@ -51,7 +51,9 @@ model ThreePL {
   orders           Order[]
   shipments        Shipment[]
   inventorySnapshots InventorySnapshot[]
+  inventoryItems   InventoryItem[]
   webhookEvents    WebhookEvent[]
+  webhookEventsV2  WebhookEventV2[]
   jobRuns          JobRun[]
   messageStatuses  MessageStatus[]
   messages         Message[]
@@ -77,6 +79,8 @@ model Brand {
   orders    Order[]
   shipments Shipment[]
   inventorySnapshots InventorySnapshot[]
+  inventoryItems InventoryItem[]
+  webhookEventsV2 WebhookEventV2[]
   messages  Message[]
   invitations BrandInvitation[]
 
@@ -269,6 +273,73 @@ model InventorySnapshot {
   product Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("inventory_snapshots")
+}
+
+// New comprehensive inventory model for the Inventory feature
+model InventoryItem {
+  id        String   @id @default(cuid())
+  tenantId  String   // threeplId
+  brandId   String
+  warehouseId String? // Trackstar warehouse ID
+  sku       String
+  productName String?
+  trackstarProductId String?
+  trackstarVariantId String?
+  
+  // Inventory quantities (matching Trackstar API)
+  onHand      Int @default(0)
+  available   Int @default(0)
+  incoming    Int @default(0)
+  committed   Int @default(0)
+  unfulfillable Int @default(0)
+  unsellable  Int @default(0)
+  sellable    Int @default(0)
+  awaiting    Int @default(0)
+  
+  // Additional fields
+  unitCost    Float?
+  active      Boolean @default(true)
+  lastTrackstarUpdateAt DateTime?
+  rawData     Json?    // Full Trackstar inventory response
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  tenant ThreePL @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  brand  Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, brandId, sku])
+  @@unique([tenantId, brandId, warehouseId, sku])
+  @@index([tenantId, brandId, updatedAt])
+  @@map("inventory_items")
+}
+
+// Improved webhook events for idempotency
+model WebhookEventV2 {
+  id        String   @id @default(cuid())
+  eventId   String   @unique // External event ID for idempotency
+  source    String   // 'trackstar', 'shopify', etc.
+  eventType String   // 'inventory.updated', 'order.created', etc.
+  tenantId  String?
+  brandId   String?
+  payload   Json
+  receivedAt DateTime @default(now())
+  processedAt DateTime?
+  status    String   @default("pending") // 'pending', 'processed', 'failed'
+  error     String?
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  tenant ThreePL? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  brand  Brand?   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([source, status])
+  @@index([tenantId, brandId])
+  @@index([receivedAt])
+  @@map("webhook_events_v2")
 }
 
 model WebhookEvent {

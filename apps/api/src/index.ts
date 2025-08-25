@@ -22,6 +22,8 @@ import messageRoutes from './routes/messages';
 import userRoutes from './routes/users';
 import settingsRoutes from './routes/settings';
 import orderRoutes from './routes/orders';
+import inventoryRoutes from './routes/inventory';
+import inventoryWebhookRoutes from './routes/webhooks/inventory';
 
 // Import services
 import { periodicSyncService } from './services/periodicSync';
@@ -74,6 +76,8 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/webhooks', inventoryWebhookRoutes);
 app.use('/api', trackstarRoutes);
 
 // API root endpoint
@@ -89,9 +93,11 @@ app.get('/api', (req, res) => {
             users: '/api/users',
             settings: '/api/settings',
             orders: '/api/orders',
+            inventory: '/api/inventory',
             dashboard: '/api/dashboard',
             trackstar: '/api/brands/:brandId/integrations/trackstar',
             webhooks: '/api/webhooks/trackstar',
+            inventoryWebhooks: '/api/webhooks/trackstar/inventory',
             health: '/health',
           },
   });

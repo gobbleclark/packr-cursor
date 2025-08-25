@@ -199,28 +199,28 @@ export class TrackstarIntegrationService {
         await this.processNightlyReconciliation();
       } else {
         // Legacy sync job handling
-        switch (func) {
-          case 'get_products':
-            await this.syncProducts(brandId, accessToken, type === 'initial');
-            break;
-          case 'get_inventory':
-            await this.syncInventory(brandId, accessToken, type === 'initial');
-            break;
-          case 'get_orders':
+      switch (func) {
+        case 'get_products':
+          await this.syncProducts(brandId, accessToken, type === 'initial');
+          break;
+        case 'get_inventory':
+          await this.syncInventory(brandId, accessToken, type === 'initial');
+          break;
+        case 'get_orders':
             await this.syncOrders(brandId, accessToken, type === 'initial', lookbackHours);
-            break;
-          case 'get_shipments':
-            await this.syncShipments(brandId, accessToken, type === 'initial');
-            break;
-          default:
-            logger.warn(`Unknown sync function: ${func}`);
-        }
+          break;
+        case 'get_shipments':
+          await this.syncShipments(brandId, accessToken, type === 'initial');
+          break;
+        default:
+          logger.warn(`Unknown sync function: ${func}`);
+      }
 
         // Update last synced timestamp for legacy jobs
-        await prisma.brandIntegration.update({
-          where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } },
-          data: { lastSyncedAt: new Date() }
-        });
+      await prisma.brandIntegration.update({
+        where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } },
+        data: { lastSyncedAt: new Date() }
+      });
       }
 
       logger.info(`Sync job completed for brand ${brandId}, function: ${func}`);
@@ -656,14 +656,14 @@ export class TrackstarIntegrationService {
         logger.info(`Syncing orders with ${lookbackHours}h lookback from ${lookbackTime.toISOString()}`);
       } else {
         // Use last sync time with 2-minute overlap (legacy behavior)
-        const integration = await prisma.brandIntegration.findUnique({
-          where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } }
-        });
-        
-        if (integration?.lastSyncedAt) {
-          filters.updated_date = {
-            gte: new Date(integration.lastSyncedAt.getTime() - 2 * 60 * 1000).toISOString()
-          };
+      const integration = await prisma.brandIntegration.findUnique({
+        where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } }
+      });
+      
+      if (integration?.lastSyncedAt) {
+        filters.updated_date = {
+          gte: new Date(integration.lastSyncedAt.getTime() - 2 * 60 * 1000).toISOString()
+        };
         }
       }
     }
@@ -835,14 +835,14 @@ export class TrackstarIntegrationService {
   private async syncOrderShipments(brandId: string, orderExternalId: string, shipments: any[]): Promise<void> {
     try {
       // Get the order from our database
-      const order = await prisma.order.findUnique({
-        where: {
-          brandId_externalId: {
-            brandId,
+        const order = await prisma.order.findUnique({
+          where: {
+            brandId_externalId: {
+              brandId,
             externalId: orderExternalId
+            }
           }
-        }
-      });
+        });
 
       if (!order) {
         logger.warn(`Order not found for shipments sync: ${orderExternalId}`);
