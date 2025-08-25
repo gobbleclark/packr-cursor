@@ -594,19 +594,17 @@ export class TrackstarIntegrationService {
       const inventoryItems = response.data || [];
       
       for (const item of inventoryItems) {
-        // Skip items without product_id
-        if (!item.product_id) {
-          logger.warn(`Skipping inventory item without product_id:`, item);
+        // Skip items without SKU (Trackstar inventory uses SKU as the primary identifier)
+        if (!item.sku) {
+          logger.warn(`Skipping inventory item without SKU:`, item);
           continue;
         }
 
-        // Find or create product first
-        const product = await prisma.product.findUnique({
+        // Find product by SKU (since Trackstar inventory doesn't have product_id)
+        const product = await prisma.product.findFirst({
           where: {
-            brandId_externalId: {
-              brandId,
-              externalId: String(item.product_id)
-            }
+            brandId,
+            sku: item.sku
           }
         });
 
@@ -616,12 +614,16 @@ export class TrackstarIntegrationService {
               threeplId: brand.threeplId,
               brandId,
               productId: product.id,
-              quantityFulfillable: item.quantity_fulfillable || 0,
-              quantityOnHand: item.quantity_on_hand || 0,
-              location: item.location,
+              quantityFulfillable: item.fulfillable || 0,
+              quantityOnHand: item.onhand || 0,
+              location: item.locations?.[0]?.location_id || null, // Use first location if available
               rawData: item
             }
           });
+          
+          logger.info(`Created inventory snapshot for SKU: ${item.sku}, On Hand: ${item.onhand}, Fulfillable: ${item.fulfillable}`);
+        } else {
+          logger.warn(`Product not found for inventory SKU: ${item.sku}`);
         }
       }
       
