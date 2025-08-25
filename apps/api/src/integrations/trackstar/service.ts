@@ -603,7 +603,7 @@ export class TrackstarIntegrationService {
         // Find product by SKU (since Trackstar inventory doesn't have product_id)
         const product = await prisma.product.findFirst({
           where: {
-            brandId,
+              brandId,
             sku: item.sku
           }
         });
@@ -619,13 +619,13 @@ export class TrackstarIntegrationService {
               tenantId_externalId: {
                 tenantId: brand.threeplId,
                 externalId: locationId
-              }
             }
-          });
+          }
+        });
 
           if (!warehouse) {
             warehouse = await prisma.warehouse.create({
-              data: {
+            data: {
                 tenantId: brand.threeplId,
                 externalId: locationId,
                 name: item.locations[0].name || `Warehouse ${locationId}`,
@@ -1418,18 +1418,88 @@ export class TrackstarIntegrationService {
       }
     });
 
-    if (product) {
-      await prisma.inventorySnapshot.create({
-        data: {
-          threeplId: brand.threeplId,
-          brandId,
-          productId: product.id,
-          quantityFulfillable: data.quantity_fulfillable || 0,
-          quantityOnHand: data.quantity_on_hand || 0,
-          location: data.location,
-          rawData: data
+    // Handle warehouse creation/lookup if location is provided
+    let warehouseId = null;
+    if (data.location_id) {
+      let warehouse = await prisma.warehouse.findUnique({
+        where: {
+          tenantId_externalId: {
+            tenantId: brand.threeplId,
+            externalId: data.location_id
+          }
         }
       });
+
+      if (!warehouse) {
+        warehouse = await prisma.warehouse.create({
+        data: {
+            tenantId: brand.threeplId,
+            externalId: data.location_id,
+            name: data.location_name || `Warehouse ${data.location_id}`,
+            active: true,
+            metadata: {
+              createdFrom: 'inventory_webhook'
+            }
+          }
+        });
+        logger.info(`Created new warehouse from webhook: ${warehouse.name} (${warehouse.externalId})`);
+      }
+
+      warehouseId = warehouse.id;
+    }
+
+    if (product) {
+      // Update or create inventory item using new inventory_items table
+      await prisma.inventoryItem.upsert({
+        where: {
+          tenantId_brandId_warehouseId_sku: {
+            tenantId: brand.threeplId,
+          brandId,
+            warehouseId: warehouseId || '',
+            sku: product.sku
+          }
+        },
+        create: {
+          tenantId: brand.threeplId,
+          brandId,
+          warehouseId,
+          sku: product.sku,
+          productName: product.name,
+          trackstarProductId: data.product_id,
+          trackstarVariantId: data.variant_id,
+          onHand: data.onhand || data.quantity_on_hand || 0,
+          available: data.fulfillable || data.quantity_fulfillable || 0,
+          incoming: data.incoming || 0,
+          committed: data.committed || 0,
+          unfulfillable: data.unfulfillable || 0,
+          unsellable: data.unsellable || 0,
+          sellable: data.sellable || 0,
+          awaiting: data.awaiting || 0,
+          unitCost: data.unit_cost || null,
+          lastTrackstarUpdateAt: new Date(),
+          rawData: data,
+        },
+        update: {
+          productName: product.name,
+          trackstarProductId: data.product_id,
+          trackstarVariantId: data.variant_id,
+          onHand: data.onhand || data.quantity_on_hand || 0,
+          available: data.fulfillable || data.quantity_fulfillable || 0,
+          incoming: data.incoming || 0,
+          committed: data.committed || 0,
+          unfulfillable: data.unfulfillable || 0,
+          unsellable: data.unsellable || 0,
+          sellable: data.sellable || 0,
+          awaiting: data.awaiting || 0,
+          unitCost: data.unit_cost || null,
+          lastTrackstarUpdateAt: new Date(),
+          rawData: data,
+        }
+      });
+      
+      logger.info(`Updated inventory via webhook for SKU: ${product.sku}, Warehouse: ${warehouseId || 'none'}, Available: ${data.fulfillable || data.quantity_fulfillable || 0}`);
+    } else {
+      logger.warn(`Product not found for inventory webhook: Product ID ${data.product_id}`);
     }
   }
 

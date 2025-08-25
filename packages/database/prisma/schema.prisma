@@ -32,6 +32,7 @@ model User {
   mentions       Mention[]
   passwordResets PasswordReset[]
   notificationPreferences NotificationPreference?
+  orderNotes     OrderNote[]
 
   @@map("users")
 }
@@ -207,6 +208,7 @@ model Order {
   brand     Brand?  @relation(fields: [brandId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
   shipments Shipment[]
+  orderNotes OrderNote[]
 
   @@unique([threeplId, orderNumber])
   @@unique([brandId, externalId])
@@ -229,6 +231,22 @@ model OrderItem {
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("order_items")
+}
+
+model OrderNote {
+  id        String   @id @default(cuid())
+  orderId   String
+  userId    String
+  content   String
+  isInternal Boolean @default(true) // true = internal note, false = customer-visible
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("order_notes")
 }
 
 model Shipment {

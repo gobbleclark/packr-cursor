@@ -611,6 +611,95 @@ export class TrackstarClient {
       throw error;
     }
   }
+
+  /**
+   * Update order line items in Trackstar
+   */
+  async updateOrderItems(accessToken: string, externalOrderId: string, items: any[], idempotencyKey: string): Promise<any> {
+    try {
+      logger.info(`Updating order items in Trackstar: ${externalOrderId}`, { itemCount: items.length });
+      
+      const response = await this.axiosInstance.put(`/wms/orders/${externalOrderId}`, {
+        line_items: items.map(item => ({
+          sku: item.sku,
+          quantity: item.quantity,
+          ...(item.id && { id: item.id }) // Include ID for existing items
+        }))
+      }, {
+        headers: {
+          'x-trackstar-access-token': accessToken,
+          'idempotency-key': idempotencyKey
+        }
+      });
+      
+      logger.info('Successfully updated order items in Trackstar');
+      return response.data;
+    } catch (error: any) {
+      logger.error('Failed to update order items in Trackstar:', {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel order in Trackstar
+   */
+  async cancelOrder(accessToken: string, externalOrderId: string, reason: string, idempotencyKey: string): Promise<any> {
+    try {
+      logger.info(`Canceling order in Trackstar: ${externalOrderId}`, { reason });
+      
+      const response = await this.axiosInstance.post(`/wms/orders/${externalOrderId}/cancel`, {
+        reason: reason
+      }, {
+        headers: {
+          'x-trackstar-access-token': accessToken,
+          'idempotency-key': idempotencyKey
+        }
+      });
+      
+      logger.info('Successfully canceled order in Trackstar');
+      return response.data;
+    } catch (error: any) {
+      logger.error('Failed to cancel order in Trackstar:', {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Add note to order in Trackstar
+   */
+  async addOrderNote(accessToken: string, externalOrderId: string, note: string, isInternal: boolean, idempotencyKey: string): Promise<any> {
+    try {
+      logger.info(`Adding note to order in Trackstar: ${externalOrderId}`, { isInternal });
+      
+      const response = await this.axiosInstance.post(`/wms/orders/${externalOrderId}/notes`, {
+        content: note,
+        type: isInternal ? 'internal' : 'customer'
+      }, {
+        headers: {
+          'x-trackstar-access-token': accessToken,
+          'idempotency-key': idempotencyKey
+        }
+      });
+      
+      logger.info('Successfully added note to order in Trackstar');
+      return response.data;
+    } catch (error: any) {
+      logger.error('Failed to add note to order in Trackstar:', {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
+  }
 }
 
 // Singleton instance

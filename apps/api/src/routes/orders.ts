@@ -1222,4 +1222,395 @@ router.post('/repair-trackstar-links', async (req: Request, res: Response) => {
   }
 });
 
+// ============================================================================
+// ORDER WRITE OPERATIONS (Trackstar Integration)
+// ============================================================================
+
+/**
+ * Update order shipping address
+ * POST /api/orders/:id/address
+ */
+router.post('/:id/address', authenticateToken, async (req, res) => {
+  try {
+    const { id: orderId } = req.params;
+    const { fullName, company, address1, address2, city, state, postalCode, country, phone } = req.body;
+    
+    // Validate required fields
+    if (!fullName || !address1 || !city || !state || !postalCode || !country) {
+      return res.status(400).json({ error: 'Missing required address fields' });
+    }
+
+    // Get order and verify access
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        threeplId: req.user.threeplId,
+        ...(req.user.role.includes('BRAND') && { brandId: req.user.brandId })
+      },
+      include: { brand: true }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (!order.externalId) {
+      return res.status(400).json({ error: 'Order not linked to Trackstar' });
+    }
+
+    // Get brand integration
+    const integration = await prisma.brandIntegration.findFirst({
+      where: {
+        brandId: order.brandId,
+        provider: 'TRACKSTAR',
+        status: 'ACTIVE'
+      }
+    });
+
+    if (!integration) {
+      return res.status(400).json({ error: 'No active Trackstar integration found' });
+    }
+
+    // Generate idempotency key
+    const idempotencyKey = `${req.user.threeplId}:${order.brandId}:${orderId}:address:${Date.now()}`;
+
+    // Update address in Trackstar
+    const address = { fullName, company, address1, address2, city, state, postalCode, country, phone };
+    await trackstarClient.instance.updateOrderAddress(integration.accessToken, order.externalId, address, idempotencyKey);
+
+    // Log the operation
+    logger.info('Order address updated', {
+      orderId,
+      orderNumber: order.orderNumber,
+      userId: req.user.id,
+      threeplId: req.user.threeplId,
+      brandId: order.brandId,
+      idempotencyKey
+    });
+
+    res.json({ success: true, message: 'Address updated successfully' });
+  } catch (error: any) {
+    logger.error('Failed to update order address:', error);
+    res.status(500).json({ error: 'Failed to update address' });
+  }
+});
+
+/**
+ * Update order line items
+ * POST /api/orders/:id/items
+ */
+router.post('/:id/items', authenticateToken, async (req, res) => {
+  try {
+    const { id: orderId } = req.params;
+    const { items } = req.body;
+    
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Items array is required' });
+    }
+
+    // Validate items
+    for (const item of items) {
+      if (!item.sku || typeof item.quantity !== 'number' || item.quantity < 0) {
+        return res.status(400).json({ error: 'Each item must have sku and non-negative quantity' });
+      }
+    }
+
+    // Get order and verify access
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        threeplId: req.user.threeplId,
+        ...(req.user.role.includes('BRAND') && { brandId: req.user.brandId })
+      },
+      include: { brand: true }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (!order.externalId) {
+      return res.status(400).json({ error: 'Order not linked to Trackstar' });
+    }
+
+    // Get brand integration
+    const integration = await prisma.brandIntegration.findFirst({
+      where: {
+        brandId: order.brandId,
+        provider: 'TRACKSTAR',
+        status: 'ACTIVE'
+      }
+    });
+
+    if (!integration) {
+      return res.status(400).json({ error: 'No active Trackstar integration found' });
+    }
+
+    // Generate idempotency key
+    const idempotencyKey = `${req.user.threeplId}:${order.brandId}:${orderId}:items:${Date.now()}`;
+
+    // Update items in Trackstar
+    await trackstarClient.instance.updateOrderItems(integration.accessToken, order.externalId, items, idempotencyKey);
+
+    // Log the operation
+    logger.info('Order items updated', {
+      orderId,
+      orderNumber: order.orderNumber,
+      userId: req.user.id,
+      threeplId: req.user.threeplId,
+      brandId: order.brandId,
+      itemCount: items.length,
+      idempotencyKey
+    });
+
+    res.json({ success: true, message: 'Items updated successfully' });
+  } catch (error: any) {
+    logger.error('Failed to update order items:', error);
+    res.status(500).json({ error: 'Failed to update items' });
+  }
+});
+
+/**
+ * Update order shipping method
+ * POST /api/orders/:id/shipping
+ */
+router.post('/:id/shipping', authenticateToken, async (req, res) => {
+  try {
+    const { id: orderId } = req.params;
+    const { carrier, service } = req.body;
+    
+    if (!carrier || !service) {
+      return res.status(400).json({ error: 'Carrier and service are required' });
+    }
+
+    // Get order and verify access
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        threeplId: req.user.threeplId,
+        ...(req.user.role.includes('BRAND') && { brandId: req.user.brandId })
+      },
+      include: { brand: true }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (!order.externalId) {
+      return res.status(400).json({ error: 'Order not linked to Trackstar' });
+    }
+
+    // Get brand integration
+    const integration = await prisma.brandIntegration.findFirst({
+      where: {
+        brandId: order.brandId,
+        provider: 'TRACKSTAR',
+        status: 'ACTIVE'
+      }
+    });
+
+    if (!integration) {
+      return res.status(400).json({ error: 'No active Trackstar integration found' });
+    }
+
+    // Generate idempotency key
+    const idempotencyKey = `${req.user.threeplId}:${order.brandId}:${orderId}:shipping:${Date.now()}`;
+
+    // Update shipping in Trackstar
+    const shipping = { carrier, service };
+    await trackstarClient.instance.updateOrderShippingMethod(integration.accessToken, order.externalId, shipping, idempotencyKey);
+
+    // Log the operation
+    logger.info('Order shipping updated', {
+      orderId,
+      orderNumber: order.orderNumber,
+      userId: req.user.id,
+      threeplId: req.user.threeplId,
+      brandId: order.brandId,
+      carrier,
+      service,
+      idempotencyKey
+    });
+
+    res.json({ success: true, message: 'Shipping method updated successfully' });
+  } catch (error: any) {
+    logger.error('Failed to update order shipping:', error);
+    res.status(500).json({ error: 'Failed to update shipping method' });
+  }
+});
+
+/**
+ * Add order note
+ * POST /api/orders/:id/notes
+ */
+router.post('/:id/notes', authenticateToken, async (req, res) => {
+  try {
+    const { id: orderId } = req.params;
+    const { content, isInternal = true } = req.body;
+    
+    if (!content || content.trim().length === 0) {
+      return res.status(400).json({ error: 'Note content is required' });
+    }
+
+    // Get order and verify access
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        threeplId: req.user.threeplId,
+        ...(req.user.role.includes('BRAND') && { brandId: req.user.brandId })
+      },
+      include: { brand: true }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Create note in local database
+    const note = await prisma.orderNote.create({
+      data: {
+        orderId,
+        userId: req.user.id,
+        content: content.trim(),
+        isInternal: Boolean(isInternal)
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    // If order is linked to Trackstar, also add note there
+    if (order.externalId) {
+      const integration = await prisma.brandIntegration.findFirst({
+        where: {
+          brandId: order.brandId,
+          provider: 'TRACKSTAR',
+          status: 'ACTIVE'
+        }
+      });
+
+      if (integration) {
+        try {
+          const idempotencyKey = `${req.user.threeplId}:${order.brandId}:${orderId}:note:${note.id}`;
+          await trackstarClient.instance.addOrderNote(integration.accessToken, order.externalId, content.trim(), Boolean(isInternal), idempotencyKey);
+        } catch (error) {
+          logger.warn('Failed to sync note to Trackstar, but local note was created', { error: error.message });
+        }
+      }
+    }
+
+    // Log the operation
+    logger.info('Order note added', {
+      orderId,
+      orderNumber: order.orderNumber,
+      userId: req.user.id,
+      threeplId: req.user.threeplId,
+      brandId: order.brandId,
+      noteId: note.id,
+      isInternal
+    });
+
+    res.status(201).json({ success: true, note });
+  } catch (error: any) {
+    logger.error('Failed to add order note:', error);
+    res.status(500).json({ error: 'Failed to add note' });
+  }
+});
+
+/**
+ * Cancel order
+ * POST /api/orders/:id/cancel
+ */
+router.post('/:id/cancel', authenticateToken, async (req, res) => {
+  try {
+    const { id: orderId } = req.params;
+    const { reason } = req.body;
+    
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({ error: 'Cancellation reason is required' });
+    }
+
+    // Get order and verify access
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        threeplId: req.user.threeplId,
+        ...(req.user.role.includes('BRAND') && { brandId: req.user.brandId })
+      },
+      include: { brand: true }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (order.status === 'CANCELLED') {
+      return res.status(400).json({ error: 'Order is already cancelled' });
+    }
+
+    if (!order.externalId) {
+      return res.status(400).json({ error: 'Order not linked to Trackstar' });
+    }
+
+    // Get brand integration
+    const integration = await prisma.brandIntegration.findFirst({
+      where: {
+        brandId: order.brandId,
+        provider: 'TRACKSTAR',
+        status: 'ACTIVE'
+      }
+    });
+
+    if (!integration) {
+      return res.status(400).json({ error: 'No active Trackstar integration found' });
+    }
+
+    // Generate idempotency key
+    const idempotencyKey = `${req.user.threeplId}:${order.brandId}:${orderId}:cancel:${Date.now()}`;
+
+    // Cancel order in Trackstar
+    await trackstarClient.instance.cancelOrder(integration.accessToken, order.externalId, reason.trim(), idempotencyKey);
+
+    // Update local order status
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'CANCELLED' }
+    });
+
+    // Add cancellation note
+    await prisma.orderNote.create({
+      data: {
+        orderId,
+        userId: req.user.id,
+        content: `Order cancelled. Reason: ${reason.trim()}`,
+        isInternal: true
+      }
+    });
+
+    // Log the operation
+    logger.info('Order cancelled', {
+      orderId,
+      orderNumber: order.orderNumber,
+      userId: req.user.id,
+      threeplId: req.user.threeplId,
+      brandId: order.brandId,
+      reason: reason.trim(),
+      idempotencyKey
+    });
+
+    res.json({ success: true, message: 'Order cancelled successfully' });
+  } catch (error: any) {
+    logger.error('Failed to cancel order:', error);
+    res.status(500).json({ error: 'Failed to cancel order' });
+  }
+});
+
 export default router;
