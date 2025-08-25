@@ -1,0 +1,134 @@
+
+> @packr/api@0.1.0 build
+> tsc
+
+src/integrations/trackstar/client.ts(508,52): error TS2339: Property 'data' does not exist on type 'any[]'.
+src/integrations/trackstar/client.ts(509,7): error TS2741: Property 'data' is missing in type 'any[]' but required in type 'TrackstarListResponse<any>'.
+src/integrations/trackstar/service.ts(564,67): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/routes/dashboard.ts(174,15): error TS2322: Type '(string | null)[]' is not assignable to type 'string[] | FieldRef<"Brand", "String[]"> | undefined'.
+  Type '(string | null)[]' is not assignable to type 'string[]'.
+    Type 'string | null' is not assignable to type 'string'.
+      Type 'null' is not assignable to type 'string'.
+src/routes/messages.ts(135,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/messages.ts(190,22): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/messages.ts(200,7): error TS2322: Type '{ threeplId: string | undefined; createdBy: string; priority: "LOW" | "NORMAL" | "HIGH" | "URGENT"; body: string; title: string; isUrgent: boolean; brandId?: string | undefined; orderId?: string | undefined; productId?: string | undefined; assignedTo?: string | undefined; statusId?: string | undefined; shipmentId?: ...' is not assignable to type '(Without<MessageCreateInput, MessageUncheckedCreateInput> & MessageUncheckedCreateInput) | (Without<...> & MessageCreateInput)'.
+  Type '{ threeplId: string | undefined; createdBy: string; priority: "LOW" | "NORMAL" | "HIGH" | "URGENT"; body: string; title: string; isUrgent: boolean; brandId?: string | undefined; orderId?: string | undefined; productId?: string | undefined; assignedTo?: string | undefined; statusId?: string | undefined; shipmentId?: ...' is not assignable to type 'Without<MessageUncheckedCreateInput, MessageCreateInput> & MessageCreateInput'.
+    Type '{ threeplId: string | undefined; createdBy: string; priority: "LOW" | "NORMAL" | "HIGH" | "URGENT"; body: string; title: string; isUrgent: boolean; brandId?: string | undefined; orderId?: string | undefined; productId?: string | undefined; assignedTo?: string | undefined; statusId?: string | undefined; shipmentId?: ...' is not assignable to type 'Without<MessageUncheckedCreateInput, MessageCreateInput>'.
+      Types of property 'threeplId' are incompatible.
+        Type 'string | undefined' is not assignable to type 'undefined'.
+          Type 'string' is not assignable to type 'undefined'.
+src/routes/messages.ts(202,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/messages.ts(203,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/messages.ts(233,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/messages.ts(245,32): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/messages.ts(278,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/messages.ts(306,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/messages.ts(317,17): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/messages.ts(355,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/messages.ts(376,18): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/orders.ts(27,22): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/orders.ts(28,27): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/orders.ts(29,25): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/orders.ts(29,34): error TS2339: Property 'brandId' does not exist on type '{ id: string; email: string; firstName: string; lastName: string; threeplId?: string | undefined; role: string; memberships: { threeplId?: string | undefined; brandId?: string | undefined; role: string; }[]; }'.
+src/routes/orders.ts(113,24): error TS2339: Property 'orderDate' does not exist on type '{ brand: { name: string; id: string; } | null; shipments: { service: string | null; id: string; trackingNumber: string | null; carrier: string | null; shippedAt: Date | null; }[]; orderItems: ({ ...; } & { ...; })[]; } & { ...; }'.
+src/routes/orders.ts(114,22): error TS2339: Property 'dueDate' does not exist on type '{ brand: { name: string; id: string; } | null; shipments: { service: string | null; id: string; trackingNumber: string | null; carrier: string | null; shippedAt: Date | null; }[]; orderItems: ({ ...; } & { ...; })[]; } & { ...; }'.
+src/routes/orders.ts(222,24): error TS2339: Property 'orderDate' does not exist on type '{ brand: { name: string; id: string; } | null; shipments: { service: string | null; id: string; status: string; rawData: JsonValue; trackingNumber: string | null; carrier: string | null; shippedAt: Date | null; }[]; orderItems: ({ ...; } & { ...; })[]; } & { ...; }'.
+src/routes/orders.ts(223,22): error TS2339: Property 'dueDate' does not exist on type '{ brand: { name: string; id: string; } | null; shipments: { service: string | null; id: string; status: string; rawData: JsonValue; trackingNumber: string | null; carrier: string | null; shippedAt: Date | null; }[]; orderItems: ({ ...; } & { ...; })[]; } & { ...; }'.
+src/routes/orders.ts(226,29): error TS2339: Property 'notes' does not exist on type 'string | number | boolean | JsonObject | JsonArray'.
+  Property 'notes' does not exist on type 'string'.
+src/routes/orders.ts(395,7): error TS2698: Spread types may only be created from object types.
+src/routes/orders.ts(573,7): error TS2698: Spread types may only be created from object types.
+src/routes/orders.ts(660,34): error TS2339: Property 'notes' does not exist on type 'string | number | true | JsonObject | JsonArray'.
+  Property 'notes' does not exist on type 'string'.
+src/routes/orders.ts(673,7): error TS2698: Spread types may only be created from object types.
+src/routes/orders.ts(730,42): error TS2339: Property 'notes' does not exist on type 'string | number | boolean | JsonObject | JsonArray'.
+  Property 'notes' does not exist on type 'string'.
+src/routes/orders.ts(895,11): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/routes/orders.ts(958,39): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: Request, res: Response) => Promise<any>' is not assignable to parameter of type 'Application<Record<string, any>>'.
+      Type '(req: Request, res: Response) => Promise<any>' is missing the following properties from type 'Application<Record<string, any>>': init, defaultConfiguration, engine, set, and 63 more.
+src/routes/orders.ts(960,29): error TS2339: Property 'params' does not exist on type 'Request'.
+src/routes/orders.ts(971,18): error TS2349: This expression is not callable.
+  Type 'Number' has no call signatures.
+src/routes/orders.ts(977,40): error TS2339: Property 'id' does not exist on type 'string | number | boolean | JsonObject | JsonArray'.
+  Property 'id' does not exist on type 'string'.
+src/routes/orders.ts(979,18): error TS2349: This expression is not callable.
+  Type 'Number' has no call signatures.
+src/routes/orders.ts(1030,16): error TS2554: Expected 0 arguments, but got 1.
+src/routes/orders.ts(1041,11): error TS2349: This expression is not callable.
+  Type 'Number' has no call signatures.
+src/routes/orders.ts(1050,9): error TS2349: This expression is not callable.
+  Type 'Number' has no call signatures.
+src/routes/orders.ts(1059,40): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: Request, res: Response) => Promise<void>' is not assignable to parameter of type 'Application<Record<string, any>>'.
+      Type '(req: Request, res: Response) => Promise<void>' is missing the following properties from type 'Application<Record<string, any>>': init, defaultConfiguration, engine, set, and 63 more.
+src/routes/orders.ts(1071,11): error TS2322: Type 'null' is not assignable to type 'InputJsonValue | FieldRef<"Order", "Json"> | JsonNullValueFilter | undefined'.
+src/routes/orders.ts(1089,33): error TS2339: Property 'id' does not exist on type 'string | number | boolean | JsonObject | JsonArray'.
+  Property 'id' does not exist on type 'string'.
+src/routes/orders.ts(1097,44): error TS2339: Property 'id' does not exist on type 'string | number | boolean | JsonObject | JsonArray'.
+  Property 'id' does not exist on type 'string'.
+src/routes/orders.ts(1119,15): error TS2304: Cannot find name 'foundInBrand'.
+src/routes/orders.ts(1172,14): error TS2554: Expected 0 arguments, but got 1.
+src/routes/orders.ts(1185,9): error TS2349: This expression is not callable.
+  Type 'Number' has no call signatures.
+src/routes/settings.ts(52,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/settings.ts(92,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/settings.ts(119,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/settings.ts(143,22): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/settings.ts(151,7): error TS2322: Type '{ threeplId: string | undefined; name: string; color: string; isDefault: boolean; }' is not assignable to type '(Without<MessageStatusCreateInput, MessageStatusUncheckedCreateInput> & MessageStatusUncheckedCreateInput) | (Without<...> & MessageStatusCreateInput)'.
+  Type '{ threeplId: string | undefined; name: string; color: string; isDefault: boolean; }' is not assignable to type 'Without<MessageStatusUncheckedCreateInput, MessageStatusCreateInput> & MessageStatusCreateInput'.
+    Type '{ threeplId: string | undefined; name: string; color: string; isDefault: boolean; }' is not assignable to type 'Without<MessageStatusUncheckedCreateInput, MessageStatusCreateInput>'.
+      Types of property 'threeplId' are incompatible.
+        Type 'string | undefined' is not assignable to type 'undefined'.
+          Type 'string' is not assignable to type 'undefined'.
+src/routes/settings.ts(153,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/settings.ts(177,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/settings.ts(189,22): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/settings.ts(221,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/settings.ts(259,27): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/settings.ts(276,7): error TS2322: Type '{ threeplId: string | undefined; name: string; color: string; isDefault: boolean; }[]' is not assignable to type 'MessageStatusCreateManyInput | MessageStatusCreateManyInput[]'.
+  Type '{ threeplId: string | undefined; name: string; color: string; isDefault: boolean; }[]' is not assignable to type 'MessageStatusCreateManyInput[]'.
+    Type '{ threeplId: string | undefined; name: string; color: string; isDefault: boolean; }' is not assignable to type 'MessageStatusCreateManyInput'.
+      Types of property 'threeplId' are incompatible.
+        Type 'string | undefined' is not assignable to type 'string'.
+          Type 'undefined' is not assignable to type 'string'.
+src/routes/settings.ts(278,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/settings.ts(306,32): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/settings.ts(311,29): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/settings.ts(314,29): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/settings.ts(317,29): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/settings.ts(321,31): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/trackstar.ts(43,66): error TS18046: 'error' is of type 'unknown'.
+src/routes/trackstar.ts(56,84): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/trackstar.ts(56,108): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/trackstar.ts(62,22): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/trackstar.ts(69,85): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/trackstar.ts(98,22): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/trackstar.ts(135,12): error TS2339: Property 'verify' does not exist on type 'Svix'.
+src/routes/trackstar.ts(198,22): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/trackstar.ts(228,22): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/trackstar.ts(258,22): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/trackstar.ts(299,22): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(46,22): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(69,26): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(139,24): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(146,24): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(202,22): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(223,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/users.ts(223,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(231,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(240,25): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(240,47): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(360,24): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(367,24): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(426,24): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(437,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(462,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(486,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(504,20): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(513,25): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/users.ts(513,47): error TS18048: 'req.user' is possibly 'undefined'.

@@ -1,26 +1,36 @@
 import { CronJob } from 'cron';
-import { prisma } from '../../lib/prisma';
+import { prisma } from '@packr/database';
 import { trackstarIntegrationService } from '../integrations/trackstar/service';
 import { logger } from '../utils/logger';
 
 export class PeriodicSyncService {
-  private cronJob: CronJob;
+  private incrementalSyncJob: CronJob;
+  private nightlyReconciliationJob: CronJob;
 
   constructor() {
     // Run incremental sync every 5 minutes
-    this.cronJob = new CronJob('*/5 * * * *', async () => {
+    this.incrementalSyncJob = new CronJob('*/5 * * * *', async () => {
       await this.runIncrementalSync();
+    }, null, false, 'America/New_York');
+
+    // Run nightly reconciliation at 2 AM every day
+    this.nightlyReconciliationJob = new CronJob('0 2 * * *', async () => {
+      await this.runNightlyReconciliation();
     }, null, false, 'America/New_York');
   }
 
   start() {
-    this.cronJob.start();
+    this.incrementalSyncJob.start();
+    this.nightlyReconciliationJob.start();
     logger.info('Periodic sync service started - running every 5 minutes');
+    logger.info('Nightly reconciliation service started - running daily at 2 AM');
   }
 
   stop() {
-    this.cronJob.stop();
+    this.incrementalSyncJob.stop();
+    this.nightlyReconciliationJob.stop();
     logger.info('Periodic sync service stopped');
+    logger.info('Nightly reconciliation service stopped');
   }
 
   private async runIncrementalSync() {
@@ -138,6 +148,19 @@ export class PeriodicSyncService {
     } catch (error) {
       logger.error(`Error triggering manual sync for brand ${brandId}:`, error);
       throw error;
+    }
+  }
+
+  private async runNightlyReconciliation() {
+    try {
+      logger.info('Starting nightly reconciliation sync...');
+      
+      // Call the Trackstar service to handle the reconciliation
+      await trackstarIntegrationService.processNightlyReconciliation();
+      
+      logger.info('Completed nightly reconciliation sync');
+    } catch (error) {
+      logger.error('Error in nightly reconciliation sync:', error);
     }
   }
 }

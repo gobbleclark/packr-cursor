@@ -3,6 +3,7 @@ import { prisma } from '@packr/database';
 import { logger } from '../utils/logger';
 import { trackstarIntegrationService } from '../integrations/trackstar/service';
 import { trackstarClient } from '../integrations/trackstar/client';
+import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -10,7 +11,7 @@ const router = express.Router();
  * Get all orders with filtering and pagination
  * GET /api/orders?status=pending&brandId=xxx&page=1&limit=50
  */
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { 
       status, 
@@ -22,10 +23,10 @@ router.get('/', async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    // Get user info from auth headers
-    const userRole = req.headers['x-user-role'] || 'THREEPL_USER';
-    const userThreeplId = req.headers['x-threepl-id'] as string;
-    const userBrandId = req.headers['x-brand-id'] as string;
+    // Get user info from auth middleware
+    const userRole = req.user.role;
+    const userThreeplId = req.user.threeplId;
+    const userBrandId = req.user.brandId;
 
     // Build where clause based on user role
     let whereClause: any = {};
@@ -43,16 +44,48 @@ router.get('/', async (req, res) => {
 
     // Apply status filter
     if (status && status !== 'all') {
-      whereClause.status = status;
+      if (status === 'late') {
+        // Special handling for late orders - orders past required ship date and not shipped
+        const now = new Date();
+        whereClause.AND = [
+          ...(whereClause.AND || []),
+          {
+            metadata: {
+              path: ['required_ship_date_parsed'],
+              lt: now.toISOString()
+            }
+          },
+          {
+            OR: [
+              { shipments: { none: {} } },
+              {
+                shipments: {
+                  every: {
+                    status: { notIn: ['shipped', 'delivered'] }
+                  }
+                }
+              }
+            ]
+          }
+        ];
+      } else {
+        whereClause.status = status;
+      }
     }
 
     // Apply search filter
     if (search) {
-      whereClause.OR = [
+      const searchConditions = [
         { orderNumber: { contains: search as string, mode: 'insensitive' } },
         { customerName: { contains: search as string, mode: 'insensitive' } },
         { customerEmail: { contains: search as string, mode: 'insensitive' } }
       ];
+      
+      if (whereClause.AND) {
+        whereClause.AND.push({ OR: searchConditions });
+      } else {
+        whereClause.OR = searchConditions;
+      }
     }
 
     // Calculate pagination

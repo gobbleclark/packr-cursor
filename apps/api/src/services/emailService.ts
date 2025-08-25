@@ -36,8 +36,17 @@ export interface PasswordResetEmailData {
   expiresAt: Date;
 }
 
+export interface UserInvitationEmailData {
+  to: string;
+  firstName: string;
+  threeplName: string;
+  inviterName: string;
+  inviteUrl: string;
+  role: string;
+}
+
 class EmailService {
-  private transporter: nodemailer.Transporter;
+  private transporter: nodemailer.Transporter | undefined;
 
   constructor() {
     // Don't initialize transporter here - wait until it's actually needed
@@ -107,14 +116,14 @@ class EmailService {
         ...options,
         headers: {
           'Return-Path': options.returnPath || `bounces@${(process.env.POSTMARK_FROM_EMAIL || 'noreply@packr.co').split('@')[1]}`,
-          'List-Unsubscribe': options.unsubscribeUrl ? `<${options.unsubscribeUrl}>` : undefined,
+          ...(options.unsubscribeUrl && { 'List-Unsubscribe': `<${options.unsubscribeUrl}>` }),
           'X-Postmark-Tag': options.emailType || 'general', // Track email type in Postmark
           'X-PM-Message-Stream': 'packr', // Postmark Message Stream ID
         }
       };
 
-      const info = await this.transporter.sendMail(mailOptions);
-      logger.info(`Email sent successfully: ${info.messageId}`);
+      const info = await this.transporter!.sendMail(mailOptions);
+      logger.info(`Email sent successfully: ${info?.messageId || 'unknown'}`);
       return true;
     } catch (error) {
       logger.error('Failed to send email:', error);
@@ -296,10 +305,101 @@ class EmailService {
     });
   }
 
+  async sendUserInvitation(data: UserInvitationEmailData): Promise<boolean> {
+    const subject = `You're invited to join ${data.threeplName} on Packr`;
+    
+    // Generate unsubscribe URL
+    const unsubscribeUrl = `${process.env.FRONTEND_URL || 'https://packr.co'}/unsubscribe?email=${encodeURIComponent(data.to)}&type=user-invitation`;
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Team Invitation - Packr</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #3B82F6; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+          .button { display: inline-block; background: #3B82F6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
+          .unsubscribe { text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+          .unsubscribe a { color: #6b7280; text-decoration: underline; font-size: 12px; }
+          .role-badge { background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: 500; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 Join Our Team!</h1>
+          </div>
+          <div class="content">
+            <p>Hello ${data.firstName}!</p>
+            <p>You've been invited by <strong>${data.inviterName}</strong> to join the <strong>${data.threeplName}</strong> team on Packr.</p>
+            
+            <p><strong>Your Role:</strong> <span class="role-badge">${data.role.replace('_', ' ')}</span></p>
+            
+            <p>Packr is a powerful platform that helps 3PL companies manage their brand clients, orders, and communications all in one place.</p>
+            
+            <p>Click the button below to accept your invitation and create your account:</p>
+            
+            <a href="${data.inviteUrl}" class="button">Accept Invitation & Join Team</a>
+            
+            <p>As a team member, you'll be able to:</p>
+            <ul>
+              <li>Manage brand clients and their orders</li>
+              <li>Communicate with team members and brands</li>
+              <li>Track shipments and inventory</li>
+              <li>Access powerful analytics and reporting</li>
+            </ul>
+            
+            <p>If you have any questions about this invitation, please contact <strong>${data.inviterName}</strong> directly.</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated message from Packr. Please do not reply to this email.</p>
+          </div>
+          <div class="unsubscribe">
+            <a href="${unsubscribeUrl}">Unsubscribe from team invitations</a>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      Join Our Team on Packr!
+      
+      Hello ${data.firstName}!
+      
+      You've been invited by ${data.inviterName} to join the ${data.threeplName} team on Packr as a ${data.role.replace('_', ' ')}.
+      
+      Accept your invitation: ${data.inviteUrl}
+      
+      Packr helps 3PL companies manage brand clients, orders, and communications all in one place.
+      
+      If you have questions, contact ${data.inviterName} directly.
+      
+      To unsubscribe: ${unsubscribeUrl}
+    `;
+
+    return this.sendEmail({
+      to: data.to,
+      subject,
+      html,
+      text,
+      returnPath: `bounces@${(process.env.POSTMARK_FROM_EMAIL || 'noreply@packr.co').split('@')[1]}`,
+      unsubscribeUrl,
+      emailType: 'general',
+    });
+  }
+
   // Test method for development
   async testConnection(): Promise<boolean> {
     try {
-      await this.transporter.verify();
+      this.initializeTransporter();
+      await this.transporter!.verify();
       logger.info('Email service connection verified');
       return true;
     } catch (error) {

@@ -10,6 +10,8 @@ declare global {
       user?: {
         id: string;
         email: string;
+        firstName: string;
+        lastName: string;
         threeplId?: string;
         role: string;
         memberships: Array<{
@@ -76,6 +78,8 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     req.user = {
       id: user.id,
       email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
       threeplId: primaryMembership?.threeplId || undefined,
       role: primaryMembership?.role || 'USER',
       memberships: user.memberships.map(m => ({

@@ -19,12 +19,12 @@ import {
   Calendar,
   Phone
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import AuthenticatedLayout from '../../../components/layout/AuthenticatedLayout';
+import { Button } from '../../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Badge } from '../../../components/ui/badge';
+import { Input } from '../../../components/ui/input';
+import { Select } from '../../../components/ui/select';
+import { AuthenticatedLayout } from '../../../components/layout/AuthenticatedLayout';
 import { authService } from '../../../lib/auth';
 
 interface OrderItem {
@@ -147,6 +147,11 @@ export default function OrderDetailPage() {
 
     checkAuth();
   }, [router, orderId]);
+
+  const handleLogout = () => {
+    authService.clearToken();
+    router.push('/');
+  };
 
   const fetchOrder = async () => {
     try {
@@ -387,7 +392,7 @@ export default function OrderDetailPage() {
 
   if (loading) {
     return (
-      <AuthenticatedLayout>
+      <AuthenticatedLayout user={user} onLogout={handleLogout}>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -400,7 +405,7 @@ export default function OrderDetailPage() {
 
   if (!user || error || !order) {
     return (
-      <AuthenticatedLayout>
+      <AuthenticatedLayout user={user} onLogout={handleLogout}>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <div className="text-red-600 mb-4">
@@ -421,7 +426,7 @@ export default function OrderDetailPage() {
   const is3PL = user?.role?.includes('THREEPL');
 
   return (
-    <AuthenticatedLayout>
+    <AuthenticatedLayout user={user} onLogout={handleLogout}>
       {/* Header */}
       <header className="bg-white shadow-sm border-b mb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -448,17 +453,16 @@ export default function OrderDetailPage() {
             <div className="flex items-center space-x-4">
               {editingStatus ? (
                 <div className="flex items-center space-x-2">
-                  <Select value={statusForm} onValueChange={setStatusForm}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ORDER_STATUSES.map(status => (
-                        <SelectItem key={status.value} value={status.value}>
-                          {status.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select 
+                    value={statusForm} 
+                    onChange={(e) => setStatusForm(e.target.value)}
+                    className="w-32"
+                  >
+                    {ORDER_STATUSES.map(status => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
                   </Select>
                   <Button size="sm" onClick={handleSaveStatus}>
                     <Save className="h-4 w-4" />
@@ -712,17 +716,16 @@ export default function OrderDetailPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Carrier
                         </label>
-                        <Select value={shippingForm.carrier} onValueChange={(value) => setShippingForm({...shippingForm, carrier: value})}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select carrier" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {SHIPPING_CARRIERS.map(carrier => (
-                              <SelectItem key={carrier.value} value={carrier.value}>
-                                {carrier.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
+                        <Select 
+                          value={shippingForm.carrier} 
+                          onChange={(e) => setShippingForm({...shippingForm, carrier: e.target.value})}
+                        >
+                          <option value="">Select carrier</option>
+                          {SHIPPING_CARRIERS.map(carrier => (
+                            <option key={carrier.value} value={carrier.value}>
+                              {carrier.label}
+                            </option>
+                          ))}
                         </Select>
                       </div>
                       <div>
@@ -944,7 +947,8 @@ export default function OrderDetailPage() {
                           </label>
                           <Select 
                             value={shippingForm.carrier && shippingForm.service ? `${shippingForm.carrier}|${shippingForm.service}` : ''}
-                            onValueChange={(value) => {
+                            onChange={(e) => {
+                              const value = e.target.value;
                               console.log('Selected ship method:', value);
                               const [carrier, ...serviceParts] = value.split('|');
                               const service = serviceParts.join('|'); // In case service name contains |
@@ -952,19 +956,12 @@ export default function OrderDetailPage() {
                               setShippingForm({ carrier, service });
                             }}
                           >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select ship method" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {shipMethods.map(method => (
-                                <SelectItem key={method.id} value={`${method.carrier}|${method.name}`}>
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">{method.name}</span>
-                                    <span className="text-xs text-gray-500">{method.carrier}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
+                            <option value="">Select ship method</option>
+                            {shipMethods.map(method => (
+                              <option key={method.id} value={`${method.carrier}|${method.name}`}>
+                                {method.name} ({method.carrier})
+                              </option>
+                            ))}
                           </Select>
                         </div>
                         <div className="flex space-x-2">

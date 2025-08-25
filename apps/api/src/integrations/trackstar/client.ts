@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { logger } from '../../utils/logger';
 
-// Rate limiting: 10 requests per second per access token
+// Rate limiting: 10 requests per second per access token (from Trackstar API docs)
 const RATE_LIMIT = 10;
 const RATE_LIMIT_WINDOW = 1000; // 1 second in milliseconds
 
@@ -214,9 +214,9 @@ export class TrackstarClient {
    * This is the first step in the integration process
    * According to Trackstar docs: /link/token only needs API key, no request body
    */
-  async createLinkToken(): Promise<TrackstarLinkTokenResponse> {
+  async createLinkToken(request?: { customer_id?: string; integration_name?: string }): Promise<TrackstarLinkTokenResponse> {
     try {
-      logger.info('Creating Trackstar link token (no request body needed)');
+      logger.info('Creating Trackstar link token', { request });
       
       // Log the request details
       logger.info('Making Trackstar API request:', {
@@ -225,10 +225,11 @@ export class TrackstarClient {
         headers: {
           'x-trackstar-api-key': 'f9bc96aa...',
           'Content-Type': 'application/json'
-        }
+        },
+        body: request
       });
       
-      const response = await this.axiosInstance.post<TrackstarLinkTokenResponse>('/link/token');
+      const response = await this.axiosInstance.post<TrackstarLinkTokenResponse>('/link/token', request || {});
       
       logger.info('Successfully created Trackstar link token');
       return response.data;
@@ -270,6 +271,40 @@ export class TrackstarClient {
       return response.data;
     } catch (error: any) {
       logger.error('Failed to exchange auth code:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Subscribe to webhook events for real-time updates
+   */
+  async subscribeToWebhook(accessToken: string, webhookConfig: {
+    event_type: string;
+    url: string;
+    connection_id: string;
+  }): Promise<any> {
+    try {
+      logger.info(`Subscribing to webhook: ${webhookConfig.event_type}`);
+      
+      const response = await this.axiosInstance.post('/webhooks/subscribe', webhookConfig, {
+        headers: {
+          'x-trackstar-access-token': accessToken
+        }
+      });
+      
+      logger.info(`Successfully subscribed to webhook: ${webhookConfig.event_type}`);
+      return response.data;
+    } catch (error: any) {
+      logger.error(`Failed to subscribe to webhook ${webhookConfig.event_type}:`, error);
+      
+      if (error.response) {
+        logger.error('Webhook subscription error:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        });
+      }
+      
       throw error;
     }
   }

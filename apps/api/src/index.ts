@@ -17,6 +17,11 @@ import pinoPretty from 'pino-pretty';
 import authRoutes from './routes/auth';
 import brandRoutes from './routes/brands';
 import trackstarRoutes from './routes/trackstar';
+import dashboardRoutes from './routes/dashboard';
+import messageRoutes from './routes/messages';
+import userRoutes from './routes/users';
+import settingsRoutes from './routes/settings';
+import orderRoutes from './routes/orders';
 
 // Import services
 import { periodicSyncService } from './services/periodicSync';
@@ -37,13 +42,15 @@ app.use(helmet());
 app.use(cors());
 app.use(compression());
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
-});
-app.use('/api/', limiter);
+// Rate limiting - disabled in development
+if (process.env.NODE_ENV === 'production') {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // limit each IP to 1000 requests per windowMs in production
+    message: { error: 'Too many requests from this IP, please try again later.' },
+  });
+  app.use('/api/', limiter);
+}
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
@@ -62,6 +69,11 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/brands', brandRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/orders', orderRoutes);
 app.use('/api', trackstarRoutes);
 
 // API root endpoint
@@ -73,6 +85,11 @@ app.get('/api', (req, res) => {
               endpoints: {
             auth: '/api/auth',
             brands: '/api/brands',
+            messages: '/api/messages',
+            users: '/api/users',
+            settings: '/api/settings',
+            orders: '/api/orders',
+            dashboard: '/api/dashboard',
             trackstar: '/api/brands/:brandId/integrations/trackstar',
             webhooks: '/api/webhooks/trackstar',
             health: '/health',
