@@ -44,7 +44,7 @@ export default function OrdersPage() {
   const fetchBrands = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('/api/brands', {
+      const response = await fetch('http://localhost:4000/api/brands', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -73,7 +73,7 @@ export default function OrdersPage() {
       params.append('page', currentPage.toString());
       params.append('limit', '20');
 
-      const response = await fetch(`/api/orders?${params.toString()}`, {
+      const response = await fetch(`http://localhost:4000/api/orders?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
