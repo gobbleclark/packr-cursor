@@ -490,12 +490,15 @@ export default function MessageDetailPage() {
                               <p className="text-xs text-gray-500">{formatFileSize(attachment.size)}</p>
                             </div>
                           </div>
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={attachment.url} target="_blank" rel="noopener noreferrer">
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </a>
-                          </Button>
+                          <a 
+                            href={attachment.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none border border-gray-300 bg-transparent hover:bg-gray-50 text-gray-700 h-8 px-3 text-sm"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </a>
                         </div>
                       ))}
                     </div>

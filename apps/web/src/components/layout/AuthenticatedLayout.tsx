@@ -28,7 +28,7 @@ export function AuthenticatedLayout({ children, user, onLogout }: AuthenticatedL
               </div>
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-600">
-                  Welcome, {user.firstName} {user.lastName}
+                  Welcome, {user?.firstName} {user?.lastName}
                 </span>
               </div>
             </div>

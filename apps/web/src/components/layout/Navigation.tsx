@@ -131,10 +131,10 @@ export function Navigation({ user, onLogout }: NavigationProps) {
         {!isCollapsed && (
           <div className="mb-3">
             <div className="text-sm font-medium text-gray-900">
-              {user.firstName} {user.lastName}
+              {user?.firstName} {user?.lastName}
             </div>
             <div className="text-xs text-gray-500">
-              {user.role.replace('_', ' ').toLowerCase()}
+              {user?.role?.replace('_', ' ').toLowerCase()}
             </div>
           </div>
         )}

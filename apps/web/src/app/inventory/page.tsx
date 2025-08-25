@@ -270,6 +270,17 @@ export default function InventoryPage() {
     }
   };
 
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AuthenticatedLayout user={user} onLogout={handleLogout}>
       <div className="p-6 space-y-6">
@@ -322,7 +333,7 @@ export default function InventoryPage() {
           {/* Brand Filter */}
           <Select
             value={filters.brandId}
-            onValueChange={(value) => setFilters(prev => ({ ...prev, brandId: value }))}
+            onChange={(e) => setFilters(prev => ({ ...prev, brandId: e.target.value }))}
           >
             <option value="">All Brands</option>
             {brands.map(brand => (
@@ -333,7 +344,7 @@ export default function InventoryPage() {
           {/* Stock Status Filter */}
           <Select
             value={filters.stock}
-            onValueChange={(value) => setFilters(prev => ({ ...prev, stock: value as any }))}
+            onChange={(e) => setFilters(prev => ({ ...prev, stock: e.target.value as any }))}
           >
             <option value="">All Stock</option>
             <option value="in">In Stock</option>
@@ -344,9 +355,9 @@ export default function InventoryPage() {
           {/* Incoming Filter */}
           <Select
             value={filters.incoming === null ? '' : filters.incoming.toString()}
-            onValueChange={(value) => setFilters(prev => ({ 
+            onChange={(e) => setFilters(prev => ({ 
               ...prev, 
-              incoming: value === '' ? null : value === 'true' 
+              incoming: e.target.value === '' ? null : e.target.value === 'true' 
             }))}
           >
             <option value="">All Items</option>
