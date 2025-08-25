@@ -53,6 +53,7 @@ model ThreePL {
   shipments        Shipment[]
   inventorySnapshots InventorySnapshot[]
   inventoryItems   InventoryItem[]
+  warehouses       Warehouse[]
   webhookEvents    WebhookEvent[]
   webhookEventsV2  WebhookEventV2[]
   jobRuns          JobRun[]
@@ -277,11 +278,34 @@ model InventorySnapshot {
 }
 
 // New comprehensive inventory model for the Inventory feature
+model Warehouse {
+  id          String   @id @default(cuid())
+  tenantId    String   // threeplId
+  externalId  String   // Trackstar warehouse ID
+  name        String
+  address     String?
+  city        String?
+  state       String?
+  zipCode     String?
+  country     String?
+  active      Boolean  @default(true)
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  threepl       ThreePL @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inventoryItems InventoryItem[]
+
+  @@unique([tenantId, externalId])
+  @@map("warehouses")
+}
+
 model InventoryItem {
   id        String   @id @default(cuid())
   tenantId  String   // threeplId
   brandId   String
-  warehouseId String? // Trackstar warehouse ID
+  warehouseId String? // Internal warehouse ID (references warehouses.id)
   sku       String
   productName String?
   trackstarProductId String?
@@ -307,8 +331,9 @@ model InventoryItem {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  tenant ThreePL @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  brand  Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  tenant    ThreePL    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  brand     Brand      @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  warehouse Warehouse? @relation(fields: [warehouseId], references: [id])
 
   @@unique([tenantId, brandId, sku])
   @@unique([tenantId, brandId, warehouseId, sku])

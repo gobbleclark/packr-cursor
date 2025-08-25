@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { authService } from '@/lib/auth';
 import { 
   Search, 
   Filter, 
@@ -37,6 +38,13 @@ interface InventoryItem {
     name: string;
     slug: string;
   };
+  warehouse?: {
+    id: string;
+    name: string;
+    externalId: string;
+    city?: string;
+    state?: string;
+  };
   freshness: 'live' | 'recent' | 'stale';
 }
 
@@ -50,6 +58,7 @@ interface InventoryFilters {
 
 export default function InventoryPage() {
   const router = useRouter();
+  const [user, setUser] = useState<any>(null);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +78,38 @@ export default function InventoryPage() {
   const [searchDebounce, setSearchDebounce] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+
+  // Authentication check
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = authService.getToken();
+        if (!token) {
+          router.push('/');
+          return;
+        }
+
+        const userData = await authService.verifyToken();
+        if (!userData) {
+          router.push('/');
+          return;
+        }
+
+        setUser(userData);
+        setLoading(false);
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        router.push('/');
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
+  const handleLogout = () => {
+    authService.clearToken();
+    router.push('/');
+  };
 
   // Debounce search input
   useEffect(() => {
@@ -230,7 +271,7 @@ export default function InventoryPage() {
   };
 
   return (
-    <AuthenticatedLayout>
+    <AuthenticatedLayout user={user} onLogout={handleLogout}>
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -356,12 +397,13 @@ export default function InventoryPage() {
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                 </div>
-                <div className="col-span-3">Product</div>
-                <div className="col-span-2">On Hand</div>
-                <div className="col-span-2">Available</div>
+                <div className="col-span-2">Product</div>
+                <div className="col-span-2">Warehouse</div>
+                <div className="col-span-1">On Hand</div>
+                <div className="col-span-1">Available</div>
                 <div className="col-span-1">Incoming</div>
                 <div className="col-span-2">Updated</div>
-                <div className="col-span-1">Brand</div>
+                <div className="col-span-2">Brand</div>
               </div>
             </div>
 
@@ -388,7 +430,7 @@ export default function InventoryPage() {
 
                     {/* Product */}
                     <div 
-                      className="col-span-3 cursor-pointer"
+                      className="col-span-2 cursor-pointer"
                       onClick={() => handleItemClick(item)}
                     >
                       <div className="font-medium text-gray-900">{item.sku}</div>
@@ -397,15 +439,32 @@ export default function InventoryPage() {
                       </div>
                     </div>
 
-                    {/* On Hand */}
+                    {/* Warehouse */}
                     <div className="col-span-2">
+                      {item.warehouse ? (
+                        <div>
+                          <div className="font-medium text-gray-900">{item.warehouse.name}</div>
+                          <div className="text-sm text-gray-500">
+                            {item.warehouse.city && item.warehouse.state 
+                              ? `${item.warehouse.city}, ${item.warehouse.state}`
+                              : item.warehouse.externalId
+                            }
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">No warehouse</span>
+                      )}
+                    </div>
+
+                    {/* On Hand */}
+                    <div className="col-span-1">
                       <span className={`font-medium ${getStockStatusColor(item.available, item.onHand)}`}>
                         {item.onHand.toLocaleString()}
                       </span>
                     </div>
 
                     {/* Available */}
-                    <div className="col-span-2">
+                    <div className="col-span-1">
                       <span className={`font-medium ${getStockStatusColor(item.available, item.onHand)}`}>
                         {item.available.toLocaleString()}
                       </span>
@@ -431,7 +490,7 @@ export default function InventoryPage() {
                     </div>
 
                     {/* Brand */}
-                    <div className="col-span-1">
+                    <div className="col-span-2">
                       {item.brand && (
                         <span className="text-sm text-gray-900">{item.brand.name}</span>
                       )}

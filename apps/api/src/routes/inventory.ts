@@ -229,6 +229,18 @@ router.get('/:id', authenticateToken, async (req, res) => {
             slug: true,
           },
         },
+        warehouse: {
+          select: {
+            id: true,
+            name: true,
+            externalId: true,
+            city: true,
+            state: true,
+            address: true,
+            zipCode: true,
+            country: true,
+          },
+        },
       },
     });
 
@@ -304,6 +316,15 @@ router.get('/sku/:sku', authenticateToken, async (req, res) => {
             id: true,
             name: true,
             slug: true,
+          },
+        },
+        warehouse: {
+          select: {
+            id: true,
+            name: true,
+            externalId: true,
+            city: true,
+            state: true,
           },
         },
       },

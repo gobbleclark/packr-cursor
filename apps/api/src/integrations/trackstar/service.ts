@@ -608,23 +608,94 @@ export class TrackstarIntegrationService {
           }
         });
 
-        if (product) {
-          await prisma.inventorySnapshot.create({
-            data: {
-              threeplId: brand.threeplId,
-              brandId,
-              productId: product.id,
-              quantityFulfillable: item.fulfillable || 0,
-              quantityOnHand: item.onhand || 0,
-              location: item.locations?.[0]?.location_id || null, // Use first location if available
-              rawData: item
+        // Handle warehouse creation/lookup
+        let warehouseId = null;
+        if (item.locations?.[0]?.location_id) {
+          const locationId = item.locations[0].location_id;
+          
+          // Find or create warehouse
+          let warehouse = await prisma.warehouse.findUnique({
+            where: {
+              tenantId_externalId: {
+                tenantId: brand.threeplId,
+                externalId: locationId
+              }
             }
           });
-          
-          logger.info(`Created inventory snapshot for SKU: ${item.sku}, On Hand: ${item.onhand}, Fulfillable: ${item.fulfillable}`);
-        } else {
-          logger.warn(`Product not found for inventory SKU: ${item.sku}`);
+
+          if (!warehouse) {
+            warehouse = await prisma.warehouse.create({
+              data: {
+                tenantId: brand.threeplId,
+                externalId: locationId,
+                name: item.locations[0].name || `Warehouse ${locationId}`,
+                address: item.locations[0].address || null,
+                city: item.locations[0].city || null,
+                state: item.locations[0].state || null,
+                zipCode: item.locations[0].zip_code || null,
+                country: item.locations[0].country || null,
+                active: true,
+                metadata: {
+                  trackstarData: item.locations[0],
+                  createdFrom: 'inventory_sync'
+                }
+              }
+            });
+            logger.info(`Created new warehouse: ${warehouse.name} (${warehouse.externalId})`);
+          }
+
+          warehouseId = warehouse.id;
         }
+
+        // Create or update inventory item
+        await prisma.inventoryItem.upsert({
+          where: {
+            tenantId_brandId_warehouseId_sku: {
+              tenantId: brand.threeplId,
+              brandId,
+              warehouseId: warehouseId || '',
+              sku: item.sku
+            }
+          },
+          create: {
+            tenantId: brand.threeplId,
+            brandId,
+            warehouseId,
+            sku: item.sku,
+            productName: product?.name || `Product ${item.sku}`,
+            trackstarProductId: item.product_id,
+            trackstarVariantId: item.variant_id,
+            onHand: item.onhand || 0,
+            available: item.fulfillable || 0,
+            incoming: item.incoming || 0,
+            committed: item.committed || 0,
+            unfulfillable: item.unfulfillable || 0,
+            unsellable: item.unsellable || 0,
+            sellable: item.sellable || 0,
+            awaiting: item.awaiting || 0,
+            unitCost: item.unit_cost || null,
+            lastTrackstarUpdateAt: new Date(),
+            rawData: item,
+          },
+          update: {
+            productName: product?.name || `Product ${item.sku}`,
+            trackstarProductId: item.product_id,
+            trackstarVariantId: item.variant_id,
+            onHand: item.onhand || 0,
+            available: item.fulfillable || 0,
+            incoming: item.incoming || 0,
+            committed: item.committed || 0,
+            unfulfillable: item.unfulfillable || 0,
+            unsellable: item.unsellable || 0,
+            sellable: item.sellable || 0,
+            awaiting: item.awaiting || 0,
+            unitCost: item.unit_cost || null,
+            lastTrackstarUpdateAt: new Date(),
+            rawData: item,
+          }
+        });
+        
+        logger.info(`Synced inventory for SKU: ${item.sku}, Warehouse: ${warehouseId || 'none'}, On Hand: ${item.onhand}, Available: ${item.fulfillable}`);
       }
       
       logger.info(`Synced ${inventoryItems.length} inventory items for brand ${brandId}`);
