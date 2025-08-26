@@ -1,0 +1,274 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch: # Allow manual triggers
+
+env:
+  NODE_VERSION: '18'
+  POSTGRES_VERSION: '15'
+
+jobs:
+  test-api:
+    name: API Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: packr_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+        working-directory: packages/database
+
+      - name: Run database migrations
+        run: npx prisma migrate deploy
+        working-directory: packages/database
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/packr_test
+
+      - name: Run API tests
+        run: npm run test:ci
+        working-directory: apps/api
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://test:test@localhost:5432/packr_test
+          TEST_DATABASE_URL: postgresql://test:test@localhost:5432/packr_test
+          REDIS_URL: redis://localhost:6379/1
+          SKIP_WEBHOOK_SIGNATURE_VALIDATION: 'true'
+          TRACKSTAR_API_URL: https://test.trackstar.com
+          TRACKSTAR_API_KEY: test-api-key
+
+      - name: Upload API coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./apps/api/coverage/lcov.info
+          flags: api
+          name: api-coverage
+
+  test-web:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run frontend tests
+        run: npm run test:ci
+        working-directory: apps/web
+
+      - name: Upload frontend coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./apps/web/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+
+  test-database:
+    name: Database Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: packr_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+        working-directory: packages/database
+
+      - name: Check for schema drift
+        run: npx prisma migrate diff --from-migrations ./prisma/migrations --to-schema-datamodel ./prisma/schema.prisma
+        working-directory: packages/database
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+        working-directory: packages/database
+
+      - name: Run migrations
+        run: npx prisma migrate deploy
+        working-directory: packages/database
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/packr_test
+
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+        working-directory: packages/database
+
+      - name: Lint API
+        run: npm run lint
+        working-directory: apps/api
+
+      - name: Lint Frontend
+        run: npm run lint
+        working-directory: apps/web
+
+      - name: Type check API
+        run: npx tsc --noEmit
+        working-directory: apps/api
+
+      - name: Type check Frontend
+        run: npx tsc --noEmit
+        working-directory: apps/web
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security audit
+        run: npm audit --audit-level=high
+
+      - name: Check for known vulnerabilities
+        run: npx audit-ci --config .audit-ci.json
+
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    needs: [test-api, test-web, test-database, lint]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+        working-directory: packages/database
+
+      - name: Build API
+        run: npm run build
+        working-directory: apps/api
+
+      - name: Build Frontend
+        run: npm run build
+        working-directory: apps/web
+        env:
+          SKIP_ENV_VALIDATION: true
+
+  coverage-report:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+    needs: [test-api, test-web]
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download coverage reports
+        uses: actions/download-artifact@v3
+
+      - name: Comment coverage on PR
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: api,frontend
+          name: combined-coverage
