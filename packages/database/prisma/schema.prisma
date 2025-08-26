@@ -442,6 +442,27 @@ model TrackstarWebhookEvent {
   @@map("trackstar_webhook_events")
 }
 
+// Sync checkpoints for tracking reconciliation progress
+model SyncCheckpoint {
+  id          String   @id @default(cuid())
+  tenantId    String
+  brandId     String
+  provider    String   @default("TRACKSTAR")
+  resource    String   // 'orders', 'inventory', 'products', 'shipments'
+  lastCursor  String?  // Last processed cursor/token from API
+  lastSyncAt  DateTime
+  recordCount Int      @default(0) // Number of records processed in last sync
+  nextSyncAt  DateTime? // When the next sync should happen
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, brandId, provider, resource])
+  @@index([nextSyncAt])
+  @@index([tenantId, brandId])
+  @@map("sync_checkpoints")
+}
+
 model JobRun {
   id        String   @id @default(cuid())
   threeplId String

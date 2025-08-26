@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { logger } from '../../utils/logger';
+import { circuitBreakerManager, CircuitBreaker } from '../../lib/circuit-breaker';
 
 // Rate limiting: 10 requests per second per access token (from Trackstar API docs)
 const RATE_LIMIT = 10;
@@ -70,6 +71,7 @@ class RateLimiter {
 export class TrackstarClient {
   private axiosInstance: AxiosInstance;
   private rateLimiters: Map<string, RateLimiter> = new Map();
+  private circuitBreaker: CircuitBreaker;
 
   constructor() {
     // Hardcoded values as per previous fixes
@@ -81,10 +83,18 @@ export class TrackstarClient {
       headers: {
         'x-trackstar-api-key': apiKey,
         'Content-Type': 'application/json'
-      }
+      },
+      timeout: 30000 // 30 second timeout
     });
 
-    // Add response interceptor to handle rate limit headers
+    // Initialize circuit breaker for Trackstar API
+    this.circuitBreaker = circuitBreakerManager.getBreaker('trackstar-api', {
+      failureThreshold: 5, // Open after 5 failures
+      resetTimeoutMs: 60000, // Try reset after 1 minute
+      monitoringWindowMs: 300000 // 5 minute rolling window
+    });
+
+    // Add response interceptor to handle rate limit headers and circuit breaker logic
     this.axiosInstance.interceptors.response.use(
       (response) => {
         // Log rate limit info if available
@@ -98,10 +108,31 @@ export class TrackstarClient {
         return response;
       },
       (error) => {
+        // Enhanced error logging with circuit breaker context
+        const shouldTrip = CircuitBreaker.shouldTripCircuit(error);
+        
         if (error.response?.status === 429) {
           const retryAfter = error.response.headers['x-rate-limit-retry-after'];
-          logger.warn(`Rate limit exceeded. Retry after ${retryAfter} seconds`);
+          logger.warn(`Trackstar rate limit exceeded. Retry after ${retryAfter} seconds`, {
+            shouldTripCircuit: shouldTrip,
+            circuitBreakerState: this.circuitBreaker.getStats().state
+          });
+        } else if (error.response?.status >= 500) {
+          logger.error('Trackstar server error:', {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            shouldTripCircuit: shouldTrip,
+            circuitBreakerState: this.circuitBreaker.getStats().state
+          });
+        } else if (!error.response) {
+          logger.error('Trackstar network error:', {
+            code: error.code,
+            message: error.message,
+            shouldTripCircuit: shouldTrip,
+            circuitBreakerState: this.circuitBreaker.getStats().state
+          });
         }
+        
         return Promise.reject(error);
       }
     );
@@ -215,46 +246,48 @@ export class TrackstarClient {
    * According to Trackstar docs: /link/token only needs API key, no request body
    */
   async createLinkToken(request?: { customer_id?: string; integration_name?: string }): Promise<TrackstarLinkTokenResponse> {
-    try {
-      logger.info('Creating Trackstar link token', { request });
-      
-      // Log the request details
-      logger.info('Making Trackstar API request:', {
-        method: 'POST',
-        url: `${this.axiosInstance.defaults.baseURL}/link/token`,
-        headers: {
-          'x-trackstar-api-key': 'f9bc96aa...',
-          'Content-Type': 'application/json'
-        },
-        body: request
-      });
-      
-      const response = await this.axiosInstance.post<TrackstarLinkTokenResponse>('/link/token', request || {});
-      
-      logger.info('Successfully created Trackstar link token');
-      return response.data;
-    } catch (error: any) {
-      logger.error('Failed to create Trackstar link token:', error);
-      
-      if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        logger.error('Trackstar API response error:', {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data,
-          headers: error.response.headers
+    return this.circuitBreaker.execute(async () => {
+      try {
+        logger.info('Creating Trackstar link token', { request });
+        
+        // Log the request details
+        logger.info('Making Trackstar API request:', {
+          method: 'POST',
+          url: `${this.axiosInstance.defaults.baseURL}/link/token`,
+          headers: {
+            'x-trackstar-api-key': 'f9bc96aa...',
+            'Content-Type': 'application/json'
+          },
+          body: request
         });
-      } else if (error.request) {
-        // The request was made but no response was received
-        logger.error('Trackstar API request error - no response received:', error.request);
-      } else {
-        // Something happened in setting up the request that triggered an Error
-        logger.error('Trackstar API setup error:', error.message);
+        
+        const response = await this.axiosInstance.post<TrackstarLinkTokenResponse>('/link/token', request || {});
+        
+        logger.info('Successfully created Trackstar link token');
+        return response.data;
+      } catch (error: any) {
+        logger.error('Failed to create Trackstar link token:', error);
+        
+        if (error.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          logger.error('Trackstar API response error:', {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data,
+            headers: error.response.headers
+          });
+        } else if (error.request) {
+          // The request was made but no response was received
+          logger.error('Trackstar API request error - no response received:', error.request);
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          logger.error('Trackstar API setup error:', error.message);
+        }
+        
+        throw error;
       }
-      
-      throw error;
-    }
+    });
   }
 
   /**
@@ -262,17 +295,19 @@ export class TrackstarClient {
    * This is the second step after user completes WMS connection
    */
   async exchangeAuthCode(request: TrackstarExchangeRequest): Promise<TrackstarExchangeResponse> {
-    try {
-      logger.info('Exchanging auth code for access token');
-      
-      const response = await this.axiosInstance.post<TrackstarExchangeResponse>('/link/exchange', request);
-      
-      logger.info('Successfully exchanged auth code for access token');
-      return response.data;
-    } catch (error: any) {
-      logger.error('Failed to exchange auth code:', error);
-      throw error;
-    }
+    return this.circuitBreaker.execute(async () => {
+      try {
+        logger.info('Exchanging auth code for access token');
+        
+        const response = await this.axiosInstance.post<TrackstarExchangeResponse>('/link/exchange', request);
+        
+        logger.info('Successfully exchanged auth code for access token');
+        return response.data;
+      } catch (error: any) {
+        logger.error('Failed to exchange auth code:', error);
+        throw error;
+      }
+    });
   }
 
   /**
@@ -352,30 +387,32 @@ export class TrackstarClient {
   }
 
   /**
-   * Get products from WMS
+   * Get products from WMS with circuit breaker protection
    */
   async getProducts(accessToken: string, filters: TrackstarFilters = {}): Promise<TrackstarListResponse<any>> {
-    try {
-      logger.info('Getting products from WMS with filters:', filters);
-      
-      // Use pagination to fetch all products
-      const allProducts = await this.fetchAllPages(accessToken, '/wms/products', filters);
-      
-      logger.info(`Successfully fetched ${allProducts.length} products from Trackstar`);
-      
-      return {
-        data: allProducts,
-        next_token: null,
-        total_count: allProducts.length
-      };
-    } catch (error: any) {
-      logger.error('Failed to get products from Trackstar:', {
-        error: error.message,
-        status: error.response?.status,
-        data: error.response?.data
-      });
-      throw error;
-    }
+    return this.circuitBreaker.execute(async () => {
+      try {
+        logger.info('Getting products from WMS with filters:', filters);
+        
+        // Use pagination to fetch all products
+        const allProducts = await this.fetchAllPages(accessToken, '/wms/products', filters);
+        
+        logger.info(`Successfully fetched ${allProducts.length} products from Trackstar`);
+        
+        return {
+          data: allProducts,
+          next_token: null,
+          total_count: allProducts.length
+        };
+      } catch (error: any) {
+        logger.error('Failed to get products from Trackstar:', {
+          error: error.message,
+          status: error.response?.status,
+          data: error.response?.data
+        });
+        throw error;
+      }
+    });
   }
 
   /**
@@ -431,57 +468,61 @@ export class TrackstarClient {
   }
 
   /**
-   * Get orders from WMS
+   * Get orders from WMS with circuit breaker protection
    */
   async getOrders(accessToken: string, filters: TrackstarFilters = {}): Promise<TrackstarListResponse<any>> {
-    try {
-      logger.info('Getting orders from WMS with filters:', filters);
-      
-      // Use pagination to fetch all orders
-      const allOrders = await this.fetchAllPages(accessToken, '/wms/orders', filters);
-      
-      logger.info(`Successfully fetched ${allOrders.length} orders from Trackstar`);
-      
-      return {
-        data: allOrders,
-        next_token: null,
-        total_count: allOrders.length
-      };
-    } catch (error: any) {
-      logger.error('Failed to get orders from Trackstar:', {
-        error: error.message,
-        status: error.response?.status,
-        data: error.response?.data
-      });
-      throw error;
-    }
+    return this.circuitBreaker.execute(async () => {
+      try {
+        logger.info('Getting orders from WMS with filters:', filters);
+        
+        // Use pagination to fetch all orders
+        const allOrders = await this.fetchAllPages(accessToken, '/wms/orders', filters);
+        
+        logger.info(`Successfully fetched ${allOrders.length} orders from Trackstar`);
+        
+        return {
+          data: allOrders,
+          next_token: null,
+          total_count: allOrders.length
+        };
+      } catch (error: any) {
+        logger.error('Failed to get orders from Trackstar:', {
+          error: error.message,
+          status: error.response?.status,
+          data: error.response?.data
+        });
+        throw error;
+      }
+    });
   }
 
   /**
-   * Get inventory from WMS
+   * Get inventory from WMS with circuit breaker protection
    */
   async getInventory(accessToken: string, filters: TrackstarFilters = {}): Promise<TrackstarListResponse<any>> {
-    try {
-      logger.info('Getting inventory from WMS with filters:', filters);
-      
-      // Use pagination to fetch all inventory
-      const allInventory = await this.fetchAllPages(accessToken, '/wms/inventory', filters);
-      
-      logger.info(`Successfully fetched ${allInventory.length} inventory records from Trackstar`);
-      
-      return {
-        data: allInventory,
-        next_token: null,
-        total_count: allInventory.length
-      };
-    } catch (error: any) {
-      logger.error('Failed to get inventory from Trackstar:', {
-        error: error.message,
-        status: error.response?.status,
-        data: error.response?.data
-      });
-      throw error;
-    }
+    return this.circuitBreaker.execute(async () => {
+      try {
+        logger.info('Getting inventory from WMS with filters:', filters);
+        
+        // Use pagination to fetch all inventory
+        const allInventory = await this.fetchAllPages(accessToken, '/wms/inventory', filters);
+        
+        logger.info(`Successfully fetched ${allInventory.length} inventory records from Trackstar`);
+        
+        return {
+          data: allInventory,
+          next_token: null,
+          total_count: allInventory.length
+        };
+      } catch (error: any) {
+        logger.error('Failed to get inventory from Trackstar:', {
+          error: error.message,
+          status: error.response?.status,
+          data: error.response?.data
+        });
+        throw error;
+      }
+    });
   }
 
   /**
@@ -717,5 +758,9 @@ export const trackstarClient = {
   reset() {
     logger.info('Resetting Trackstar client singleton');
     _trackstarClient = null;
+  },
+
+  getCircuitBreakerStats() {
+    return _trackstarClient?.circuitBreaker.getStats() || null;
   }
 };
