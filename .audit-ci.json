@@ -3,7 +3,6 @@
   "high": true,
   "critical": true,
   "allowlist": [],
-  "skip-dev": false,
-  "report-type": "important",
-  "package-manager": "npm"
+  "report-type": "summary",
+  "skip-dev": false
 }

@@ -39,6 +39,7 @@ class OrderService {
       }
 
       const data = await response.json();
+      console.log('📦 Order service response:', data);
       return data.order;
     } catch (error) {
       console.error('Error fetching order status:', error);

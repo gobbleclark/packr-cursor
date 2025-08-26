@@ -338,8 +338,13 @@ export function ChatWindow({ room, currentUser, onBackToWorkspaces, isMobile = f
                 />
                 
                 {/* Show bot responses tied to this specific message */}
-                {botResponses
-                  .filter(botResponse => botResponse.messageId === message.id)
+                {(() => {
+                  const matchingBotResponses = botResponses.filter(botResponse => botResponse.messageId === message.id);
+                  if (matchingBotResponses.length > 0) {
+                    console.log(`🤖 Found ${matchingBotResponses.length} bot responses for message ${message.id}:`, matchingBotResponses);
+                  }
+                  return matchingBotResponses;
+                })()
                   .map((botResponse) => (
                     <SystemBotMessage
                       key={botResponse.id}

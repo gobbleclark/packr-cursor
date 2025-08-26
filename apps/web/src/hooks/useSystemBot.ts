@@ -84,6 +84,7 @@ export function useSystemBot() {
         loading: true
       };
       
+      console.log(`🤖 Creating bot response for message ${messageId} with content: "${content}"`);
       setBotResponses(prev => [...prev, initialBotResponse]);
       
       // Fetch contextual actions based on order status
@@ -95,12 +96,15 @@ export function useSystemBot() {
         
         // Get order status for customer name and updated message
         const orderStatus = await orderService.getOrderStatus(systemResponse.orderNumber);
-        console.log('📦 Order status:', orderStatus);
+        console.log('📦 Order status for', systemResponse.orderNumber, ':', orderStatus);
+        console.log('📦 Customer name:', orderStatus?.customerName);
         
         // Create updated message with customer name if available
         const updatedMessage = orderStatus?.customerName 
           ? `I can help you with order #${systemResponse.orderNumber} for ${orderStatus.customerName}! What would you like to do?`
           : `I can help you with order #${systemResponse.orderNumber}! What would you like to do?`;
+        
+        console.log(`🤖 Updating bot response ${botResponseId} with message: "${updatedMessage}"`);
         
         // Update bot response with contextual actions and customer info
         setBotResponses(prev => prev.map(response => 
@@ -214,6 +218,7 @@ export function useSystemBot() {
           );
           
           if (matchingMessage) {
+            console.log(`🔄 Updating bot response ${response.id} from temp ID ${response.messageId} to real ID ${matchingMessage.id}`);
             updated = true;
             return { ...response, messageId: matchingMessage.id };
           }
