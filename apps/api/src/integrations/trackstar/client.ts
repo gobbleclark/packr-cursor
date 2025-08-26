@@ -499,14 +499,19 @@ export class TrackstarClient {
     try {
       logger.info('Getting ship methods from WMS with filters:', filters);
       
-      const response = await this.fetchAllPages<any>(
-        '/wms/shipmethods',
+      const allShipMethods = await this.fetchAllPages<any>(
         accessToken,
+        '/wms/shipmethods',
         filters
       );
       
-      logger.info(`Successfully fetched ${response.data.length} ship methods from Trackstar`);
-      return response;
+      logger.info(`Successfully fetched ${allShipMethods.length} ship methods from Trackstar`);
+      
+      return {
+        data: allShipMethods,
+        next_token: null,
+        total_count: allShipMethods.length
+      };
     } catch (error: any) {
       logger.error('Failed to fetch ship methods from Trackstar:', {
         error: error.message,
@@ -547,9 +552,17 @@ export class TrackstarClient {
   /**
    * Update order shipping address in WMS
    */
-  async updateOrderAddress(accessToken: string, externalOrderId: string, address: any): Promise<any> {
+  async updateOrderAddress(accessToken: string, externalOrderId: string, address: any, idempotencyKey?: string): Promise<any> {
     try {
       logger.info(`Updating order address in Trackstar: ${externalOrderId}`);
+      
+      const headers: any = {
+        'x-trackstar-access-token': accessToken
+      };
+      
+      if (idempotencyKey) {
+        headers['idempotency-key'] = idempotencyKey;
+      }
       
       const response = await this.axiosInstance.put(`/wms/orders/${externalOrderId}`, {
         ship_to_address: {
@@ -559,15 +572,13 @@ export class TrackstarClient {
           address2: address.address2,
           city: address.city,
           state: address.state,
-          zip_code: address.zipCode,
+          zip_code: address.postalCode || address.zipCode, // Handle both field names
           country: address.country,
           phone: address.phone,
           email: address.email
         }
       }, {
-        headers: {
-          'x-trackstar-access-token': accessToken
-        }
+        headers
       });
       
       logger.info('Successfully updated order address in Trackstar');
@@ -585,9 +596,17 @@ export class TrackstarClient {
   /**
    * Update order shipping method in WMS
    */
-  async updateOrderShipping(accessToken: string, externalOrderId: string, shipping: { carrier: string, service: string }): Promise<any> {
+  async updateOrderShipping(accessToken: string, externalOrderId: string, shipping: { carrier: string, service: string }, idempotencyKey?: string): Promise<any> {
     try {
       logger.info(`Updating order shipping method in Trackstar: ${externalOrderId}`);
+      
+      const headers: any = {
+        'x-trackstar-access-token': accessToken
+      };
+      
+      if (idempotencyKey) {
+        headers['idempotency-key'] = idempotencyKey;
+      }
       
       const response = await this.axiosInstance.put(`/wms/orders/${externalOrderId}`, {
         shipping_method: {
@@ -595,9 +614,7 @@ export class TrackstarClient {
           service: shipping.service
         }
       }, {
-        headers: {
-          'x-trackstar-access-token': accessToken
-        }
+        headers
       });
       
       logger.info('Successfully updated order shipping method in Trackstar');

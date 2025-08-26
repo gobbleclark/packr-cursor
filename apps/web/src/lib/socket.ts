@@ -89,6 +89,7 @@ export interface ChatTask {
   description?: string;
   status: 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+  categoryId?: string;
   assigneeId?: string;
   createdById: string;
   createdFromMessageId?: string;
@@ -107,6 +108,12 @@ export interface ChatTask {
     id: string;
     firstName: string;
     lastName: string;
+  };
+  category?: {
+    id: string;
+    name: string;
+    description?: string;
+    color?: string;
   };
   linkedOrder?: {
     id: string;
@@ -302,7 +309,7 @@ class SocketService {
   }
 
   // Remove event listeners
-  off(event: string, callback?: Function) {
+  off(event: string, callback?: (...args: any[]) => void) {
     if (!this.socket) return;
     this.socket.off(event, callback);
   }

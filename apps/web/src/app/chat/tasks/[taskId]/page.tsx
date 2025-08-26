@@ -332,11 +332,11 @@ function TaskDetailContent() {
                     {task.priority}
                   </span>
                 </div>
-                {task.category && (
+                {task.category?.name && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Category</span>
                     <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800">
-                      {task.category}
+                      {task.category.name}
                     </span>
                   </div>
                 )}

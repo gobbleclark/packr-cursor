@@ -56,6 +56,8 @@ class OrderService {
       label: string;
       icon: string;
       primary?: boolean;
+      disabled?: boolean;
+      disabledReason?: string;
     }>,
     orderStatus: OrderStatus | null
   ): Array<{

@@ -52,6 +52,7 @@ export function useChatMessages(roomId: string | null) {
       if (!roomId) throw new Error('Room ID required');
       return chatAPI.getMessages(roomId, pageParam);
     },
+    initialPageParam: undefined,
     getNextPageParam: (lastPage) => {
       if (!lastPage.messages.length) return undefined;
       return lastPage.messages[0].createdAt; // Use first message timestamp for pagination

@@ -515,4 +515,150 @@ describe('Orders API', () => {
       });
     });
   });
+
+  describe('POST /api/orders/:id/address', () => {
+    it('should update order address successfully', async () => {
+      const mockOrder = {
+        id: 'order-1',
+        orderNumber: 'ORD-001',
+        externalId: 'trackstar-123',
+        brandId: 'brand-1',
+        threeplId: 'threepl-1'
+      };
+
+      const mockIntegration = {
+        id: 'integration-1',
+        brandId: 'brand-1',
+        provider: 'TRACKSTAR',
+        status: 'ACTIVE',
+        accessToken: 'token-123'
+      };
+
+      mockPrisma.order.findFirst.mockResolvedValue(mockOrder);
+      mockPrisma.brandIntegration.findFirst.mockResolvedValue(mockIntegration);
+      mockTrackstarClient.updateOrderAddress.mockResolvedValue({ success: true });
+
+      const addressData = {
+        fullName: 'John Doe',
+        address1: '123 Test St',
+        city: 'Test City',
+        state: 'TS',
+        postalCode: '12345',
+        country: 'US'
+      };
+
+      const response = await request(app)
+        .post('/api/orders/order-1/address')
+        .send(addressData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(mockTrackstarClient.updateOrderAddress).toHaveBeenCalledWith(
+        'token-123',
+        'trackstar-123',
+        addressData,
+        expect.any(String)
+      );
+    });
+
+    it('should return 400 for missing required fields', async () => {
+      const response = await request(app)
+        .post('/api/orders/order-1/address')
+        .send({
+          fullName: 'John Doe'
+          // Missing required fields
+        })
+        .expect(400);
+
+      expect(response.body.error).toBe('Missing required address fields');
+    });
+  });
+
+  describe('POST /api/orders/:id/items', () => {
+    it('should update order items successfully', async () => {
+      const mockOrder = {
+        id: 'order-1',
+        orderNumber: 'ORD-001',
+        externalId: 'trackstar-123',
+        brandId: 'brand-1',
+        threeplId: 'threepl-1'
+      };
+
+      const mockIntegration = {
+        id: 'integration-1',
+        brandId: 'brand-1',
+        provider: 'TRACKSTAR',
+        status: 'ACTIVE',
+        accessToken: 'token-123'
+      };
+
+      mockPrisma.order.findFirst.mockResolvedValue(mockOrder);
+      mockPrisma.brandIntegration.findFirst.mockResolvedValue(mockIntegration);
+      mockTrackstarClient.updateOrderItems.mockResolvedValue({ success: true });
+
+      const itemsData = {
+        items: [
+          { sku: 'TEST-001', quantity: 2 },
+          { sku: 'TEST-002', quantity: 1 }
+        ]
+      };
+
+      const response = await request(app)
+        .post('/api/orders/order-1/items')
+        .send(itemsData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(mockTrackstarClient.updateOrderItems).toHaveBeenCalledWith(
+        'token-123',
+        'trackstar-123',
+        itemsData.items,
+        expect.any(String)
+      );
+    });
+  });
+
+  describe('POST /api/orders/:id/cancel', () => {
+    it('should cancel order successfully', async () => {
+      const mockOrder = {
+        id: 'order-1',
+        orderNumber: 'ORD-001',
+        externalId: 'trackstar-123',
+        brandId: 'brand-1',
+        threeplId: 'threepl-1',
+        status: 'PENDING'
+      };
+
+      const mockIntegration = {
+        id: 'integration-1',
+        brandId: 'brand-1',
+        provider: 'TRACKSTAR',
+        status: 'ACTIVE',
+        accessToken: 'token-123'
+      };
+
+      mockPrisma.order.findFirst.mockResolvedValue(mockOrder);
+      mockPrisma.brandIntegration.findFirst.mockResolvedValue(mockIntegration);
+      mockPrisma.order.update.mockResolvedValue({ ...mockOrder, status: 'CANCELLED' });
+      mockPrisma.orderNote.create.mockResolvedValue({ id: 'note-1' });
+      mockTrackstarClient.cancelOrder.mockResolvedValue({ success: true });
+
+      const cancelData = {
+        reason: 'Customer requested cancellation'
+      };
+
+      const response = await request(app)
+        .post('/api/orders/order-1/cancel')
+        .send(cancelData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(mockTrackstarClient.cancelOrder).toHaveBeenCalledWith(
+        'token-123',
+        'trackstar-123',
+        cancelData.reason,
+        expect.any(String)
+      );
+    });
+  });
 });

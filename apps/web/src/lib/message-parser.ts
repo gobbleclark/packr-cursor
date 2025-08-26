@@ -66,8 +66,9 @@ export function parseMessage(content: string): ParsedMessage {
 
   // Detect order numbers
   ORDER_PATTERNS.forEach(pattern => {
-    const matches = [...content.matchAll(pattern)];
-    matches.forEach(match => {
+    let match;
+    const regex = new RegExp(pattern.source, pattern.flags);
+    while ((match = regex.exec(content)) !== null) {
       // Extract the clean order number (removing hash prefixes)
       let orderNumber = '';
       let orderNumberMatch = '';
@@ -97,13 +98,17 @@ export function parseMessage(content: string): ParsedMessage {
           orderNumbers.push(orderNumber);
         }
       }
-    });
+      
+      // Prevent infinite loop for global regex
+      if (!regex.global) break;
+    }
   });
 
   // Detect SKUs
   SKU_PATTERNS.forEach(pattern => {
-    const matches = [...content.matchAll(pattern)];
-    matches.forEach(match => {
+    let match;
+    const regex = new RegExp(pattern.source, pattern.flags);
+    while ((match = regex.exec(content)) !== null) {
       if (match[1]) {
         entities.push({
           type: 'sku',
@@ -113,13 +118,17 @@ export function parseMessage(content: string): ParsedMessage {
           confidence: 0.9
         });
       }
-    });
+      
+      // Prevent infinite loop for global regex
+      if (!regex.global) break;
+    }
   });
 
   // Detect tracking numbers
   TRACKING_PATTERNS.forEach(pattern => {
-    const matches = [...content.matchAll(pattern)];
-    matches.forEach(match => {
+    let match;
+    const regex = new RegExp(pattern.source, pattern.flags);
+    while ((match = regex.exec(content)) !== null) {
       if (match[1]) {
         entities.push({
           type: 'tracking',
@@ -129,7 +138,10 @@ export function parseMessage(content: string): ParsedMessage {
           confidence: 0.95
         });
       }
-    });
+      
+      // Prevent infinite loop for global regex
+      if (!regex.global) break;
+    }
   });
 
   // Remove duplicates and sort by confidence
@@ -141,7 +153,7 @@ export function parseMessage(content: string): ParsedMessage {
     originalContent: content,
     entities: uniqueEntities,
     hasOrderNumber: orderNumbers.length > 0,
-    orderNumbers: [...new Set(orderNumbers)] // Remove duplicates
+    orderNumbers: Array.from(new Set(orderNumbers)) // Remove duplicates
   };
 }
 
@@ -237,7 +249,7 @@ export function generateSystemResponse(parsedMessage: ParsedMessage): {
   const orderNumber = parsedMessage.orderNumbers[0]; // Use first detected order
   
   // Generate basic action cards - these will be refined based on actual order status
-  const baseActionCards = [
+  const baseActionCards: Array<{ action: string; label: string; icon: string; primary?: boolean; disabled?: boolean; disabledReason?: string }> = [
     { action: 'view_order', label: 'View Order', icon: '👁️' },
     { action: 'edit_address', label: 'Edit Shipping Address', icon: '🏠' },
     { action: 'edit_carrier', label: 'Edit Shipping Carrier', icon: '🚚' },

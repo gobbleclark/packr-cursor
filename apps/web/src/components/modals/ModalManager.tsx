@@ -2,11 +2,10 @@
 
 import React from 'react';
 import { ViewOrderModal } from './ViewOrderModal';
-// Import other modals as we create them
-// import { EditAddressModal } from './EditAddressModal';
-// import { EditCarrierModal } from './EditCarrierModal';
-// import { EditItemsModal } from './EditItemsModal';
-// import { TrackOrderModal } from './TrackOrderModal';
+import { ChatEditAddressModal } from './ChatEditAddressModal';
+import { ChatEditCarrierModal } from './ChatEditCarrierModal';
+import { ChatEditItemsModal } from './ChatEditItemsModal';
+import { ChatTrackOrderModal } from './ChatTrackOrderModal';
 
 /**
  * Central modal manager that renders all modals
@@ -16,11 +15,10 @@ export function ModalManager() {
   return (
     <>
       <ViewOrderModal />
-      {/* Add other modals here as we create them */}
-      {/* <EditAddressModal />
-      <EditCarrierModal />
-      <EditItemsModal />
-      <TrackOrderModal /> */}
+      <ChatEditAddressModal />
+      <ChatEditCarrierModal />
+      <ChatEditItemsModal />
+      <ChatTrackOrderModal />
     </>
   );
 }

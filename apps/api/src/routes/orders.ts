@@ -1419,7 +1419,7 @@ router.post('/:id/shipping', authenticateToken, async (req, res) => {
 
     // Update shipping in Trackstar
     const shipping = { carrier, service };
-    await trackstarClient.instance.updateOrderShippingMethod(integration.accessToken, order.externalId, shipping, idempotencyKey);
+    await trackstarClient.instance.updateOrderShipping(integration.accessToken, order.externalId, shipping, idempotencyKey);
 
     // Log the operation
     logger.info('Order shipping updated', {
