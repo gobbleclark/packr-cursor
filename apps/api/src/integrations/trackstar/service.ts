@@ -3,6 +3,7 @@ import { trackstarClient, TrackstarFilters } from './client';
 import { logger } from '../../utils/logger';
 import { Queue, Worker, Job } from 'bullmq';
 import { redis } from '../../lib/redis';
+import { normalizeOrderNumber } from '../../utils/order-utils';
 
 export class TrackstarIntegrationService {
   private syncQueue: Queue;
@@ -749,7 +750,7 @@ export class TrackstarIntegrationService {
 
         // Map comprehensive order data from Trackstar API response
         const orderData = {
-          orderNumber: order.order_number || order.reference_id || order.id,
+          orderNumber: normalizeOrderNumber(order.order_number || order.reference_id || order.id),
           customerId: order.warehouse_customer_id || 'unknown',
           customerEmail: order.ship_to_address?.email_address,
           customerName: order.ship_to_address?.full_name || order.ship_to_address?.company,
@@ -1034,7 +1035,7 @@ export class TrackstarIntegrationService {
         const backorderInfo = await this.checkBackorderStatus(brandId, order.line_items || []);
 
         const orderData = {
-          orderNumber: order.order_number,
+          orderNumber: normalizeOrderNumber(order.order_number),
           customerEmail: order.ship_to_address?.email_address,
           customerName: order.ship_to_address?.full_name || order.ship_to_address?.company,
           status: this.mapOrderStatus(order.status, order.raw_status),
@@ -1264,7 +1265,7 @@ export class TrackstarIntegrationService {
         }
       },
       update: {
-        orderNumber: data.order_number || data.id,
+        orderNumber: normalizeOrderNumber(data.order_number || data.id),
         customerId: data.customer_id || 'unknown',
         customerEmail: data.customer_email,
         customerName: data.customer_name,
@@ -1281,7 +1282,7 @@ export class TrackstarIntegrationService {
         threeplId: brand.threeplId,
         brandId,
         externalId: data.id,
-        orderNumber: data.order_number || data.id,
+        orderNumber: normalizeOrderNumber(data.order_number || data.id),
         customerId: data.customer_id || 'unknown',
         customerEmail: data.customer_email,
         customerName: data.customer_name,
