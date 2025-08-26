@@ -20,23 +20,23 @@ export interface ParsedMessage {
 
 /**
  * Order number patterns to detect:
- * - #12345, #ORDER-12345
+ * - #12345, ##12345 (legacy with hashes - normalize to clean number)
  * - Order 12345, Order #12345
  * - order number 12345
  * - Various formats with letters/numbers
  */
 const ORDER_PATTERNS = [
-  // Hash prefix: #12345, #ORDER-12345, #ORD123
-  /(?:^|\s)#([A-Z]*[0-9]{3,}[A-Z0-9]*)/gi,
+  // Hash prefix: #12345, ##12345, #ORDER-12345 (normalize by removing hashes)
+  /(?:^|\s)(#+)([A-Z]*[0-9]{3,}[A-Z0-9]*)/gi,
   
   // Order keyword: "Order 12345", "order #12345", "order number 12345"
-  /(?:^|\s)order\s*(?:number\s*)?#?([A-Z0-9]{3,})/gi,
+  /(?:^|\s)order\s*(?:number\s*)?(#+)?([A-Z0-9]{3,})/gi,
   
   // Order ID patterns: "order id: 12345"
-  /(?:^|\s)order\s*id\s*:?\s*#?([A-Z0-9]{3,})/gi,
+  /(?:^|\s)order\s*id\s*:?\s*(#+)?([A-Z0-9]{3,})/gi,
   
   // Standalone numbers that look like orders (5+ digits)
-  /(?:^|\s)#?([0-9]{5,})/g,
+  /(?:^|\s)(#+)?([0-9]{5,})/g,
 ];
 
 /**
@@ -68,15 +68,28 @@ export function parseMessage(content: string): ParsedMessage {
   ORDER_PATTERNS.forEach(pattern => {
     const matches = [...content.matchAll(pattern)];
     matches.forEach(match => {
-      if (match[1]) {
-        const orderNumber = match[1].toUpperCase();
-        const startIndex = match.index! + match[0].indexOf(match[1]);
+      // Extract the clean order number (removing hash prefixes)
+      let orderNumber = '';
+      let orderNumberMatch = '';
+      
+      if (match[2]) {
+        // Pattern with hash prefix: match[1] = hashes, match[2] = order number
+        orderNumber = match[2].toUpperCase();
+        orderNumberMatch = match[2];
+      } else if (match[1] && !match[2]) {
+        // Pattern without hash prefix: match[1] = order number
+        orderNumber = match[1].toUpperCase();
+        orderNumberMatch = match[1];
+      }
+      
+      if (orderNumber && orderNumberMatch) {
+        const startIndex = match.index! + match[0].indexOf(orderNumberMatch);
         
         entities.push({
           type: 'order',
-          value: orderNumber,
+          value: orderNumber, // Store clean order number without hashes
           startIndex,
-          endIndex: startIndex + match[1].length,
+          endIndex: startIndex + orderNumberMatch.length,
           confidence: calculateOrderConfidence(match[0], content)
         });
         

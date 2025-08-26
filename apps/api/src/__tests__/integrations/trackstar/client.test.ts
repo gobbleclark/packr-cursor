@@ -305,18 +305,18 @@ describe('TrackstarClient', () => {
     });
 
     it('should handle network errors', async () => {
-      // Mock any GET request to /wms/orders
+      // Mock any GET request to any path
       nock(baseURL)
-        .get(/\/wms\/orders.*/)
+        .get(() => true) // Match any path
         .replyWithError(new Error('Network error'));
 
       await expect(client.getOrders(accessToken)).rejects.toThrow('Network error');
     });
 
     it('should handle invalid JSON responses', async () => {
-      // Mock any GET request to /wms/orders
+      // Mock any GET request to any path
       nock(baseURL)
-        .get(/\/wms\/orders.*/)
+        .get(() => true) // Match any path
         .reply(200, 'Invalid JSON', { 'Content-Type': 'text/plain' });
 
       await expect(client.getOrders(accessToken)).rejects.toThrow();
