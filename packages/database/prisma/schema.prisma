@@ -33,6 +33,15 @@ model User {
   passwordResets PasswordReset[]
   notificationPreferences NotificationPreference?
   orderNotes     OrderNote[]
+  
+  // Chat & Task relationships
+  chatMessages   ChatMessage[]
+  chatMentions   ChatMention[]
+  readReceipts   ReadReceipt[]
+  assignedTasks  ChatTask[]    @relation("TaskAssignee")
+  createdTasks   ChatTask[]    @relation("TaskCreatedBy")
+  notifyTasks    ChatTask[]    @relation("TaskNotifyUser")
+  taskComments   TaskComment[]
 
   @@map("users")
 }
@@ -61,6 +70,10 @@ model ThreePL {
   messageStatuses  MessageStatus[]
   messages         Message[]
   brandInvitations BrandInvitation[]
+  taskCategories   TaskCategory[]
+  
+  // Chat relationships
+  chatRooms        ChatRoom[]
 
   @@map("threepls")
 }
@@ -86,6 +99,9 @@ model Brand {
   webhookEventsV2 WebhookEventV2[]
   messages  Message[]
   invitations BrandInvitation[]
+  
+  // Chat relationships
+  chatRooms ChatRoom[]
 
   @@unique([threeplId, slug])
   @@map("brands")
@@ -209,6 +225,9 @@ model Order {
   orderItems OrderItem[]
   shipments Shipment[]
   orderNotes OrderNote[]
+  
+  // Chat relationships
+  linkedTasks ChatTask[]
 
   @@unique([threeplId, orderNumber])
   @@unique([brandId, externalId])
@@ -658,6 +677,203 @@ enum JobRunStatus {
 }
 
 enum MessagePriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// ============================================================================
+// CHAT & TASK SYSTEM MODELS
+// ============================================================================
+
+model ChatRoom {
+  id        String   @id @default(cuid())
+  threeplId String
+  brandId   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  threepl      ThreePL       @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+  brand        Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  chatMessages ChatMessage[]
+  chatTasks    ChatTask[]
+  readReceipts ReadReceipt[]
+
+  @@unique([threeplId, brandId])
+  @@map("chat_rooms")
+}
+
+model ChatMessage {
+  id         String    @id @default(cuid())
+  roomId     String
+  userId     String
+  content    String?   // Text content (optional if only attachments)
+  messageType ChatMessageType @default(TEXT)
+  parentId   String?   // For threading/replies
+  editedAt   DateTime?
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relationships
+  room         ChatRoom          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       ChatMessage?      @relation("MessageReplies", fields: [parentId], references: [id])
+  replies      ChatMessage[]     @relation("MessageReplies")
+  attachments  ChatAttachment[]
+  mentions     ChatMention[]
+  readReceipts ReadReceipt[]
+  createdTasks ChatTask[]        @relation("TaskCreatedFromMessage")
+
+  @@index([roomId, createdAt])
+  @@index([userId])
+  @@map("chat_messages")
+}
+
+model ChatAttachment {
+  id          String   @id @default(cuid())
+  messageId   String
+  filename    String
+  originalName String
+  mimeType    String
+  fileSize    Int
+  s3Key       String   // S3 object key
+  s3Bucket    String   // S3 bucket name
+  thumbnailKey String? // For image thumbnails
+  createdAt   DateTime @default(now())
+
+  // Relationships
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("chat_attachments")
+}
+
+model ChatMention {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String   // User being mentioned
+  createdAt DateTime @default(now())
+
+  // Relationships
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("chat_mentions")
+}
+
+model ReadReceipt {
+  id        String   @id @default(cuid())
+  roomId    String
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+
+  // Relationships
+  room    ChatRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([roomId, userId])
+  @@map("read_receipts")
+}
+
+model TaskCategory {
+  id          String   @id @default(cuid())
+  name        String   // e.g., "Shipment", "Tracking", "Inventory", "Customer Service"
+  description String?
+  color       String?  // Hex color for UI display
+  threeplId   String   // Categories are per 3PL
+  isDefault   Boolean  @default(false) // System default categories
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  threepl ThreePL    @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+  tasks   ChatTask[]
+
+  @@unique([threeplId, name])
+  @@index([threeplId])
+  @@map("task_categories")
+}
+
+model ChatTask {
+  id                    String       @id @default(cuid())
+  roomId                String
+  title                 String
+  description           String?
+  status                ChatTaskStatus @default(TODO)
+  priority              TaskPriority   @default(NORMAL)
+  categoryId            String?      // Custom task category (optional)
+  assigneeId            String?      // 3PL user assigned to task
+  createdById           String       // User who created the task
+  createdFromMessageId  String?      // If created from a chat message
+  linkedOrderId         String?      // Link to Trackstar order
+  dueDate               DateTime?
+  completedAt           DateTime?
+  notifyBrandUserId     String?      // Brand user to notify when complete
+  notifiedAt            DateTime?    // When notification was sent
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  // Relationships
+  room              ChatRoom      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  category          TaskCategory? @relation(fields: [categoryId], references: [id])
+  assignee          User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy         User          @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  createdFromMessage ChatMessage? @relation("TaskCreatedFromMessage", fields: [createdFromMessageId], references: [id])
+  notifyBrandUser   User?         @relation("TaskNotifyUser", fields: [notifyBrandUserId], references: [id])
+  linkedOrder       Order?        @relation(fields: [linkedOrderId], references: [id])
+  comments          TaskComment[]
+
+  @@index([roomId, status])
+  @@index([assigneeId])
+  @@index([dueDate])
+  @@index([categoryId])
+  @@map("chat_tasks")
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  task ChatTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+  @@map("task_comments")
+}
+
+// ============================================================================
+// ENUMS FOR CHAT & TASK SYSTEM
+// ============================================================================
+
+enum ChatMessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM      // System-generated messages
+  TASK_CREATED
+  TASK_UPDATED
+}
+
+enum ChatTaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
   LOW
   NORMAL
   HIGH

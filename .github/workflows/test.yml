@@ -65,7 +65,7 @@ jobs:
           DATABASE_URL: postgresql://test:test@localhost:5432/packr_test
 
       - name: Run API tests
-        run: npm run test:ci
+        run: npm test -- --ci --watchAll=false --coverage
         working-directory: apps/api
         env:
           NODE_ENV: test

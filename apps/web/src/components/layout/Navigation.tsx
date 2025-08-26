@@ -52,10 +52,10 @@ export function Navigation({ user, onLogout }: NavigationProps) {
       description: 'Manage brand clients'
     },
     {
-      name: 'Messages',
-      href: '/messages',
+      name: 'Workspace',
+      href: '/chat',
       icon: MessageSquare,
-      description: 'Customer communications'
+      description: 'Real-time chat & tasks'
     },
     {
       name: 'Users',
