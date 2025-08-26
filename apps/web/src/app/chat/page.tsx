@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { authService } from '../../lib/auth';
 import { ChatInterface } from '../../components/chat/ChatInterface';
+import { ModalProvider } from '../../contexts/ModalContext';
+import { ModalManager } from '../../components/modals/ModalManager';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,7 +64,10 @@ export default function ChatPage() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ChatInterface user={user} onLogout={handleLogout} />
+      <ModalProvider>
+        <ChatInterface user={user} onLogout={handleLogout} />
+        <ModalManager />
+      </ModalProvider>
     </QueryClientProvider>
   );
 }

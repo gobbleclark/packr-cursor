@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Bot, Eye, Home, Package, Phone, MessageCircle, Zap, X, Edit, Truck } from 'lucide-react';
+import { useModal } from '../../contexts/ModalContext';
 
 interface ActionCard {
   action: string;
@@ -37,12 +38,13 @@ const iconMap: Record<string, React.ComponentType<any>> = {
 export function SystemBotMessage({ 
   message, 
   actionCards, 
-  orderNumber, 
-  onActionClick, 
+  orderNumber,
+  onActionClick,
   onDismiss,
   loading = false,
   threeplName
 }: SystemBotMessageProps) {
+  const { openModal } = useModal();
   const [isVisible, setIsVisible] = useState(true);
 
   const handleDismiss = () => {
@@ -51,6 +53,33 @@ export function SystemBotMessage({
   };
 
   const handleActionClick = (action: string) => {
+    // Handle modal actions
+    if (action === 'view_order' && orderNumber) {
+      openModal('view_order', { orderNumber });
+      return;
+    }
+    
+    if (action === 'edit_address' && orderNumber) {
+      openModal('edit_address', { orderNumber });
+      return;
+    }
+    
+    if (action === 'edit_carrier' && orderNumber) {
+      openModal('edit_carrier', { orderNumber });
+      return;
+    }
+    
+    if (action === 'edit_items' && orderNumber) {
+      openModal('edit_items', { orderNumber });
+      return;
+    }
+    
+    if (action === 'track_order' && orderNumber) {
+      openModal('track_order', { orderNumber });
+      return;
+    }
+    
+    // Fallback to original handler for other actions
     onActionClick(action, orderNumber);
   };
 

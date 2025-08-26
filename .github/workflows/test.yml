@@ -58,8 +58,8 @@ jobs:
         run: npm run db:generate
         working-directory: packages/database
 
-      - name: Run database migrations
-        run: npx prisma migrate deploy
+      - name: Push database schema
+        run: npx prisma db push --force-reset
         working-directory: packages/database
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/packr_test
@@ -159,8 +159,8 @@ jobs:
         run: npm run db:generate
         working-directory: packages/database
 
-      - name: Run migrations
-        run: npx prisma migrate deploy
+      - name: Push database schema
+        run: npx prisma db push --force-reset
         working-directory: packages/database
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/packr_test

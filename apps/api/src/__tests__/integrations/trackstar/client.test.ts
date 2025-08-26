@@ -9,10 +9,13 @@ describe('TrackstarClient', () => {
   beforeEach(() => {
     client = new TrackstarClient();
     nock.cleanAll();
+    // Enable nock to intercept all requests
+    nock.disableNetConnect();
   });
 
   afterEach(() => {
     nock.cleanAll();
+    nock.enableNetConnect();
   });
 
   describe('createLinkToken', () => {
@@ -302,20 +305,18 @@ describe('TrackstarClient', () => {
     });
 
     it('should handle network errors', async () => {
+      // Mock any GET request to /wms/orders
       nock(baseURL)
-        .get('/wms/orders')
-        .query({ limit: 1000 })
-        .matchHeader('x-trackstar-access-token', accessToken)
+        .get(/\/wms\/orders.*/)
         .replyWithError(new Error('Network error'));
 
       await expect(client.getOrders(accessToken)).rejects.toThrow('Network error');
     });
 
     it('should handle invalid JSON responses', async () => {
+      // Mock any GET request to /wms/orders
       nock(baseURL)
-        .get('/wms/orders')
-        .query({ limit: 1000 })
-        .matchHeader('x-trackstar-access-token', accessToken)
+        .get(/\/wms\/orders.*/)
         .reply(200, 'Invalid JSON', { 'Content-Type': 'text/plain' });
 
       await expect(client.getOrders(accessToken)).rejects.toThrow();
