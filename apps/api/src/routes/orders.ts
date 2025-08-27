@@ -32,14 +32,25 @@ router.get('/', authenticateToken, async (req, res) => {
     let whereClause: any = {};
 
     if (userRole.includes('THREEPL')) {
-      // 3PL users can see all brands under them
-      whereClause.threeplId = userThreeplId;
+      // 3PL users can see all brands under their 3PL
+      whereClause.brand = { threeplId: userThreeplId };
       if (brandId && brandId !== 'all') {
         whereClause.brandId = brandId;
       }
-    } else {
+    } else if (userBrandId) {
       // Brand users can only see their own orders
       whereClause.brandId = userBrandId;
+    } else {
+      // No brand access - return empty results
+      return res.json({
+        orders: [],
+        pagination: {
+          page: parseInt(page as string),
+          limit: parseInt(limit as string),
+          total: 0,
+          totalPages: 0
+        }
+      });
     }
 
     // Apply status filter
@@ -181,22 +192,31 @@ router.get('/', authenticateToken, async (req, res) => {
  * Get a specific order by ID with full details
  * GET /api/orders/:orderId
  */
-router.get('/:orderId', async (req, res) => {
+router.get('/:orderId', authenticateToken, async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    // Get user info from auth headers
-    const userRole = req.headers['x-user-role'] || 'THREEPL_USER';
-    const userThreeplId = req.headers['x-threepl-id'] as string;
-    const userBrandId = req.headers['x-brand-id'] as string;
+    // Get user info from auth middleware
+    const userRole = req.user.role;
+    const userThreeplId = req.user.threeplId;
+    const userBrandId = req.user.brandId;
 
     // Build where clause based on user role
     let whereClause: any = { id: orderId };
 
     if (userRole.includes('THREEPL')) {
-      whereClause.threeplId = userThreeplId;
-    } else {
+      // 3PL users can see orders from brands under their 3PL
+      whereClause.brand = { threeplId: userThreeplId };
+    } else if (userBrandId) {
+      // Brand users can only see their own orders
       whereClause.brandId = userBrandId;
+    } else {
+      // No access
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        message: 'You do not have permission to view this order'
+      });
     }
 
     const order = await prisma.order.findFirst({
@@ -285,23 +305,32 @@ router.get('/:orderId', async (req, res) => {
  * Update order status
  * PUT /api/orders/:orderId/status
  */
-router.put('/:orderId/status', async (req, res) => {
+router.put('/:orderId/status', authenticateToken, async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status } = req.body;
 
-    // Get user info from auth headers
-    const userRole = req.headers['x-user-role'] || 'THREEPL_USER';
-    const userThreeplId = req.headers['x-threepl-id'] as string;
-    const userBrandId = req.headers['x-brand-id'] as string;
+    // Get user info from auth middleware
+    const userRole = req.user.role;
+    const userThreeplId = req.user.threeplId;
+    const userBrandId = req.user.brandId;
 
     // Build where clause based on user role
     let whereClause: any = { id: orderId };
 
     if (userRole.includes('THREEPL')) {
-      whereClause.threeplId = userThreeplId;
-    } else {
+      // 3PL users can see orders from brands under their 3PL
+      whereClause.brand = { threeplId: userThreeplId };
+    } else if (userBrandId) {
+      // Brand users can only see their own orders
       whereClause.brandId = userBrandId;
+    } else {
+      // No access
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        message: 'You do not have permission to modify this order'
+      });
     }
 
     // Check if order exists and user has access
@@ -390,23 +419,32 @@ router.put('/:orderId/status', async (req, res) => {
  * Update shipping address
  * PUT /api/orders/:orderId/shipping-address
  */
-router.put('/:orderId/shipping-address', async (req, res) => {
+router.put('/:orderId/shipping-address', authenticateToken, async (req, res) => {
   try {
     const { orderId } = req.params;
     const shippingAddress = req.body;
 
-    // Get user info from auth headers
-    const userRole = req.headers['x-user-role'] || 'THREEPL_USER';
-    const userThreeplId = req.headers['x-threepl-id'] as string;
-    const userBrandId = req.headers['x-brand-id'] as string;
+    // Get user info from auth middleware
+    const userRole = req.user.role;
+    const userThreeplId = req.user.threeplId;
+    const userBrandId = req.user.brandId;
 
     // Build where clause based on user role
     let whereClause: any = { id: orderId };
 
     if (userRole.includes('THREEPL')) {
-      whereClause.threeplId = userThreeplId;
-    } else {
+      // 3PL users can see orders from brands under their 3PL
+      whereClause.brand = { threeplId: userThreeplId };
+    } else if (userBrandId) {
+      // Brand users can only see their own orders
       whereClause.brandId = userBrandId;
+    } else {
+      // No access
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        message: 'You do not have permission to modify this order'
+      });
     }
 
     // Check if order exists and user has access
@@ -517,23 +555,32 @@ router.put('/:orderId/shipping-address', async (req, res) => {
  * Update shipping information
  * PUT /api/orders/:orderId/shipping
  */
-router.put('/:orderId/shipping', async (req, res) => {
+router.put('/:orderId/shipping', authenticateToken, async (req, res) => {
   try {
     const { orderId } = req.params;
     const { carrier, service } = req.body;
 
-    // Get user info from auth headers
-    const userRole = req.headers['x-user-role'] || 'THREEPL_USER';
-    const userThreeplId = req.headers['x-threepl-id'] as string;
-    const userBrandId = req.headers['x-brand-id'] as string;
+    // Get user info from auth middleware
+    const userRole = req.user.role;
+    const userThreeplId = req.user.threeplId;
+    const userBrandId = req.user.brandId;
 
     // Build where clause based on user role
     let whereClause: any = { id: orderId };
 
     if (userRole.includes('THREEPL')) {
-      whereClause.threeplId = userThreeplId;
-    } else {
+      // 3PL users can see orders from brands under their 3PL
+      whereClause.brand = { threeplId: userThreeplId };
+    } else if (userBrandId) {
+      // Brand users can only see their own orders
       whereClause.brandId = userBrandId;
+    } else {
+      // No access
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        message: 'You do not have permission to modify this order'
+      });
     }
 
     // Check if order exists and user has access
@@ -654,24 +701,33 @@ router.put('/:orderId/shipping', async (req, res) => {
  * Add order note
  * POST /api/orders/:orderId/notes
  */
-router.post('/:orderId/notes', async (req, res) => {
+router.post('/:orderId/notes', authenticateToken, async (req, res) => {
   try {
     const { orderId } = req.params;
     const { content } = req.body;
 
-    // Get user info from auth headers
-    const userRole = req.headers['x-user-role'] || 'THREEPL_USER';
-    const userThreeplId = req.headers['x-threepl-id'] as string;
-    const userBrandId = req.headers['x-brand-id'] as string;
-    const userId = req.headers['x-user-id'] as string;
+    // Get user info from auth middleware
+    const userRole = req.user.role;
+    const userThreeplId = req.user.threeplId;
+    const userBrandId = req.user.brandId;
+    const userId = req.user.id;
 
     // Build where clause based on user role
     let whereClause: any = { id: orderId };
 
     if (userRole.includes('THREEPL')) {
-      whereClause.threeplId = userThreeplId;
-    } else {
+      // 3PL users can see orders from brands under their 3PL
+      whereClause.brand = { threeplId: userThreeplId };
+    } else if (userBrandId) {
+      // Brand users can only see their own orders
       whereClause.brandId = userBrandId;
+    } else {
+      // No access
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        message: 'You do not have permission to modify this order'
+      });
     }
 
     // Check if order exists and user has access
@@ -729,22 +785,31 @@ router.post('/:orderId/notes', async (req, res) => {
  * Get order notes
  * GET /api/orders/:orderId/notes
  */
-router.get('/:orderId/notes', async (req, res) => {
+router.get('/:orderId/notes', authenticateToken, async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    // Get user info from auth headers
-    const userRole = req.headers['x-user-role'] || 'THREEPL_USER';
-    const userThreeplId = req.headers['x-threepl-id'] as string;
-    const userBrandId = req.headers['x-brand-id'] as string;
+    // Get user info from auth middleware
+    const userRole = req.user.role;
+    const userThreeplId = req.user.threeplId;
+    const userBrandId = req.user.brandId;
 
     // Build where clause based on user role
     let whereClause: any = { id: orderId };
 
     if (userRole.includes('THREEPL')) {
-      whereClause.threeplId = userThreeplId;
-    } else {
+      // 3PL users can see orders from brands under their 3PL
+      whereClause.brand = { threeplId: userThreeplId };
+    } else if (userBrandId) {
+      // Brand users can only see their own orders
       whereClause.brandId = userBrandId;
+    } else {
+      // No access
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        message: 'You do not have permission to view this order'
+      });
     }
 
     // Check if order exists and user has access

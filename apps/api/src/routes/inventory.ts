@@ -48,28 +48,44 @@ router.get('/', authenticateToken, async (req, res) => {
     // RBAC: Brand users can only see their brand's inventory
     if (user.role === 'BRAND_ADMIN' || user.role === 'BRAND_USER') {
       if (!user.brandId) {
-        return res.status(403).json({ error: 'Brand user must be associated with a brand' });
+        // Brand user without brandId - no access
+        return res.status(403).json({
+          error: 'Access denied',
+          message: 'Brand users must have a valid brand assignment'
+        });
       }
+      // Restrict to brand's inventory only
       whereClause.brandId = user.brandId;
-    } else if (user.role === 'THREEPL_ADMIN' || user.role === 'THREEPL_USER') {
-      // 3PL users can filter by brand or see all brands they have access to
+    } else if (user.role.includes('THREEPL')) {
+      // 3PL users can see all brands under their 3PL
+      // brandId filter will be applied below if specified
       if (params.brandId) {
-        // Verify the brand belongs to this 3PL
+        // Verify the requested brand belongs to this 3PL
         const brand = await prisma.brand.findFirst({
           where: {
             id: params.brandId,
-            threeplId: user.threeplId,
-          },
+            threeplId: user.threeplId
+          }
         });
         
         if (!brand) {
-          return res.status(404).json({ error: 'Brand not found' });
+          return res.status(403).json({
+            error: 'Access denied',
+            message: 'You can only access brands within your 3PL'
+          });
         }
         
         whereClause.brandId = params.brandId;
       }
-      // If no brandId specified, show all brands for this 3PL (already handled by tenantId)
+    } else {
+      // Unknown role - no access
+      return res.status(403).json({
+        error: 'Access denied',
+        message: 'Insufficient permissions to access inventory'
+      });
     }
+
+    // Brand filtering is now handled in the RBAC section above
 
     // Add warehouse filter
     if (params.warehouseId) {
