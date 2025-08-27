@@ -137,13 +137,52 @@ Packr implements a **write-through** pattern where Trackstar is the **source of 
 - **Error Handling**: Trackstar rejections prevent Packr DB changes with precise error messages
 - **Idempotency**: All operations use idempotency keys (`tenant:brand:orderId:action:hash`)
 
-### Sync Strategy
+### Sync Strategies & Schedules
 
-1. **Write-Through**: Real-time mutations via Trackstar API
-2. **Webhooks**: Subscribe to all Trackstar events for cache updates
-3. **Periodic Sync**: Every 5 minutes for healing and backfill
-4. **Cache Layer**: Fast reads from Packr DB, writes through Trackstar
-5. **Conflict Resolution**: Trackstar always wins, cache heals automatically
+#### 1. Real-Time Webhooks (Primary)
+- **Trigger**: Immediate when data changes in Trackstar
+- **Latency**: < 1 second
+- **Data Types**: Orders, Inventory, Products, Shipments
+- **Reliability**: Primary sync method with automatic retry logic
+
+#### 2. Periodic Incremental Sync (Fallback)
+- **Schedule**: Every 5 minutes (`*/5 * * * *`)
+- **Purpose**: Catch missed webhooks and ensure data consistency
+- **Scope**: Only syncs data modified since last sync (5+ minute threshold)
+- **Data Types**: Orders, Products, Inventory, Shipments
+- **Delay**: 1 second between API calls to avoid rate limiting
+- **Retry**: 3 attempts with exponential backoff (2s base delay)
+
+#### 3. Delayed Backfill (New Integrations)
+- **Schedule**: 5 hours after initial integration setup
+- **Purpose**: Complete historical data sync after initial connection
+- **Scope**: Full data backfill for new brand integrations
+- **Delay**: Allows time for initial webhook setup and testing
+
+#### 4. Nightly Reconciliation (Data Integrity)
+- **Schedule**: Daily at 2:00 AM EST (`0 2 * * *`)
+- **Purpose**: Full data integrity check and healing
+- **Scope**: Last 30 days of all data types
+- **Process**: 
+  - Compares Packr cache vs Trackstar source data
+  - Identifies and fixes discrepancies
+  - Updates missing or stale records
+  - Runs for all active brand integrations
+
+#### 5. Manual Sync (On-Demand)
+- **Trigger**: User-initiated or API-triggered
+- **Purpose**: Immediate sync for specific brands
+- **Scope**: All data types for the specified brand
+- **Use Cases**: Troubleshooting, after integration changes
+
+### Sync Error Handling
+
+- **Failed Webhooks**: Automatic retry with exponential backoff (2-hour max delay)
+- **API Rate Limits**: Built-in delays and retry logic
+- **Integration Errors**: Mark integration as ERROR status, alert administrators
+- **Partial Failures**: Continue processing other brands/data types
+- **Cache Layer**: Fast reads from Packr DB, writes through Trackstar
+- **Conflict Resolution**: Trackstar always wins, cache heals automatically
 
 ### Order Management
 
