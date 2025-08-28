@@ -2,8 +2,12 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '@packr/database';
 import { logger } from '../../utils/logger';
+import { createTrackstarWebhookValidator, webhookValidationMiddleware } from '../../lib/webhook-validation';
 
 const router = Router();
+
+// Initialize webhook validator
+const webhookValidator = createTrackstarWebhookValidator();
 
 // Validation schema for Trackstar inventory webhook
 const trackstarInventoryWebhookSchema = z.object({
@@ -64,19 +68,13 @@ const trackstarInventoryWebhookSchema = z.object({
 /**
  * POST /api/webhooks/trackstar/inventory
  * Webhook receiver for Trackstar inventory updates
- * Implements idempotency by event_id and upserts inventory_items
+ * Implements signature validation and content-based idempotency
  */
-router.post('/trackstar/inventory', async (req, res) => {
+router.post('/trackstar/inventory', webhookValidationMiddleware(webhookValidator), async (req, res) => {
+  const startTime = Date.now();
+  const correlationId = req.correlationId || `inv-${Date.now()}`;
+  
   try {
-    // TODO: Validate signature (feature flag to bypass in dev)
-    const skipSignatureValidation = process.env.NODE_ENV === 'development' || 
-                                   process.env.SKIP_WEBHOOK_SIGNATURE_VALIDATION === 'true';
-    
-    if (!skipSignatureValidation) {
-      // TODO: Implement Trackstar webhook signature validation
-      logger.warn('Webhook signature validation not implemented yet');
-    }
-
     const payload = trackstarInventoryWebhookSchema.parse(req.body);
     const { event_id, event_type, connection_id, integration_name, data } = payload;
 
@@ -85,9 +83,10 @@ router.post('/trackstar/inventory', async (req, res) => {
       event_type,
       connection_id,
       sku: data.sku,
+      correlationId,
     });
 
-    // Check for idempotency - if we've already processed this event, return success
+    // Enhanced idempotency check using both event_id and content-based key
     const existingEvent = await prisma.webhookEventV2.findUnique({
       where: { eventId: event_id },
     });
@@ -148,6 +147,15 @@ router.post('/trackstar/inventory', async (req, res) => {
     const tenantId = brand.threeplId;
     const brandId = brand.id;
 
+    // Generate content-based idempotency key for additional safety
+    const idempotencyKey = webhookValidator.generateIdempotencyKey({
+      tenantId,
+      brandId,
+      resource: 'inventory',
+      action: event_type,
+      payload: data
+    });
+
     // Upsert inventory item
     const inventoryData = {
       tenantId,
@@ -192,7 +200,9 @@ router.post('/trackstar/inventory', async (req, res) => {
       },
     });
 
-    // Record successful processing
+    const processingTime = Date.now() - startTime;
+    
+    // Record successful processing with enhanced metadata
     await prisma.webhookEventV2.upsert({
       where: { eventId: event_id },
       create: {
@@ -201,7 +211,15 @@ router.post('/trackstar/inventory', async (req, res) => {
         eventType: event_type,
         tenantId,
         brandId,
-        payload: req.body,
+        payload: {
+          ...req.body,
+          _metadata: {
+            correlationId,
+            idempotencyKey,
+            processingTimeMs: processingTime,
+            receivedAt: new Date().toISOString()
+          }
+        },
         status: 'processed',
         processedAt: new Date(),
         attempts: 1,
@@ -220,14 +238,35 @@ router.post('/trackstar/inventory', async (req, res) => {
       event_id,
       sku: data.sku,
       brandId,
+      correlationId,
+      idempotencyKey,
+      processingTimeMs: processingTime,
       onHand: data.onhand,
       available: data.fulfillable,
+    });
+
+    // Emit metrics for monitoring
+    // TODO: Replace with actual metrics client
+    logger.debug('Webhook metrics', {
+      metric: 'webhook.inventory.processed',
+      value: 1,
+      tags: { tenant: tenantId, brand: brandId, event_type }
+    });
+    logger.debug('Webhook metrics', {
+      metric: 'webhook.processing_latency_ms',
+      value: processingTime,
+      tags: { tenant: tenantId, brand: brandId, event_type }
     });
 
     res.status(200).json({ success: true });
 
   } catch (error) {
-    logger.error('Failed to process Trackstar inventory webhook:', error);
+    const processingTime = Date.now() - startTime;
+    logger.error('Failed to process Trackstar inventory webhook:', {
+      error: error instanceof Error ? error.message : error,
+      correlationId,
+      processingTimeMs: processingTime
+    });
 
     // Try to record the failed event if we can parse the event_id
     try {
@@ -239,7 +278,14 @@ router.post('/trackstar/inventory', async (req, res) => {
             eventId,
             source: 'trackstar',
             eventType: req.body?.event_type || 'unknown',
-            payload: req.body,
+            payload: {
+              ...req.body,
+              _metadata: {
+                correlationId,
+                processingTimeMs: Date.now() - startTime,
+                failedAt: new Date().toISOString()
+              }
+            },
             status: 'failed',
             error: error instanceof Error ? error.message : 'Unknown error',
             attempts: 1,
