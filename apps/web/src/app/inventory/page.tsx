@@ -11,6 +11,7 @@ import {
   CheckCircle2, 
   Clock,
   ChevronDown,
+  ChevronUp,
   RefreshCw,
   EyeOff,
   Trash2
@@ -56,6 +57,14 @@ interface InventoryFilters {
   incoming: boolean | null;
 }
 
+type SortField = 'onHand' | 'available';
+type SortDirection = 'asc' | 'desc';
+
+interface SortState {
+  field: SortField | null;
+  direction: SortDirection;
+}
+
 export default function InventoryPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -78,6 +87,10 @@ export default function InventoryPage() {
   const [searchDebounce, setSearchDebounce] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [sortState, setSortState] = useState<SortState>({
+    field: null,
+    direction: 'desc'
+  });
 
   // Authentication check
   useEffect(() => {
@@ -229,7 +242,7 @@ export default function InventoryPage() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedItems(new Set(items.map(item => item.id)));
+      setSelectedItems(new Set(sortedItems.map(item => item.id)));
     } else {
       setSelectedItems(new Set());
     }
@@ -269,6 +282,50 @@ export default function InventoryPage() {
     } finally {
       setBulkActionLoading(false);
     }
+  };
+
+  const handleSort = (field: SortField) => {
+    setSortState(prev => {
+      if (prev.field === field) {
+        // Toggle direction if same field
+        return {
+          field,
+          direction: prev.direction === 'desc' ? 'asc' : 'desc'
+        };
+      } else {
+        // New field, start with desc (highest to lowest)
+        return {
+          field,
+          direction: 'desc'
+        };
+      }
+    });
+  };
+
+  // Sort items based on current sort state
+  const sortedItems = useMemo(() => {
+    if (!sortState.field) return items;
+
+    return [...items].sort((a, b) => {
+      const aValue = a[sortState.field!];
+      const bValue = b[sortState.field!];
+      
+      if (sortState.direction === 'desc') {
+        return bValue - aValue; // Highest to lowest
+      } else {
+        return aValue - bValue; // Lowest to highest
+      }
+    });
+  }, [items, sortState]);
+
+  const getSortIcon = (field: SortField) => {
+    if (sortState.field !== field) {
+      return null; // No icon when not sorted by this field
+    }
+    
+    return sortState.direction === 'desc' ? 
+      <ChevronDown className="h-4 w-4 ml-1" /> : 
+      <ChevronUp className="h-4 w-4 ml-1" />;
   };
 
   if (loading) {
@@ -408,15 +465,27 @@ export default function InventoryPage() {
                 <div className="col-span-1 flex items-center">
                   <input
                     type="checkbox"
-                    checked={items.length > 0 && selectedItems.size === items.length}
+                    checked={sortedItems.length > 0 && selectedItems.size === sortedItems.length}
                     onChange={(e) => handleSelectAll(e.target.checked)}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                 </div>
                 <div className="col-span-2">Product</div>
                 <div className="col-span-2">Warehouse</div>
-                <div className="col-span-1">On Hand</div>
-                <div className="col-span-1">Available</div>
+                <div 
+                  className="col-span-1 flex items-center cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => handleSort('onHand')}
+                >
+                  On Hand
+                  {getSortIcon('onHand')}
+                </div>
+                <div 
+                  className="col-span-1 flex items-center cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => handleSort('available')}
+                >
+                  Available
+                  {getSortIcon('available')}
+                </div>
                 <div className="col-span-1">Incoming</div>
                 <div className="col-span-2">Updated</div>
                 <div className="col-span-2">Brand</div>
@@ -425,7 +494,7 @@ export default function InventoryPage() {
 
             {/* Table Body */}
             <div className="divide-y divide-gray-200">
-              {items.map((item) => (
+              {sortedItems.map((item) => (
                 <div
                   key={item.id}
                   className="px-6 py-4 hover:bg-gray-50 transition-colors"
@@ -525,7 +594,7 @@ export default function InventoryPage() {
             )}
 
             {/* Empty State */}
-            {!loading && items.length === 0 && (
+            {!loading && sortedItems.length === 0 && (
               <div className="p-8 text-center">
                 <Package2 className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No inventory found</h3>
