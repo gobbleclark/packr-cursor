@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, Package, X, ExternalLink } from 'lucide-react';
 import { authService } from '../../lib/auth';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface TrackstarOrder {
   id: string;
