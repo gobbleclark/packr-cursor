@@ -136,6 +136,10 @@ class AuthService {
     const authResponse = await this.verifyToken();
     return authResponse ? authResponse.user : null;
   }
+
+  logout() {
+    this.clearToken();
+  }
 }
 
 export const authService = new AuthService();
