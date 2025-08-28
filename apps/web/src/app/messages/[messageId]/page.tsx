@@ -30,7 +30,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { RichTextEditor } from '../../../components/messages/RichTextEditor';
-import { buildApiUrl } from '../../lib/api-config';
+import { buildApiUrl } from '../../../lib/api-config';
 
 interface Message {
   id: string;
