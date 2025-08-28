@@ -131,6 +131,11 @@ class AuthService {
   isAuthenticated(): boolean {
     return !!this.getToken();
   }
+
+  async getAuthenticatedUser(): Promise<AuthResponse['user'] | null> {
+    const authResponse = await this.verifyToken();
+    return authResponse ? authResponse.user : null;
+  }
 }
 
 export const authService = new AuthService();

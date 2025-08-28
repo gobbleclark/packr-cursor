@@ -17,6 +17,12 @@ model User {
   firstName String
   lastName  String
   password  String?  // Optional for existing users, required for new brand users
+  isActive  Boolean  @default(true)
+  lastLoginAt DateTime?
+  
+  // Brand access control
+  allowedBrandIds String[] @default([])
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -25,6 +31,17 @@ model User {
   comments       Comment[]
   mentions       Mention[]
   passwordResets PasswordReset[]
+  notificationPreferences NotificationPreference?
+  orderNotes     OrderNote[]
+  
+  // Chat & Task relationships
+  chatMessages   ChatMessage[]
+  chatMentions   ChatMention[]
+  readReceipts   ReadReceipt[]
+  assignedTasks  ChatTask[]    @relation("TaskAssignee")
+  createdTasks   ChatTask[]    @relation("TaskCreatedBy")
+  notifyTasks    ChatTask[]    @relation("TaskNotifyUser")
+  taskComments   TaskComment[]
 
   @@map("users")
 }
@@ -45,11 +62,18 @@ model ThreePL {
   orders           Order[]
   shipments        Shipment[]
   inventorySnapshots InventorySnapshot[]
+  inventoryItems   InventoryItem[]
+  warehouses       Warehouse[]
   webhookEvents    WebhookEvent[]
+  webhookEventsV2  WebhookEventV2[]
   jobRuns          JobRun[]
   messageStatuses  MessageStatus[]
   messages         Message[]
   brandInvitations BrandInvitation[]
+  taskCategories   TaskCategory[]
+  
+  // Chat relationships
+  chatRooms        ChatRoom[]
 
   @@map("threepls")
 }
@@ -66,12 +90,18 @@ model Brand {
   // Relationships
   threepl   ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
   memberships Membership[]
+  integrations BrandIntegration[]
   products  Product[]
   orders    Order[]
   shipments Shipment[]
   inventorySnapshots InventorySnapshot[]
+  inventoryItems InventoryItem[]
+  webhookEventsV2 WebhookEventV2[]
   messages  Message[]
   invitations BrandInvitation[]
+  
+  // Chat relationships
+  chatRooms ChatRoom[]
 
   @@unique([threeplId, slug])
   @@map("brands")
@@ -110,10 +140,41 @@ model Integration {
   @@map("integrations")
 }
 
+// Brand-level integration for Trackstar
+model BrandIntegration {
+  id        String   @id @default(cuid())
+  brandId   String
+  provider  IntegrationProvider @default(TRACKSTAR)
+  status    IntegrationStatus @default(PENDING)
+  
+  // Trackstar-specific fields
+  accessToken String
+  connectionId String
+  integrationName String
+  availableActions Json @default("[]")
+  
+  // Sync tracking
+  lastSyncedAt DateTime?
+  lastWebhookAt DateTime?
+  
+  // Configuration
+  config Json @default("{}")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, provider])
+  @@map("brand_integrations")
+}
+
 model Product {
   id        String   @id @default(cuid())
   threeplId String
   brandId   String?
+  externalId String? // Trackstar product ID
   sku       String
   name      String
   description String?
@@ -123,6 +184,7 @@ model Product {
   weight    Float?
   dimensions Json?
   metadata  Json     @default("{}")
+  rawData   Json?    // Full Trackstar response
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -130,8 +192,10 @@ model Product {
   threepl ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
   brand   Brand?  @relation(fields: [brandId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
+  inventorySnapshots InventorySnapshot[]
 
   @@unique([threeplId, sku])
+  @@unique([brandId, externalId])
   @@map("products")
 }
 
@@ -139,6 +203,7 @@ model Order {
   id        String   @id @default(cuid())
   threeplId String
   brandId   String?
+  externalId String? // Trackstar order ID
   orderNumber String
   customerId String
   customerEmail String?
@@ -149,6 +214,8 @@ model Order {
   tax       Float?
   shipping  Float?
   metadata  Json     @default("{}")
+  rawData   Json?    // Full Trackstar response
+  updatedAtRemote DateTime? // Trackstar updated_at
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -157,8 +224,13 @@ model Order {
   brand     Brand?  @relation(fields: [brandId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
   shipments Shipment[]
+  orderNotes OrderNote[]
+  
+  // Chat relationships
+  linkedTasks ChatTask[]
 
   @@unique([threeplId, orderNumber])
+  @@unique([brandId, externalId])
   @@map("orders")
 }
 
@@ -180,17 +252,36 @@ model OrderItem {
   @@map("order_items")
 }
 
+model OrderNote {
+  id        String   @id @default(cuid())
+  orderId   String
+  userId    String
+  content   String
+  isInternal Boolean @default(true) // true = internal note, false = customer-visible
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("order_notes")
+}
+
 model Shipment {
   id        String   @id @default(cuid())
   threeplId String
   brandId   String?
   orderId   String?
+  externalId String? // Trackstar shipment ID
   trackingNumber String?
   carrier   String?
+  service   String?
   status    String
   shippedAt DateTime?
   deliveredAt DateTime?
   metadata  Json     @default("{}")
+  rawData   Json?    // Full Trackstar response
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -199,6 +290,7 @@ model Shipment {
   brand   Brand?  @relation(fields: [brandId], references: [id], onDelete: Cascade)
   order   Order?  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
+  @@unique([brandId, externalId])
   @@map("shipments")
 }
 
@@ -207,16 +299,110 @@ model InventorySnapshot {
   threeplId String
   brandId   String?
   productId String?
-  quantity  Int
+  quantityFulfillable Int @default(0)
+  quantityOnHand Int @default(0)
   location  String?
-  timestamp DateTime @default(now())
+  asOf      DateTime @default(now())
   metadata  Json     @default("{}")
+  rawData   Json?    // Full Trackstar response
 
   // Relationships
   threepl ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
   brand   Brand?  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("inventory_snapshots")
+}
+
+// New comprehensive inventory model for the Inventory feature
+model Warehouse {
+  id          String   @id @default(cuid())
+  tenantId    String   // threeplId
+  externalId  String   // Trackstar warehouse ID
+  name        String
+  address     String?
+  city        String?
+  state       String?
+  zipCode     String?
+  country     String?
+  active      Boolean  @default(true)
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  threepl       ThreePL @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inventoryItems InventoryItem[]
+
+  @@unique([tenantId, externalId])
+  @@map("warehouses")
+}
+
+model InventoryItem {
+  id        String   @id @default(cuid())
+  tenantId  String   // threeplId
+  brandId   String
+  warehouseId String? // Internal warehouse ID (references warehouses.id)
+  sku       String
+  productName String?
+  trackstarProductId String?
+  trackstarVariantId String?
+  
+  // Inventory quantities (matching Trackstar API)
+  onHand      Int @default(0)
+  available   Int @default(0)
+  incoming    Int @default(0)
+  committed   Int @default(0)
+  unfulfillable Int @default(0)
+  unsellable  Int @default(0)
+  sellable    Int @default(0)
+  awaiting    Int @default(0)
+  
+  // Additional fields
+  unitCost    Float?
+  active      Boolean @default(true)
+  lastTrackstarUpdateAt DateTime?
+  rawData     Json?    // Full Trackstar inventory response
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  tenant    ThreePL    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  brand     Brand      @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  warehouse Warehouse? @relation(fields: [warehouseId], references: [id])
+
+  @@unique([tenantId, brandId, sku])
+  @@unique([tenantId, brandId, warehouseId, sku])
+  @@index([tenantId, brandId, updatedAt])
+  @@map("inventory_items")
+}
+
+// Improved webhook events for idempotency
+model WebhookEventV2 {
+  id        String   @id @default(cuid())
+  eventId   String   @unique // External event ID for idempotency
+  source    String   // 'trackstar', 'shopify', etc.
+  eventType String   // 'inventory.updated', 'order.created', etc.
+  tenantId  String?
+  brandId   String?
+  payload   Json
+  receivedAt DateTime @default(now())
+  processedAt DateTime?
+  status    String   @default("pending") // 'pending', 'processed', 'failed'
+  error     String?
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  tenant ThreePL? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  brand  Brand?   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([source, status])
+  @@index([tenantId, brandId])
+  @@index([receivedAt])
+  @@map("webhook_events_v2")
 }
 
 model WebhookEvent {
@@ -235,6 +421,46 @@ model WebhookEvent {
   threepl ThreePL @relation(fields: [threeplId], references: [id], onDelete: Cascade)
 
   @@map("webhook_events")
+}
+
+// Trackstar-specific webhook events
+model TrackstarWebhookEvent {
+  id        String   @id @default(cuid())
+  provider  String @default("trackstar")
+  eventType String
+  connectionId String
+  integrationName String
+  deliveryId String @unique // Svix delivery ID for idempotency
+  signatureValid Boolean @default(false)
+  payload   Json
+  processedAt DateTime?
+  status    WebhookEventStatus @default(PENDING)
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("trackstar_webhook_events")
+}
+
+// Sync checkpoints for tracking reconciliation progress
+model SyncCheckpoint {
+  id          String   @id @default(cuid())
+  tenantId    String
+  brandId     String
+  provider    String   @default("TRACKSTAR")
+  resource    String   // 'orders', 'inventory', 'products', 'shipments'
+  lastCursor  String?  // Last processed cursor/token from API
+  lastSyncAt  DateTime
+  recordCount Int      @default(0) // Number of records processed in last sync
+  nextSyncAt  DateTime? // When the next sync should happen
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, brandId, provider, resource])
+  @@index([nextSyncAt])
+  @@index([tenantId, brandId])
+  @@map("sync_checkpoints")
 }
 
 model JobRun {
@@ -275,14 +501,23 @@ model Message {
   id        String   @id @default(cuid())
   threeplId String
   brandId   String?
-  customerId String
-  customerEmail String?
-  customerName String?
-  subject   String?
-  content   String
+  title     String
+  body      String
   statusId  String?
-  priority  String?
+  priority  MessagePriority @default(NORMAL)
+  isUrgent  Boolean  @default(false)
+  createdBy String
   assignedTo String?
+  
+  // Integration references
+  orderId   String?
+  shipmentId String?
+  productId String?
+  
+  // Completion tracking
+  completedAt DateTime?
+  completedBy String?
+  
   metadata  Json     @default("{}")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -376,6 +611,46 @@ model PasswordReset {
   @@map("password_resets")
 }
 
+model UserInvitation {
+  id        String   @id @default(cuid())
+  email     String
+  firstName String
+  lastName  String
+  role      UserRole
+  allowedBrandIds String[] @default([])
+  threeplId String
+  token     String   @unique
+  expiresAt DateTime
+  accepted  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([email, threeplId])
+  @@map("user_invitations")
+}
+
+model NotificationPreference {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  
+  // Message notifications
+  emailOnMention Boolean @default(true)
+  emailOnAssignment Boolean @default(true)
+  emailOnComment Boolean @default(false)
+  emailOnMessageUpdate Boolean @default(false)
+  
+  // Frequency settings
+  digestFrequency String @default("IMMEDIATE") // IMMEDIATE, DAILY, WEEKLY, NEVER
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
 enum UserRole {
   SUPER_ADMIN
   THREEPL_ADMIN
@@ -420,4 +695,208 @@ enum JobRunStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+enum MessagePriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// ============================================================================
+// CHAT & TASK SYSTEM MODELS
+// ============================================================================
+
+model ChatRoom {
+  id        String   @id @default(cuid())
+  threeplId String
+  brandId   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  threepl      ThreePL       @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+  brand        Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  chatMessages ChatMessage[]
+  chatTasks    ChatTask[]
+  readReceipts ReadReceipt[]
+
+  @@unique([threeplId, brandId])
+  @@map("chat_rooms")
+}
+
+model ChatMessage {
+  id         String    @id @default(cuid())
+  roomId     String
+  userId     String
+  content    String?   // Text content (optional if only attachments)
+  messageType ChatMessageType @default(TEXT)
+  parentId   String?   // For threading/replies
+  editedAt   DateTime?
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relationships
+  room         ChatRoom          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       ChatMessage?      @relation("MessageReplies", fields: [parentId], references: [id])
+  replies      ChatMessage[]     @relation("MessageReplies")
+  attachments  ChatAttachment[]
+  mentions     ChatMention[]
+  readReceipts ReadReceipt[]
+  createdTasks ChatTask[]        @relation("TaskCreatedFromMessage")
+
+  @@index([roomId, createdAt])
+  @@index([userId])
+  @@map("chat_messages")
+}
+
+model ChatAttachment {
+  id          String   @id @default(cuid())
+  messageId   String
+  filename    String
+  originalName String
+  mimeType    String
+  fileSize    Int
+  s3Key       String   // S3 object key
+  s3Bucket    String   // S3 bucket name
+  thumbnailKey String? // For image thumbnails
+  createdAt   DateTime @default(now())
+
+  // Relationships
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("chat_attachments")
+}
+
+model ChatMention {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String   // User being mentioned
+  createdAt DateTime @default(now())
+
+  // Relationships
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("chat_mentions")
+}
+
+model ReadReceipt {
+  id        String   @id @default(cuid())
+  roomId    String
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+
+  // Relationships
+  room    ChatRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([roomId, userId])
+  @@map("read_receipts")
+}
+
+model TaskCategory {
+  id          String   @id @default(cuid())
+  name        String   // e.g., "Shipment", "Tracking", "Inventory", "Customer Service"
+  description String?
+  color       String?  // Hex color for UI display
+  threeplId   String   // Categories are per 3PL
+  isDefault   Boolean  @default(false) // System default categories
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  threepl ThreePL    @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+  tasks   ChatTask[]
+
+  @@unique([threeplId, name])
+  @@index([threeplId])
+  @@map("task_categories")
+}
+
+model ChatTask {
+  id                    String       @id @default(cuid())
+  roomId                String
+  title                 String
+  description           String?
+  status                ChatTaskStatus @default(TODO)
+  priority              TaskPriority   @default(NORMAL)
+  categoryId            String?      // Custom task category (optional)
+  assigneeId            String?      // 3PL user assigned to task
+  createdById           String       // User who created the task
+  createdFromMessageId  String?      // If created from a chat message
+  linkedOrderId         String?      // Link to Trackstar order
+  dueDate               DateTime?
+  completedAt           DateTime?
+  notifyBrandUserId     String?      // Brand user to notify when complete
+  notifiedAt            DateTime?    // When notification was sent
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  // Relationships
+  room              ChatRoom      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  category          TaskCategory? @relation(fields: [categoryId], references: [id])
+  assignee          User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy         User          @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  createdFromMessage ChatMessage? @relation("TaskCreatedFromMessage", fields: [createdFromMessageId], references: [id])
+  notifyBrandUser   User?         @relation("TaskNotifyUser", fields: [notifyBrandUserId], references: [id])
+  linkedOrder       Order?        @relation(fields: [linkedOrderId], references: [id])
+  comments          TaskComment[]
+
+  @@index([roomId, status])
+  @@index([assigneeId])
+  @@index([dueDate])
+  @@index([categoryId])
+  @@map("chat_tasks")
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  task ChatTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+  @@map("task_comments")
+}
+
+// ============================================================================
+// ENUMS FOR CHAT & TASK SYSTEM
+// ============================================================================
+
+enum ChatMessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM      // System-generated messages
+  TASK_CREATED
+  TASK_UPDATED
+}
+
+enum ChatTaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }
