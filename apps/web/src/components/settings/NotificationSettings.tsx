@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Bell, Mail, MessageSquare, UserPlus, Edit, Save } from 'lucide-react';
+import { buildApiUrl } from '../../lib/api-config';
 import { authService } from '../../lib/auth';
 import { Button } from '../ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Select } from '../ui/select';
-import { buildApiUrl } from '../../lib/api-config';
 
 interface NotificationPreferences {
   id: string;

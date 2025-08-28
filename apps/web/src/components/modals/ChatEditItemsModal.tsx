@@ -6,6 +6,7 @@ import { useModal } from '../../contexts/ModalContext';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Package, Loader2, AlertCircle, Plus, Minus, Trash2 } from 'lucide-react';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface OrderItem {
   id: string;

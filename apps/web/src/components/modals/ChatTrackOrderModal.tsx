@@ -5,6 +5,7 @@ import { BaseModal } from './BaseModal';
 import { useModal } from '../../contexts/ModalContext';
 import { Button } from '../ui/button';
 import { Package, Loader2, AlertCircle, ExternalLink, Truck, MapPin, Calendar } from 'lucide-react';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface TrackingInfo {
   trackingNumber: string;

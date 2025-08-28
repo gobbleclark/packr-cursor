@@ -6,6 +6,7 @@ import { useModal } from '../../contexts/ModalContext';
 import { Button } from '../ui/button';
 import { Select } from '../ui/select';
 import { Truck, Loader2, AlertCircle } from 'lucide-react';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface CarrierOption {
   carrier: string;

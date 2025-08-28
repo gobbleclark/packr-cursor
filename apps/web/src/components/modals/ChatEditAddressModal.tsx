@@ -6,6 +6,7 @@ import { useModal } from '../../contexts/ModalContext';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { MapPin, Loader2, AlertCircle } from 'lucide-react';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface ShippingAddress {
   fullName: string;

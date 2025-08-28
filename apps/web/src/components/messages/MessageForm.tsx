@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Save, ArrowLeft, AlertTriangle, User, Package } from 'lucide-react';
 import { authService } from '../../lib/auth';
+import { buildApiUrl } from '../../lib/api-config';
 import { Button } from '../ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Select } from '../ui/select';
