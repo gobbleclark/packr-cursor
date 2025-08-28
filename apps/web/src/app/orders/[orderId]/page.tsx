@@ -28,6 +28,7 @@ import { AuthenticatedLayout } from '../../../components/layout/AuthenticatedLay
 import { authService } from '../../../lib/auth';
 import { EditItemsModal } from '../../../components/orders/EditItemsModal';
 import { CancelOrderModal } from '../../../components/orders/CancelOrderModal';
+import { buildApiUrl } from '../../../lib/api-config';
 import { EditAddressModal } from '../../../components/orders/EditAddressModal';
 import { EditShippingModal } from '../../../components/orders/EditShippingModal';
 import { AddNoteModal } from '../../../components/orders/AddNoteModal';
