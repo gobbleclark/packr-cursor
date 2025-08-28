@@ -18,28 +18,30 @@ async function startServer() {
   
   // Try different possible locations for the API entry point
   const possiblePaths = [
-    './apps/api/dist/index.js',
-    './apps/api/src/index.js',
-    './apps/api/dist/src/index.js',
-    './apps/api/dist/apps/api/src/index.js'
+    { path: './apps/api/dist/index.js', command: 'node' },
+    { path: './apps/api/dist/src/index.js', command: 'node' },
+    { path: './apps/api/dist/apps/api/src/index.js', command: 'node' },
+    { path: './apps/api/src/index.ts', command: 'npx tsx' }  // Use tsx for TypeScript files
   ];
   
-  for (const path of possiblePaths) {
-    if (fs.existsSync(path)) {
-      apiEntryPoint = path;
+  let apiConfig = null;
+  for (const config of possiblePaths) {
+    if (fs.existsSync(config.path)) {
+      apiConfig = config;
       break;
     }
   }
   
-  if (!apiEntryPoint) {
-    console.error('❌ API entry point not found! Checked paths:', possiblePaths);
+  if (!apiConfig) {
+    console.error('❌ API entry point not found! Checked paths:', possiblePaths.map(p => p.path));
     console.log('Available files in apps/api/dist:', fs.existsSync('./apps/api/dist') ? fs.readdirSync('./apps/api/dist') : 'Directory does not exist');
     process.exit(1);
   }
   
   // Start the API server in the background
-  console.log('Starting API server from:', apiEntryPoint);
-  const apiProcess = spawn('node', [apiEntryPoint], {
+  console.log('Starting API server from:', apiConfig.path, 'using', apiConfig.command);
+  const commandArgs = apiConfig.command === 'npx tsx' ? ['npx', 'tsx', apiConfig.path] : [apiConfig.command, apiConfig.path];
+  const apiProcess = spawn(commandArgs[0], commandArgs.slice(1), {
     env: { ...process.env, PORT: '4000' },
     stdio: 'inherit'
   });
