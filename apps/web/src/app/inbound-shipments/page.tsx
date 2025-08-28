@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { authService } from '@/lib/auth';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface InboundShipment {
   id: string;
@@ -106,7 +107,7 @@ export default function InboundShipmentsPage() {
       if (filters.warehouseId) queryParams.append('warehouseId', filters.warehouseId);
       if (filters.status) queryParams.append('status', filters.status);
 
-      const response = await fetch(`http://localhost:4000/api/inbound-shipments?${queryParams}`, {
+      const response = await fetch(buildApiUrl('inbound-shipments?${queryParams}'), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -127,7 +128,7 @@ export default function InboundShipmentsPage() {
   const fetchBrands = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/brands', {
+      const response = await fetch(buildApiUrl('brands'), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -145,7 +146,7 @@ export default function InboundShipmentsPage() {
   const fetchWarehouses = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/warehouses', {
+      const response = await fetch(buildApiUrl('warehouses'), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

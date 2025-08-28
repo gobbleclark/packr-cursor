@@ -36,7 +36,7 @@ export default function TrackstarIntegration({ brandId, onIntegrationUpdate }: T
     try {
       setIsLoadingConnection(true);
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/brands/${brandId}/integrations/trackstar`, {
+      const response = await fetch(buildApiUrl('brands/${brandId}/integrations/trackstar'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -70,7 +70,7 @@ export default function TrackstarIntegration({ brandId, onIntegrationUpdate }: T
   const getLinkToken = async (): Promise<string> => {
     try {
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/brands/${brandId}/integrations/trackstar/link-token`, {
+      const response = await fetch(buildApiUrl('brands/${brandId}/integrations/trackstar/link-token'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -98,7 +98,7 @@ export default function TrackstarIntegration({ brandId, onIntegrationUpdate }: T
     try {
       setError(null);
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/brands/${brandId}/integrations/trackstar/exchange`, {
+      const response = await fetch(buildApiUrl('brands/${brandId}/integrations/trackstar/exchange'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -143,7 +143,7 @@ export default function TrackstarIntegration({ brandId, onIntegrationUpdate }: T
       setError(null);
       
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/brands/${brandId}/integrations/trackstar/disconnect`, {
+      const response = await fetch(buildApiUrl('brands/${brandId}/integrations/trackstar/disconnect'), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -181,7 +181,7 @@ export default function TrackstarIntegration({ brandId, onIntegrationUpdate }: T
       setError(null);
       
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/brands/${brandId}/integrations/trackstar/sync`, {
+      const response = await fetch(buildApiUrl('brands/${brandId}/integrations/trackstar/sync'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

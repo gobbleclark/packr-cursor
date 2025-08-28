@@ -40,7 +40,7 @@ export function ChatEditItemsModal() {
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:4000/api/orders/${modalData.orderNumber}`, {
+      const response = await fetch(buildApiUrl('orders/${modalData.orderNumber}'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
@@ -119,7 +119,7 @@ export function ChatEditItemsModal() {
       }));
 
       // Use the same Trackstar write-through endpoint as the Orders feature
-      const response = await fetch(`http://localhost:4000/api/orders/${modalData.orderNumber}/items`, {
+      const response = await fetch(buildApiUrl('orders/${modalData.orderNumber}/items'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

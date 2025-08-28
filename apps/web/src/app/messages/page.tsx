@@ -22,6 +22,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Select } from '../../components/ui/select';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface Message {
   id: string;
@@ -111,7 +112,7 @@ export default function MessagesPage() {
         ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))
       });
 
-      const response = await fetch(`http://localhost:4000/api/messages?${params}`, {
+      const response = await fetch(buildApiUrl('messages?${params}'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -131,7 +132,7 @@ export default function MessagesPage() {
   const fetchStats = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/messages/stats/dashboard', {
+      const response = await fetch(buildApiUrl('messages/stats/dashboard'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -150,7 +151,7 @@ export default function MessagesPage() {
   const fetchBrands = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/brands', {
+      const response = await fetch(buildApiUrl('brands'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -169,7 +170,7 @@ export default function MessagesPage() {
   const fetchStatuses = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/messages/statuses/list', {
+      const response = await fetch(buildApiUrl('messages/statuses/list'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

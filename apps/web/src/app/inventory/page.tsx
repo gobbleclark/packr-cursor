@@ -22,6 +22,7 @@ import { Select } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface InventoryItem {
   id: string;
@@ -149,7 +150,7 @@ export default function InventoryPage() {
       params.append('limit', '50');
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory?${params}`, {
+      const response = await fetch(buildApiUrl('inventory?${params}'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -182,7 +183,7 @@ export default function InventoryPage() {
   const fetchBrands = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/brands', {
+      const response = await fetch(buildApiUrl('brands'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -255,7 +256,7 @@ export default function InventoryPage() {
       setBulkActionLoading(true);
       
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/bulk-hide', {
+      const response = await fetch(buildApiUrl('inventory/bulk-hide'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -30,6 +30,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { RichTextEditor } from '../../../components/messages/RichTextEditor';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface Message {
   id: string;
@@ -133,7 +134,7 @@ export default function MessageDetailPage() {
   const fetchMessage = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/messages/${messageId}`, {
+      const response = await fetch(buildApiUrl('messages/${messageId}'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -155,7 +156,7 @@ export default function MessageDetailPage() {
   const fetchStatuses = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/messages/statuses/list', {
+      const response = await fetch(buildApiUrl('messages/statuses/list'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -174,7 +175,7 @@ export default function MessageDetailPage() {
   const fetchUsers = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/users', {
+      const response = await fetch(buildApiUrl('users'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -199,7 +200,7 @@ export default function MessageDetailPage() {
     
     try {
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/messages/${messageId}/comments`, {
+      const response = await fetch(buildApiUrl('messages/${messageId}/comments'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -228,7 +229,7 @@ export default function MessageDetailPage() {
   const handleStatusUpdate = async (statusId: string) => {
     try {
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/messages/${messageId}`, {
+      const response = await fetch(buildApiUrl('messages/${messageId}'), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -248,7 +249,7 @@ export default function MessageDetailPage() {
   const handleAssignmentUpdate = async (assignedTo: string) => {
     try {
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/messages/${messageId}`, {
+      const response = await fetch(buildApiUrl('messages/${messageId}'), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -268,7 +269,7 @@ export default function MessageDetailPage() {
   const handleComplete = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/messages/${messageId}`, {
+      const response = await fetch(buildApiUrl('messages/${messageId}'), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -304,7 +305,7 @@ export default function MessageDetailPage() {
     setDeleting(true);
     try {
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/messages/${messageId}`, {
+      const response = await fetch(buildApiUrl('messages/${messageId}'), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

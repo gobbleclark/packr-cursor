@@ -6,6 +6,7 @@ import { authService } from '../../lib/auth';
 import { Building2, Users, Package, MessageSquare, LogOut, TrendingUp, AlertTriangle, CheckCircle, Clock, Filter, Calendar, Eye } from 'lucide-react';
 import { Select } from '../../components/ui/select';
 import { AuthenticatedLayout } from '../../components/layout/AuthenticatedLayout';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface DashboardStats {
   totalOrders: number;
@@ -43,7 +44,7 @@ export default function DashboardPage() {
   const fetchBrands = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/brands', {
+      const response = await fetch(buildApiUrl('brands'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -121,7 +122,7 @@ export default function DashboardPage() {
         }
       }
 
-      const url = `http://localhost:4000/api/dashboard/stats${params.toString() ? '?' + params.toString() : ''}`;
+      const url = buildApiUrl('dashboard/stats${params.toString() ? ')?' + params.toString() : ''}`;
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,

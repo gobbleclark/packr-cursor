@@ -6,6 +6,7 @@ import { authService } from '../../lib/auth';
 import { Button } from '../ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Select } from '../ui/select';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface NotificationPreferences {
   id: string;
@@ -29,7 +30,7 @@ export function NotificationSettings() {
   const fetchPreferences = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/notifications/preferences', {
+      const response = await fetch(buildApiUrl('notifications/preferences'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -63,7 +64,7 @@ export function NotificationSettings() {
     setSaving(true);
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/notifications/preferences', {
+      const response = await fetch(buildApiUrl('notifications/preferences'), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

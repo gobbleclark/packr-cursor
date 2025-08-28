@@ -6,6 +6,7 @@ import { authService } from '../../lib/auth';
 import { Package, Search, Filter, Eye, Calendar, Building2, Download } from 'lucide-react';
 import { AuthenticatedLayout } from '../../components/layout/AuthenticatedLayout';
 import { Select } from '../../components/ui/select';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface Order {
   id: string;
@@ -43,7 +44,7 @@ function OrdersPageContent() {
   const fetchBrands = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/brands', {
+      const response = await fetch(buildApiUrl('brands'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -72,7 +73,7 @@ function OrdersPageContent() {
       params.append('page', currentPage.toString());
       params.append('limit', '20');
 
-      const response = await fetch(`http://localhost:4000/api/orders?${params.toString()}`, {
+      const response = await fetch(buildApiUrl('orders?${params.toString()}'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

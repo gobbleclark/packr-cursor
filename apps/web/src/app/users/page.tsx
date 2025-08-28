@@ -24,6 +24,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Select } from '../../components/ui/select';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface User {
   id: string;
@@ -111,7 +112,7 @@ export default function UsersPage() {
         ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))
       });
 
-      const response = await fetch(`http://localhost:4000/api/users?${params}`, {
+      const response = await fetch(buildApiUrl('users?${params}'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -130,7 +131,7 @@ export default function UsersPage() {
   const fetchInvitations = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/users/invitations/list', {
+      const response = await fetch(buildApiUrl('users/invitations/list'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -149,7 +150,7 @@ export default function UsersPage() {
   const fetchBrands = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/brands', {
+      const response = await fetch(buildApiUrl('brands'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -169,7 +170,7 @@ export default function UsersPage() {
     e.preventDefault();
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/users/invite', {
+      const response = await fetch(buildApiUrl('users/invite'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -203,7 +204,7 @@ export default function UsersPage() {
 
     try {
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/users/${userId}`, {
+      const response = await fetch(buildApiUrl('users/${userId}'), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -226,7 +227,7 @@ export default function UsersPage() {
   const handleResendInvitation = async (invitationId: string) => {
     try {
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/users/invitations/${invitationId}/resend`, {
+      const response = await fetch(buildApiUrl('users/invitations/${invitationId}/resend'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

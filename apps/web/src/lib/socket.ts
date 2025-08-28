@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { authService } from './auth';
+import { API_BASE } from './api-config';
 
 export interface ChatMessage {
   id: string;
@@ -148,7 +149,7 @@ class SocketService {
         return;
       }
 
-      this.socket = io(process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000', {
+      this.socket = io(API_BASE, {
         auth: {
           token
         },

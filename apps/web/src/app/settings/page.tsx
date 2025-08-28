@@ -25,6 +25,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { NotificationSettings } from '../../components/settings/NotificationSettings';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface MessageStatus {
   id: string;
@@ -99,7 +100,7 @@ export default function SettingsPage() {
   const fetchSettings = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/settings', {
+      const response = await fetch(buildApiUrl('settings'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -118,7 +119,7 @@ export default function SettingsPage() {
   const fetchSystemStats = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/settings/system', {
+      const response = await fetch(buildApiUrl('settings/system'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -138,7 +139,7 @@ export default function SettingsPage() {
     e.preventDefault();
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/settings/message-statuses', {
+      const response = await fetch(buildApiUrl('settings/message-statuses'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -167,7 +168,7 @@ export default function SettingsPage() {
 
     try {
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/settings/message-statuses/${editingStatus.id}`, {
+      const response = await fetch(buildApiUrl('settings/message-statuses/${editingStatus.id}'), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -196,7 +197,7 @@ export default function SettingsPage() {
 
     try {
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/settings/message-statuses/${statusId}`, {
+      const response = await fetch(buildApiUrl('settings/message-statuses/${statusId}'), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -219,7 +220,7 @@ export default function SettingsPage() {
   const handleInitializeStatuses = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/settings/message-statuses/initialize', {
+      const response = await fetch(buildApiUrl('settings/message-statuses/initialize'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

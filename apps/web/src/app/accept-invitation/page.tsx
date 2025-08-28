@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { buildApiUrl } from '../../lib/api-config';
 
 function AcceptInvitationContent() {
   const router = useRouter();
@@ -34,7 +35,7 @@ function AcceptInvitationContent() {
 
   const verifyInvitation = async () => {
     try {
-      const response = await fetch(`http://localhost:4000/api/brands/verify-invitation?token=${token}`);
+      const response = await fetch(buildApiUrl('brands/verify-invitation?token=${token}'));
       if (response.ok) {
         const data = await response.json();
         setInvitationData(data.invitation);
@@ -80,7 +81,7 @@ function AcceptInvitationContent() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:4000/api/brands/accept-invitation', {
+      const response = await fetch(buildApiUrl('brands/accept-invitation'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

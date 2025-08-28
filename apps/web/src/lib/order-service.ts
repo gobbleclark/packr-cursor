@@ -2,7 +2,7 @@
  * Order Service for fetching order details and status
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
+import { API_BASE, buildApiUrl } from './api-config';
 
 export interface OrderStatus {
   id: string;

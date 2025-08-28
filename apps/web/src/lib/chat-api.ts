@@ -1,7 +1,7 @@
 import { authService } from './auth';
 import { ChatRoom, ChatMessage, ChatTask } from './socket';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
+import { API_BASE, buildApiUrl } from './api-config';
 
 class ChatAPI {
   private async fetch(endpoint: string, options: RequestInit = {}) {

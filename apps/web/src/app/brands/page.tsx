@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Building2, Plus, Users, Settings, Calendar } from 'lucide-react';
 import { AuthenticatedLayout } from '../../components/layout/AuthenticatedLayout';
 import { authService } from '../../lib/auth';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface Brand {
   id: string;
@@ -47,7 +48,7 @@ export default function BrandsPage() {
     try {
       setLoading(true);
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/brands', {
+      const response = await fetch(buildApiUrl('brands'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',

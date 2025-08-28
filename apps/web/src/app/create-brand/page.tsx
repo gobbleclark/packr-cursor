@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Building2, Upload, Users, ArrowLeft, Save } from 'lucide-react';
+import { buildApiUrl } from '../../lib/api-config';
 
 export default function CreateBrandPage() {
   const router = useRouter();
@@ -68,7 +69,7 @@ export default function CreateBrandPage() {
         return;
       }
       
-      const response = await fetch('http://localhost:4000/api/brands', {
+      const response = await fetch(buildApiUrl('brands'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

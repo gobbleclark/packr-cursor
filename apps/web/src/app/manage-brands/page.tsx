@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Building2, Edit, Users, Plus, ArrowLeft, Trash2, Eye, Settings } from 'lucide-react';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface Brand {
   id: string;
@@ -33,7 +34,7 @@ export default function ManageBrandsPage() {
         return;
       }
 
-      const response = await fetch('http://localhost:4000/api/brands', {
+      const response = await fetch(buildApiUrl('brands'), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

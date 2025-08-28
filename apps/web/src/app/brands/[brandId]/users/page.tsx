@@ -61,7 +61,7 @@ export default function BrandUsersPage() {
       }
 
       // Fetch brand details
-      const brandResponse = await fetch(`http://localhost:4000/api/brands/${brandId}`, {
+      const brandResponse = await fetch(buildApiUrl('brands/${brandId}'), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -75,7 +75,7 @@ export default function BrandUsersPage() {
       setBrand(brandData.brand);
 
       // Fetch brand invitations
-      const invitationsResponse = await fetch(`http://localhost:4000/api/brands/${brandId}/invitations`, {
+      const invitationsResponse = await fetch(buildApiUrl('brands/${brandId}/invitations'), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -111,7 +111,7 @@ export default function BrandUsersPage() {
         return;
       }
 
-      const response = await fetch(`http://localhost:4000/api/brands/${brandId}/invite`, {
+      const response = await fetch(buildApiUrl('brands/${brandId}/invite'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,7 +148,7 @@ export default function BrandUsersPage() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`http://localhost:4000/api/brands/${brandId}/invitations/${invitationId}/resend`, {
+      const response = await fetch(buildApiUrl('brands/${brandId}/invitations/${invitationId}/resend'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -171,7 +171,7 @@ export default function BrandUsersPage() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch(`http://localhost:4000/api/brands/${brandId}/invitations/${invitationId}`, {
+      const response = await fetch(buildApiUrl('brands/${brandId}/invitations/${invitationId}'), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -10,6 +10,7 @@ import { Select } from '../ui/select';
 import { RichTextEditor } from './RichTextEditor';
 import { FileUpload } from './FileUpload';
 import { TrackstarOrderSearch } from './TrackstarOrderSearch';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface User {
   id: string;
@@ -102,7 +103,7 @@ export function MessageForm({ messageId, onSuccess, onCancel }: MessageFormProps
   const fetchBrands = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/brands', {
+      const response = await fetch(buildApiUrl('brands'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -121,7 +122,7 @@ export function MessageForm({ messageId, onSuccess, onCancel }: MessageFormProps
   const fetchStatuses = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/messages/statuses/list', {
+      const response = await fetch(buildApiUrl('messages/statuses/list'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -140,7 +141,7 @@ export function MessageForm({ messageId, onSuccess, onCancel }: MessageFormProps
   const fetchUsers = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('http://localhost:4000/api/messages/users/search', {
+      const response = await fetch(buildApiUrl('messages/users/search'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -163,7 +164,7 @@ export function MessageForm({ messageId, onSuccess, onCancel }: MessageFormProps
     
     try {
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/messages/${messageId}`, {
+      const response = await fetch(buildApiUrl('messages/${messageId}'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -202,7 +203,7 @@ export function MessageForm({ messageId, onSuccess, onCancel }: MessageFormProps
 
     if (formData.has('files')) {
       const token = authService.getToken();
-      const response = await fetch(`http://localhost:4000/api/messages/${messageId}/attachments`, {
+      const response = await fetch(buildApiUrl('messages/${messageId}/attachments'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -240,8 +241,8 @@ export function MessageForm({ messageId, onSuccess, onCancel }: MessageFormProps
       };
 
       const url = messageId 
-        ? `http://localhost:4000/api/messages/${messageId}`
-        : 'http://localhost:4000/api/messages';
+        ? buildApiUrl('messages/${messageId}')
+        : buildApiUrl('messages');
       
       const method = messageId ? 'PUT' : 'POST';
 
