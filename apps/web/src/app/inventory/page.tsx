@@ -318,6 +318,12 @@ export default function InventoryPage() {
     });
   }, [items, sortState]);
 
+  // Helper function to check if current item has same SKU as previous
+  const isSameSKUAsPrevious = (currentIndex: number): boolean => {
+    if (currentIndex === 0) return false;
+    return sortedItems[currentIndex].sku === sortedItems[currentIndex - 1].sku;
+  };
+
   const getSortIcon = (field: SortField) => {
     if (sortState.field !== field) {
       return null; // No icon when not sorted by this field
@@ -494,10 +500,12 @@ export default function InventoryPage() {
 
             {/* Table Body */}
             <div className="divide-y divide-gray-200">
-              {sortedItems.map((item) => (
+              {sortedItems.map((item, index) => (
                 <div
                   key={item.id}
-                  className="px-6 py-4 hover:bg-gray-50 transition-colors"
+                  className={`px-6 py-4 hover:bg-gray-50 transition-colors ${
+                    isSameSKUAsPrevious(index) ? 'border-l-4 border-l-blue-200 bg-blue-50/30' : ''
+                  }`}
                 >
                   <div className="grid grid-cols-12 gap-4 items-center">
                     {/* Checkbox */}
@@ -518,7 +526,9 @@ export default function InventoryPage() {
                       className="col-span-2 cursor-pointer"
                       onClick={() => handleItemClick(item)}
                     >
-                      <div className="font-medium text-gray-900">{item.sku}</div>
+                      <div className={`font-medium ${isSameSKUAsPrevious(index) ? 'text-gray-500' : 'text-gray-900'}`}>
+                        {isSameSKUAsPrevious(index) ? `↳ ${item.sku}` : item.sku}
+                      </div>
                       <div className="text-sm text-gray-500 truncate">
                         {item.productName || 'No name'}
                       </div>

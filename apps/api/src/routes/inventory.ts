@@ -165,7 +165,10 @@ router.get('/', authenticateToken, async (req, res) => {
           },
         },
       },
-      orderBy: { id: 'asc' },
+      orderBy: [
+        { sku: 'asc' },
+        { warehouse: { name: 'asc' } },
+      ],
       take: params.limit + 1, // +1 to check if there are more results
     });
 
