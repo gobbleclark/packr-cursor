@@ -7,6 +7,7 @@ import {
   Building2, 
   Package, 
   Package2,
+  Truck,
   MessageSquare, 
   Users, 
   Settings, 
@@ -47,6 +48,13 @@ export function Navigation({ user, onLogout }: NavigationProps) {
       href: '/inventory',
       icon: Package2,
       description: 'Track stock levels',
+      roles: ['SUPER_ADMIN', 'THREEPL_ADMIN', 'THREEPL_USER', 'BRAND_ADMIN', 'BRAND_USER']
+    },
+    {
+      name: 'Inbound Shipments',
+      href: '/inbound-shipments',
+      icon: Truck,
+      description: 'Manage incoming inventory',
       roles: ['SUPER_ADMIN', 'THREEPL_ADMIN', 'THREEPL_USER', 'BRAND_ADMIN', 'BRAND_USER']
     },
     {
