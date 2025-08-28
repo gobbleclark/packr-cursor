@@ -89,13 +89,13 @@ export default function InventoryPage() {
           return;
         }
 
-        const userData = await authService.verifyToken();
-        if (!userData) {
+        const authResponse = await authService.verifyToken();
+        if (!authResponse) {
           router.push('/');
           return;
         }
 
-        setUser(userData);
+        setUser(authResponse.user);
       } catch (error) {
         console.error('Auth check failed:', error);
         router.push('/');
