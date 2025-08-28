@@ -178,17 +178,22 @@ function OrdersPageContent() {
       order.status,
       `$${order.totalAmount.toFixed(2)}`,
       (() => {
-        // Find the most recent shipped shipment for CSV export
-        const shippedShipments = order.shipments.filter(s => 
-          s.shippedAt && ['shipped', 'delivered'].includes(s.status?.toLowerCase())
-        );
+        // Check if order status indicates it's shipped (CSV export)
+        const orderIsShipped = ['SHIPPED', 'DELIVERED'].includes(order.status?.toUpperCase());
         
-        if (shippedShipments.length === 0) {
+        if (!orderIsShipped) {
+          return '-';
+        }
+        
+        // Order is shipped, now find shipment with date
+        const shipmentsWithDate = order.shipments.filter(s => s.shippedAt);
+        
+        if (shipmentsWithDate.length === 0) {
           return '-';
         }
         
         // Get the most recent ship date
-        const latestShipment = shippedShipments.reduce((latest, current) => {
+        const latestShipment = shipmentsWithDate.reduce((latest, current) => {
           const currentDate = new Date(current.shippedAt!);
           const latestDate = new Date(latest.shippedAt!);
           return currentDate > latestDate ? current : latest;
@@ -409,17 +414,23 @@ function OrdersPageContent() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {(() => {
-                            // Find the most recent shipped shipment
-                            const shippedShipments = order.shipments.filter(s => 
-                              s.shippedAt && ['shipped', 'delivered'].includes(s.status?.toLowerCase())
-                            );
+                            // Check if order status indicates it's shipped
+                            const orderIsShipped = ['SHIPPED', 'DELIVERED'].includes(order.status?.toUpperCase());
                             
-                            if (shippedShipments.length === 0) {
+                            if (!orderIsShipped) {
+                              return '-';
+                            }
+                            
+                            // Order is shipped, now find shipment with date
+                            const shipmentsWithDate = order.shipments.filter(s => s.shippedAt);
+                            
+                            if (shipmentsWithDate.length === 0) {
+                              // Order is marked as shipped but no shipment date available
                               return '-';
                             }
                             
                             // Get the most recent ship date
-                            const latestShipment = shippedShipments.reduce((latest, current) => {
+                            const latestShipment = shipmentsWithDate.reduce((latest, current) => {
                               const currentDate = new Date(current.shippedAt!);
                               const latestDate = new Date(latest.shippedAt!);
                               return currentDate > latestDate ? current : latest;
