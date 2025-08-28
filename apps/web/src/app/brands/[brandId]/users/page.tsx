@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Building2, Users, Plus, ArrowLeft, Mail, Trash2, UserPlus, Eye } from 'lucide-react';
+import { buildApiUrl } from '../../../../lib/api-config';
 
 interface Brand {
   id: string;
