@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Building2, Save, ArrowLeft, Upload, Settings, Users } from 'lucide-react';
 import TrackstarIntegration from '../../../../components/integrations/TrackstarIntegration';
+import { buildApiUrl } from '../../../../lib/api-config';
 
 interface Brand {
   id: string;
