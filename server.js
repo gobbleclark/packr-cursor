@@ -12,16 +12,33 @@ const { spawn } = require('child_process');
 async function startServer() {
   console.log('Starting Packr production server...');
   
-  // Ensure API is built
+  // Check for API build files
   const fs = require('fs');
-  if (!fs.existsSync('./apps/api/dist/index.js')) {
-    console.error('❌ API not built! Please run "npm run build" first.');
+  let apiEntryPoint = null;
+  
+  // Try different possible locations for the API entry point
+  const possiblePaths = [
+    './apps/api/dist/index.js',
+    './apps/api/src/index.js',
+    './apps/api/dist/src/index.js'
+  ];
+  
+  for (const path of possiblePaths) {
+    if (fs.existsSync(path)) {
+      apiEntryPoint = path;
+      break;
+    }
+  }
+  
+  if (!apiEntryPoint) {
+    console.error('❌ API entry point not found! Checked paths:', possiblePaths);
+    console.log('Available files in apps/api/dist:', fs.existsSync('./apps/api/dist') ? fs.readdirSync('./apps/api/dist') : 'Directory does not exist');
     process.exit(1);
   }
   
   // Start the API server in the background
-  console.log('Starting API server...');
-  const apiProcess = spawn('node', ['apps/api/dist/index.js'], {
+  console.log('Starting API server from:', apiEntryPoint);
+  const apiProcess = spawn('node', [apiEntryPoint], {
     env: { ...process.env, PORT: '4000' },
     stdio: 'inherit'
   });
