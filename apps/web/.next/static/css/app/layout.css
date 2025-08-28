@@ -709,6 +709,9 @@ video {
 .col-span-2 {
   grid-column: span 2 / span 2;
 }
+.col-span-3 {
+  grid-column: span 3 / span 3;
+}
 .mx-2 {
   margin-left: 0.5rem;
   margin-right: 0.5rem;

@@ -1,0 +1,87 @@
+{
+  "name": "Packr",
+  "description": "3PL Management Platform with Trackstar Integration",
+  "repository": "https://github.com/your-username/packr",
+  "logo": "",
+  "keywords": ["nodejs", "nextjs", "3pl", "inventory", "orders"],
+  "image": "heroku/nodejs",
+  "stack": "heroku-22",
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "addons": [
+    {
+      "plan": "heroku-postgresql:essential-0",
+      "as": "DATABASE"
+    },
+    {
+      "plan": "heroku-redis:mini",
+      "as": "REDIS"
+    }
+  ],
+  "env": {
+    "NODE_ENV": {
+      "description": "Node environment",
+      "value": "production"
+    },
+    "LOG_LEVEL": {
+      "description": "Logging level",
+      "value": "info"
+    },
+    "CLERK_PUBLISHABLE_KEY": {
+      "description": "Clerk publishable key for authentication",
+      "required": true
+    },
+    "CLERK_SECRET_KEY": {
+      "description": "Clerk secret key for authentication",
+      "required": true
+    },
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": {
+      "description": "Clerk publishable key for frontend",
+      "required": true
+    },
+    "WEBHOOK_TRACKSTAR_SECRET": {
+      "description": "Trackstar webhook secret",
+      "required": true
+    },
+    "S3_BUCKET": {
+      "description": "S3 bucket name for file storage",
+      "required": true
+    },
+    "S3_REGION": {
+      "description": "S3 region",
+      "value": "us-east-1"
+    },
+    "S3_ACCESS_KEY_ID": {
+      "description": "S3 access key ID",
+      "required": true
+    },
+    "S3_SECRET_ACCESS_KEY": {
+      "description": "S3 secret access key",
+      "required": true
+    },
+    "SENTRY_DSN": {
+      "description": "Sentry DSN for error tracking",
+      "required": false
+    },
+    "POSTHOG_KEY": {
+      "description": "PostHog key for analytics",
+      "required": false
+    },
+    "NEXT_PUBLIC_POSTHOG_KEY": {
+      "description": "PostHog key for frontend analytics",
+      "required": false
+    }
+  },
+  "scripts": {
+    "postdeploy": "npm run db:migrate:production && npm run db:seed:production"
+  }
+}

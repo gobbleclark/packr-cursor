@@ -23,15 +23,17 @@ interface InboundShipment {
   id: string;
   externalId?: string;
   trackingNumber?: string;
+  referenceNumber?: string;
   status: 'PENDING' | 'IN_TRANSIT' | 'RECEIVED' | 'CANCELLED';
   expectedDate?: string;
   receivedDate?: string;
   brandId: string;
-  brandName?: string;
+  brand?: { id: string; name: string; slug: string };
   warehouseId?: string;
-  warehouseName?: string;
+  warehouse?: { id: string; name: string; city?: string; state?: string };
   totalItems: number;
-  totalQuantity: number;
+  receivedItems?: number;
+  rawData?: any; // Full Trackstar response containing purchase_order_number
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -188,6 +190,28 @@ export default function InboundShipmentsPage() {
     }
   };
 
+  const getShipmentName = (shipment: InboundShipment) => {
+    // Use purchase_order_number from Trackstar raw data as the primary name
+    const purchaseOrderNumber = shipment.rawData?.purchase_order_number;
+    
+    if (purchaseOrderNumber) {
+      return purchaseOrderNumber;
+    }
+    
+    // Fallback to other identifiers if purchase_order_number is not available
+    const trackingOrRef = shipment.trackingNumber || shipment.referenceNumber;
+    const brandName = shipment.brand?.name || 'Unknown Brand';
+    const date = shipment.expectedDate ? new Date(shipment.expectedDate).toLocaleDateString() : '';
+    
+    if (trackingOrRef) {
+      return `${brandName} - ${trackingOrRef}`;
+    } else if (date) {
+      return `${brandName} - ${date}`;
+    } else {
+      return `${brandName} - Shipment ${shipment.id.slice(0, 8)}`;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -301,12 +325,12 @@ export default function InboundShipmentsPage() {
               {/* Table Header */}
               <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
                 <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
-                  <div className="col-span-2">Tracking Number</div>
-                  <div className="col-span-2">Brand</div>
+                  <div className="col-span-3">Inbound Shipment Name</div>
                   <div className="col-span-2">Warehouse</div>
                   <div className="col-span-1">Status</div>
                   <div className="col-span-1">Items</div>
                   <div className="col-span-2">Expected Date</div>
+                  <div className="col-span-1">Tracking</div>
                   <div className="col-span-2">Actions</div>
                 </div>
               </div>
@@ -319,28 +343,26 @@ export default function InboundShipmentsPage() {
                     className="px-6 py-4 hover:bg-gray-50 transition-colors"
                   >
                     <div className="grid grid-cols-12 gap-4 items-center">
-                      {/* Tracking Number */}
-                      <div className="col-span-2">
+                      {/* Inbound Shipment Name */}
+                      <div className="col-span-3">
                         <div className="font-medium text-gray-900">
-                          {shipment.trackingNumber || 'No tracking'}
+                          {getShipmentName(shipment)}
                         </div>
                         <div className="text-sm text-gray-500">
                           ID: {shipment.id.slice(0, 8)}...
                         </div>
                       </div>
 
-                      {/* Brand */}
-                      <div className="col-span-2">
-                        <span className="text-sm text-gray-900">
-                          {shipment.brandName || 'Unknown Brand'}
-                        </span>
-                      </div>
-
                       {/* Warehouse */}
                       <div className="col-span-2">
                         <span className="text-sm text-gray-900">
-                          {shipment.warehouseName || 'No warehouse'}
+                          {shipment.warehouse?.name || 'No warehouse'}
                         </span>
+                        {shipment.warehouse?.city && shipment.warehouse?.state && (
+                          <div className="text-xs text-gray-500">
+                            {shipment.warehouse.city}, {shipment.warehouse.state}
+                          </div>
+                        )}
                       </div>
 
                       {/* Status */}
@@ -354,7 +376,9 @@ export default function InboundShipmentsPage() {
                       {/* Items */}
                       <div className="col-span-1">
                         <div className="text-sm text-gray-900">{shipment.totalItems}</div>
-                        <div className="text-xs text-gray-500">{shipment.totalQuantity} units</div>
+                        <div className="text-xs text-gray-500">
+                          {shipment.receivedItems ? `${shipment.receivedItems} received` : 'Pending'}
+                        </div>
                       </div>
 
                       {/* Expected Date */}
@@ -368,6 +392,18 @@ export default function InboundShipmentsPage() {
                         {shipment.receivedDate && (
                           <div className="text-xs text-green-600">
                             Received: {new Date(shipment.receivedDate).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Tracking */}
+                      <div className="col-span-1">
+                        <div className="text-sm text-gray-900">
+                          {shipment.trackingNumber || '-'}
+                        </div>
+                        {shipment.referenceNumber && (
+                          <div className="text-xs text-gray-500">
+                            Ref: {shipment.referenceNumber}
                           </div>
                         )}
                       </div>

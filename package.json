@@ -15,7 +15,20 @@
     "db:generate": "turbo run db:generate",
     "db:migrate": "turbo run db:migrate",
     "db:push": "turbo run db:push",
-    "db:studio": "turbo run db:studio"
+    "db:studio": "turbo run db:studio",
+    "start": "node server.js",
+    "start:production": "node server.js",
+    "start:api": "cd apps/api && PORT=4000 npm start",
+    "start:web": "cd apps/web && PORT=${PORT:-3000} npm start",
+    "db:migrate:production": "cd packages/database && npx prisma migrate deploy",
+    "db:seed:production": "cd packages/database && npm run db:seed",
+    "heroku-postbuild": "npm run build"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2",
+    "express": "^4.18.2",
+    "http-proxy-middleware": "^2.0.6",
+    "next": "^14.2.25"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
