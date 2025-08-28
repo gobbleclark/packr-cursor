@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
+import { API_BASE, buildApiUrl } from './api-config';
 
 export interface LoginData {
   email: string;
@@ -61,7 +61,7 @@ class AuthService {
   }
 
   async login(data: LoginData): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE}/api/auth/login`, {
+    const response = await fetch(buildApiUrl('auth/login'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -83,7 +83,7 @@ class AuthService {
   }
 
   async signup(data: SignupData): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE}/api/auth/signup`, {
+    const response = await fetch(buildApiUrl('auth/signup'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -109,7 +109,7 @@ class AuthService {
     if (!token) return null;
 
     try {
-      const response = await fetch(`${API_BASE}/api/auth/verify`, {
+      const response = await fetch(buildApiUrl('auth/verify'), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
