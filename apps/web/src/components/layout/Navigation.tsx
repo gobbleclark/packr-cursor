@@ -26,50 +26,63 @@ export function Navigation({ user, onLogout }: NavigationProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const navigationItems = [
+  // Define all navigation items with role requirements
+  const allNavigationItems = [
     {
       name: 'Dashboard',
       href: '/dashboard',
       icon: BarChart3,
-      description: 'Overview and analytics'
+      description: 'Overview and analytics',
+      roles: ['SUPER_ADMIN', 'THREEPL_ADMIN', 'THREEPL_USER', 'BRAND_ADMIN', 'BRAND_USER']
     },
     {
       name: 'Orders',
       href: '/orders',
       icon: Package,
-      description: 'View and manage orders'
+      description: 'View and manage orders',
+      roles: ['SUPER_ADMIN', 'THREEPL_ADMIN', 'THREEPL_USER', 'BRAND_ADMIN', 'BRAND_USER']
     },
     {
       name: 'Inventory',
       href: '/inventory',
       icon: Package2,
-      description: 'Track stock levels'
+      description: 'Track stock levels',
+      roles: ['SUPER_ADMIN', 'THREEPL_ADMIN', 'THREEPL_USER', 'BRAND_ADMIN', 'BRAND_USER']
     },
     {
       name: 'Brands',
       href: '/brands',
       icon: Building2,
-      description: 'Manage brand clients'
+      description: 'Manage brand clients',
+      roles: ['SUPER_ADMIN', 'THREEPL_ADMIN', 'THREEPL_USER'] // Only 3PL users
     },
     {
       name: 'Workspace',
       href: '/chat',
       icon: MessageSquare,
-      description: 'Real-time chat & tasks'
+      description: 'Real-time chat & tasks',
+      roles: ['SUPER_ADMIN', 'THREEPL_ADMIN', 'THREEPL_USER', 'BRAND_ADMIN', 'BRAND_USER']
     },
     {
       name: 'Users',
       href: '/users',
       icon: Users,
-      description: 'User management'
+      description: 'User management',
+      roles: ['SUPER_ADMIN', 'THREEPL_ADMIN', 'THREEPL_USER', 'BRAND_ADMIN', 'BRAND_USER']
     },
     {
       name: 'Settings',
       href: '/settings',
       icon: Settings,
-      description: 'System configuration'
+      description: 'System configuration',
+      roles: ['SUPER_ADMIN', 'THREEPL_ADMIN', 'THREEPL_USER', 'BRAND_ADMIN', 'BRAND_USER']
     }
   ];
+
+  // Filter navigation items based on user role
+  const navigationItems = allNavigationItems.filter(item => 
+    user?.role ? item.roles.includes(user.role) : false
+  );
 
   const handleNavigation = (href: string) => {
     router.push(href);
