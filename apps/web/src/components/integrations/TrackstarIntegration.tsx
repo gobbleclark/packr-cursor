@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Settings, CheckCircle, AlertCircle, Trash2, RefreshCw } from 'lucide-react';
 import { TrackstarConnectButton } from '@trackstar/react-trackstar-link';
 import { authService } from '../../lib/auth';
+import { buildApiUrl } from '../../lib/api-config';
 
 interface TrackstarIntegrationProps {
   brandId: string;
