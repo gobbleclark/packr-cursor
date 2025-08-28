@@ -609,6 +609,8 @@ export class TrackstarIntegrationService {
         if (item.locations?.[0]?.location_id) {
           const locationId = item.locations[0].location_id;
           
+          logger.info(`Processing inventory for SKU: ${item.sku}, Location ID: ${locationId}, Location Name: ${item.locations[0].name || 'NO NAME PROVIDED'}`);
+          
           // Find or create warehouse
           let warehouse = await prisma.warehouse.findUnique({
             where: {
@@ -620,11 +622,14 @@ export class TrackstarIntegrationService {
           });
 
           if (!warehouse) {
+            const warehouseName = item.locations[0].name || `Warehouse ${locationId}`;
+            logger.info(`Creating new warehouse - Name: ${warehouseName}, External ID: ${locationId}`);
+            
             warehouse = await prisma.warehouse.create({
               data: {
                 tenantId: brand.threeplId,
                 externalId: locationId,
-                name: item.locations[0].name || `Warehouse ${locationId}`,
+                name: warehouseName,
                 address: item.locations[0].address || null,
                 city: item.locations[0].city || null,
                 state: item.locations[0].state || null,
@@ -637,13 +642,17 @@ export class TrackstarIntegrationService {
                 }
               }
             });
-            logger.info(`Created new warehouse: ${warehouse.name} (${warehouse.externalId})`);
+            logger.info(`Created new warehouse: ${warehouse.name} (ID: ${warehouse.id}, External ID: ${warehouse.externalId})`);
+          } else {
+            logger.info(`Found existing warehouse: ${warehouse.name} (ID: ${warehouse.id}, External ID: ${warehouse.externalId})`);
           }
 
           warehouseId = warehouse.id;
         }
 
         // Create or update inventory item
+        logger.info(`Synced inventory for SKU: ${item.sku}, Warehouse: ${warehouseId}, On Hand: ${item.onhand || 0}, Available: ${item.fulfillable || 0}`);
+        
         await prisma.inventoryItem.upsert({
           where: {
             tenantId_brandId_warehouseId_sku: {
