@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { prisma } from '@packr/database';
+import { prisma } from '../lib/database';
 import { emailService } from '../services/emailService';
 import { logger } from '../utils/logger';
 import { authenticateToken, requireThreePL, requireRole, requireOwnThreePL, requireOwnBrand, AuthenticatedRequest } from '../middleware/auth';

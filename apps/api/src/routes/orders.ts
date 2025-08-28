@@ -1,5 +1,5 @@
 import express from 'express';
-import { prisma } from '@packr/database';
+import { prisma } from '../lib/database';
 import { logger } from '../utils/logger';
 import { trackstarIntegrationService } from '../integrations/trackstar/service';
 import { trackstarClient } from '../integrations/trackstar/client';

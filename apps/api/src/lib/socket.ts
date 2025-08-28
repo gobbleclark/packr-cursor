@@ -3,7 +3,7 @@ import { Server as HTTPServer } from 'http';
 import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
 import jwt from 'jsonwebtoken';
-import { prisma } from '@packr/database';
+import { prisma } from './database';
 import { logger } from '../utils/logger';
 
 interface AuthenticatedSocket extends Socket {

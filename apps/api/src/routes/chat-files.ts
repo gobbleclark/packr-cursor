@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { prisma } from '@packr/database';
+import { prisma } from '../lib/database';
 import { authenticateToken } from '../middleware/auth';
 import { s3Service } from '../lib/s3';
 import { logger } from '../utils/logger';

@@ -1,5 +1,5 @@
 import { CronJob } from 'cron';
-import { prisma } from '@packr/database';
+import { prisma } from '../lib/database';
 import { trackstarIntegrationService } from '../integrations/trackstar/service';
 import { logger } from '../utils/logger';
 

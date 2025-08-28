@@ -3,7 +3,7 @@ import { z } from 'zod';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { prisma } from '@packr/database';
+import { prisma } from '../lib/database';
 import { authenticateToken } from '../middleware/auth';
 import { requireRole } from '../middleware/auth';
 import { logger } from '../utils/logger';

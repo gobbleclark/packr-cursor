@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { prisma } from '@packr/database';
+import { prisma } from '../lib/database';
 import { hash, compare } from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';

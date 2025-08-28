@@ -1,4 +1,4 @@
-import { prisma } from '@packr/database';
+import { prisma } from './../../lib/database';
 import { trackstarClient, TrackstarFilters } from './client';
 import { logger } from '../../utils/logger';
 import { Queue, Worker, Job } from 'bullmq';

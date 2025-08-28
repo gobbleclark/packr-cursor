@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { prisma } from '@packr/database';
+import { prisma } from '../lib/database';
 import { logger } from '../utils/logger';
 
 // Extend Express Request interface to include user data

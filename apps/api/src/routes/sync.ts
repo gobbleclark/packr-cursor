@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { prisma } from '@packr/database';
+import { prisma } from '../lib/database';
 import { logger } from '../utils/logger';
 import { trackstarIntegrationService } from '../integrations/trackstar/service';
 import { requireAuth } from '../middleware/auth';
