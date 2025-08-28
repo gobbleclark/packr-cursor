@@ -122,7 +122,7 @@ export default function DashboardPage() {
         }
       }
 
-      const url = buildApiUrl('dashboard/stats${params.toString() ? ')?' + params.toString() : ''}`;
+      const url = buildApiUrl(`dashboard/stats${params.toString() ? '?' + params.toString() : ''}`);
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
