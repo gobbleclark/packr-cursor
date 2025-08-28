@@ -20,6 +20,7 @@ interface Order {
     id: string;
     status: string;
     trackingNumber?: string;
+    shippedAt?: string;
   }>;
 }
 
@@ -177,10 +178,24 @@ function OrdersPageContent() {
       order.status,
       `$${order.totalAmount.toFixed(2)}`,
       (() => {
-        const hasShipped = order.shipments.some(s => ['shipped', 'delivered'].includes(s.status?.toLowerCase()));
-        if (!hasShipped) return '-';
+        // Find the most recent shipped shipment for CSV export
+        const shippedShipments = order.shipments.filter(s => 
+          s.shippedAt && ['shipped', 'delivered'].includes(s.status?.toLowerCase())
+        );
+        
+        if (shippedShipments.length === 0) {
+          return '-';
+        }
+        
+        // Get the most recent ship date
+        const latestShipment = shippedShipments.reduce((latest, current) => {
+          const currentDate = new Date(current.shippedAt!);
+          const latestDate = new Date(latest.shippedAt!);
+          return currentDate > latestDate ? current : latest;
+        });
+        
         try {
-          const date = new Date(order.requiredShipDate);
+          const date = new Date(latestShipment.shippedAt!);
           return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
         } catch {
           return '-';
@@ -394,14 +409,25 @@ function OrdersPageContent() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {(() => {
-                            // Check if order has been shipped
-                            const hasShipped = order.shipments.some(s => ['shipped', 'delivered'].includes(s.status?.toLowerCase()));
-                            if (!hasShipped) {
+                            // Find the most recent shipped shipment
+                            const shippedShipments = order.shipments.filter(s => 
+                              s.shippedAt && ['shipped', 'delivered'].includes(s.status?.toLowerCase())
+                            );
+                            
+                            if (shippedShipments.length === 0) {
                               return '-';
                             }
-                            // Try to parse the date, fallback to '-' if invalid
+                            
+                            // Get the most recent ship date
+                            const latestShipment = shippedShipments.reduce((latest, current) => {
+                              const currentDate = new Date(current.shippedAt!);
+                              const latestDate = new Date(latest.shippedAt!);
+                              return currentDate > latestDate ? current : latest;
+                            });
+                            
+                            // Format the ship date
                             try {
-                              const date = new Date(order.requiredShipDate);
+                              const date = new Date(latestShipment.shippedAt!);
                               return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
                             } catch {
                               return '-';
