@@ -1,4 +1,7 @@
 {
+  "/brands/page": "app/brands/page.js",
   "/chat/page": "app/chat/page.js",
-  "/dashboard/page": "app/dashboard/page.js"
+  "/users/page": "app/users/page.js",
+  "/settings/page": "app/settings/page.js",
+  "/orders/[orderId]/page": "app/orders/[orderId]/page.js"
 }

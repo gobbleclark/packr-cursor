@@ -213,6 +213,9 @@ export class TrackstarIntegrationService {
         case 'get_shipments':
           await this.syncShipments(brandId, accessToken, type === 'initial');
           break;
+        case 'get_inbound_shipments':
+          await this.syncInboundShipments(brandId, accessToken, type === 'initial');
+          break;
         default:
           logger.warn(`Unknown sync function: ${func}`);
       }
@@ -253,8 +256,10 @@ export class TrackstarIntegrationService {
 
       logger.info(`Starting incremental sync for brand ${brandId} with ${lookbackHours}h lookback`);
 
-      // Only sync orders for incremental updates (most critical for real-time)
+      // Sync orders and inventory for incremental updates (both critical for real-time)
       await this.syncOrders(brandId, integration.accessToken, false, lookbackHours);
+      await this.syncInventory(brandId, integration.accessToken, false);
+      await this.syncInboundShipments(brandId, integration.accessToken, false);
       
       // Update last sync time
       await prisma.brandIntegration.update({
@@ -304,6 +309,7 @@ export class TrackstarIntegrationService {
       await this.syncInventory(brandId, integration.accessToken, true);
       await this.syncOrders(brandId, integration.accessToken, true);
       await this.syncShipments(brandId, integration.accessToken, true);
+      await this.syncInboundShipments(brandId, integration.accessToken, true);
 
       // Mark backfill as completed
       await prisma.brandIntegration.update({
@@ -420,6 +426,7 @@ export class TrackstarIntegrationService {
     await this.syncInventoryWithDateFilter(brandId, accessToken, thirtyDaysAgo);
     await this.syncOrdersWithDateFilter(brandId, accessToken, thirtyDaysAgo);
     await this.syncShipmentsWithDateFilter(brandId, accessToken, thirtyDaysAgo);
+    await this.syncInboundShipmentsWithDateFilter(brandId, accessToken, thirtyDaysAgo);
 
     // Update last reconciliation timestamp
     await prisma.brandIntegration.update({
@@ -578,17 +585,11 @@ export class TrackstarIntegrationService {
       limit: 1000
     };
 
-    if (!isInitial) {
-      const integration = await prisma.brandIntegration.findUnique({
-        where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } }
-      });
-      
-      if (integration?.lastSyncedAt) {
-        filters.updated_date = {
-          gte: new Date(integration.lastSyncedAt.getTime() - 2 * 60 * 1000).toISOString()
-        };
-      }
-    }
+    // Note: We don't apply date filters for inventory sync because:
+    // 1. Inventory changes less frequently than orders
+    // 2. Trackstar's inventory API may not reliably support updated_date filtering
+    // 3. Full inventory sync is relatively lightweight compared to orders
+    // For incremental syncs, we still get the full inventory to ensure accuracy
 
     try {
       const response = await trackstarClient.instance.getInventory(accessToken, filters);
@@ -614,22 +615,27 @@ export class TrackstarIntegrationService {
         if (item.locations?.[0]?.location_id) {
           const locationId = item.locations[0].location_id;
           
+          logger.info(`Processing inventory for SKU: ${item.sku}, Location ID: ${locationId}, Location Name: ${item.locations[0].name || 'NO NAME PROVIDED'}`);
+          
           // Find or create warehouse
           let warehouse = await prisma.warehouse.findUnique({
             where: {
               tenantId_externalId: {
                 tenantId: brand.threeplId,
                 externalId: locationId
+              }
             }
-          }
-        });
+          });
 
           if (!warehouse) {
+            const warehouseName = item.locations[0].name || `Warehouse ${locationId}`;
+            logger.info(`Creating new warehouse - Name: ${warehouseName}, External ID: ${locationId}`);
+            
             warehouse = await prisma.warehouse.create({
-            data: {
+              data: {
                 tenantId: brand.threeplId,
                 externalId: locationId,
-                name: item.locations[0].name || `Warehouse ${locationId}`,
+                name: warehouseName,
                 address: item.locations[0].address || null,
                 city: item.locations[0].city || null,
                 state: item.locations[0].state || null,
@@ -642,13 +648,17 @@ export class TrackstarIntegrationService {
                 }
               }
             });
-            logger.info(`Created new warehouse: ${warehouse.name} (${warehouse.externalId})`);
+            logger.info(`Created new warehouse: ${warehouse.name} (ID: ${warehouse.id}, External ID: ${warehouse.externalId})`);
+          } else {
+            logger.info(`Found existing warehouse: ${warehouse.name} (ID: ${warehouse.id}, External ID: ${warehouse.externalId})`);
           }
 
           warehouseId = warehouse.id;
         }
 
         // Create or update inventory item
+        logger.info(`Synced inventory for SKU: ${item.sku}, Warehouse: ${warehouseId}, On Hand: ${item.onhand || 0}, Available: ${item.fulfillable || 0}`);
+        
         await prisma.inventoryItem.upsert({
           where: {
             tenantId_brandId_warehouseId_sku: {
@@ -1097,6 +1107,259 @@ export class TrackstarIntegrationService {
     logger.info(`Syncing shipments for brand ${brandId} from ${fromDate.toISOString()}`);
     // Shipments are processed as part of orders, so this is a no-op
     logger.info(`Shipments are processed as part of orders for brand ${brandId} reconciliation`);
+  }
+
+  private async syncInboundShipments(brandId: string, accessToken: string, isInitial: boolean): Promise<void> {
+    const brand = await prisma.brand.findUnique({
+      where: { id: brandId },
+      include: { threepl: true }
+    });
+
+    if (!brand) {
+      throw new Error(`Brand ${brandId} not found`);
+    }
+
+    logger.info(`Starting inbound shipments sync for brand ${brandId} (${isInitial ? 'initial' : 'incremental'})`);
+
+    try {
+      // Get inbound shipments from Trackstar
+      logger.info('Getting inbound shipments from WMS with filters:');
+      
+      let allShipments: any[] = [];
+      let pageToken: string | undefined;
+      let pageCount = 0;
+      const maxPages = 100; // Safety limit
+
+      do {
+        pageCount++;
+        logger.info(`Fetching page ${pageCount} from /wms/inbound-shipments`);
+        
+        const filters: any = {
+          limit: 1000,
+        };
+        
+        if (pageToken) {
+          filters.page_token = pageToken;
+        }
+
+        // For incremental sync, only get recent shipments
+        if (!isInitial) {
+          const lookbackDate = new Date();
+          lookbackDate.setHours(lookbackDate.getHours() - 24); // 24 hour lookback
+          filters.updated_after = lookbackDate.toISOString();
+        }
+
+        const response = await trackstarClient.getInboundShipments(accessToken, filters);
+        
+        const shipments = response.data || [];
+        logger.info(`Received ${shipments.length} records from page ${pageCount} (expected up to ${filters.limit})`);
+        
+        allShipments = allShipments.concat(shipments);
+        pageToken = response.next_token;
+        
+        if (!pageToken) {
+          logger.info('No more pages available, total records:', allShipments.length);
+          break;
+        }
+        
+        if (pageCount >= maxPages) {
+          logger.warn(`Reached maximum page limit (${maxPages}), stopping pagination`);
+          break;
+        }
+      } while (pageToken);
+
+      logger.info(`Completed fetching ${pageCount} pages, total records: ${allShipments.length}`);
+      logger.info(`Successfully fetched ${allShipments.length} inbound shipment records from Trackstar`);
+
+      // Process each inbound shipment
+      for (const shipmentData of allShipments) {
+        await this.processInboundShipment(brandId, shipmentData);
+      }
+
+      logger.info(`Completed inbound shipments sync for brand ${brandId}`);
+    } catch (error) {
+      logger.error(`Failed to sync inbound shipments for brand ${brandId}:`, error);
+      throw error;
+    }
+  }
+
+  private async syncInboundShipmentsWithDateFilter(brandId: string, accessToken: string, fromDate: Date): Promise<void> {
+    logger.info(`Syncing inbound shipments for brand ${brandId} from ${fromDate.toISOString()}`);
+    
+    const brand = await prisma.brand.findUnique({
+      where: { id: brandId },
+      include: { threepl: true }
+    });
+
+    if (!brand) {
+      throw new Error(`Brand ${brandId} not found`);
+    }
+
+    try {
+      // Get inbound shipments from Trackstar with date filter
+      let allShipments: any[] = [];
+      let pageToken: string | undefined;
+      let pageCount = 0;
+      const maxPages = 100;
+
+      do {
+        pageCount++;
+        logger.info(`Fetching page ${pageCount} from /wms/inbound-shipments with date filter`);
+        
+        const filters: any = {
+          limit: 1000,
+          updated_after: fromDate.toISOString(),
+        };
+        
+        if (pageToken) {
+          filters.page_token = pageToken;
+        }
+
+        const response = await trackstarClient.getInboundShipments(accessToken, filters);
+        
+        const shipments = response.data || [];
+        logger.info(`Received ${shipments.length} records from page ${pageCount}`);
+        
+        allShipments = allShipments.concat(shipments);
+        pageToken = response.next_token;
+        
+        if (!pageToken || pageCount >= maxPages) {
+          break;
+        }
+      } while (pageToken);
+
+      logger.info(`Successfully fetched ${allShipments.length} inbound shipment records from Trackstar for reconciliation`);
+
+      // Process each inbound shipment
+      for (const shipmentData of allShipments) {
+        await this.processInboundShipment(brandId, shipmentData);
+      }
+
+      logger.info(`Completed inbound shipments reconciliation for brand ${brandId}`);
+    } catch (error) {
+      logger.error(`Failed to sync inbound shipments for brand ${brandId}:`, error);
+      throw error;
+    }
+  }
+
+  private async processInboundShipment(brandId: string, shipmentData: any): Promise<void> {
+    try {
+      const brand = await prisma.brand.findUnique({
+        where: { id: brandId },
+        include: { threepl: true }
+      });
+
+      if (!brand) {
+        throw new Error(`Brand ${brandId} not found`);
+      }
+
+      // Map Trackstar status to our enum
+      const statusMapping: { [key: string]: string } = {
+        'pending': 'PENDING',
+        'in_transit': 'IN_TRANSIT',
+        'received': 'RECEIVED',
+        'cancelled': 'CANCELLED',
+        'partial': 'PARTIAL',
+      };
+
+      const status = statusMapping[shipmentData.status?.toLowerCase()] || 'PENDING';
+
+      // Find or create warehouse if location is provided
+      let warehouseId: string | undefined;
+      if (shipmentData.destination_location_id) {
+        const warehouse = await prisma.warehouse.findFirst({
+          where: {
+            tenantId: brand.threeplId,
+            externalId: shipmentData.destination_location_id,
+          },
+        });
+        warehouseId = warehouse?.id;
+      }
+
+      // Calculate total items from line items
+      const totalItems = shipmentData.line_items?.reduce((sum: number, item: any) => sum + (item.expected_quantity || 0), 0) || 0;
+      const receivedItems = shipmentData.line_items?.reduce((sum: number, item: any) => sum + (item.received_quantity || 0), 0) || 0;
+
+      // Upsert the inbound shipment
+      const inboundShipment = await prisma.inboundShipment.upsert({
+        where: {
+          threeplId_externalId: {
+            threeplId: brand.threeplId,
+            externalId: shipmentData.id,
+          },
+        },
+        update: {
+          status: status as any,
+          trackingNumber: shipmentData.tracking_number,
+          referenceNumber: shipmentData.reference_number,
+          expectedDate: shipmentData.expected_date ? new Date(shipmentData.expected_date) : undefined,
+          receivedDate: shipmentData.received_date ? new Date(shipmentData.received_date) : undefined,
+          carrierName: shipmentData.carrier_name,
+          trackingUrl: shipmentData.tracking_url,
+          warehouseId,
+          totalItems,
+          receivedItems,
+          destinationAddress: shipmentData.destination_address || undefined,
+          rawData: shipmentData,
+          updatedAtRemote: shipmentData.updated_at ? new Date(shipmentData.updated_at) : undefined,
+        },
+        create: {
+          threeplId: brand.threeplId,
+          brandId: brandId,
+          externalId: shipmentData.id,
+          status: status as any,
+          trackingNumber: shipmentData.tracking_number,
+          referenceNumber: shipmentData.reference_number,
+          expectedDate: shipmentData.expected_date ? new Date(shipmentData.expected_date) : undefined,
+          receivedDate: shipmentData.received_date ? new Date(shipmentData.received_date) : undefined,
+          carrierName: shipmentData.carrier_name,
+          trackingUrl: shipmentData.tracking_url,
+          warehouseId,
+          totalItems,
+          receivedItems,
+          destinationAddress: shipmentData.destination_address || undefined,
+          rawData: shipmentData,
+          updatedAtRemote: shipmentData.updated_at ? new Date(shipmentData.updated_at) : undefined,
+        },
+      });
+
+      // Process line items
+      if (shipmentData.line_items && Array.isArray(shipmentData.line_items)) {
+        for (const lineItem of shipmentData.line_items) {
+          await prisma.inboundShipmentItem.upsert({
+            where: {
+              inboundShipmentId_sku: {
+                inboundShipmentId: inboundShipment.id,
+                sku: lineItem.sku,
+              },
+            },
+            update: {
+              productName: lineItem.product_name,
+              expectedQuantity: lineItem.expected_quantity || 0,
+              receivedQuantity: lineItem.received_quantity || 0,
+              unitCost: lineItem.unit_cost,
+              totalCost: lineItem.total_cost,
+              metadata: lineItem,
+            },
+            create: {
+              inboundShipmentId: inboundShipment.id,
+              sku: lineItem.sku,
+              productName: lineItem.product_name,
+              expectedQuantity: lineItem.expected_quantity || 0,
+              receivedQuantity: lineItem.received_quantity || 0,
+              unitCost: lineItem.unit_cost,
+              totalCost: lineItem.total_cost,
+              metadata: lineItem,
+            },
+          });
+        }
+      }
+
+      logger.info(`Processed inbound shipment ${shipmentData.id} for brand ${brandId}`);
+    } catch (error) {
+      logger.error(`Failed to process inbound shipment ${shipmentData.id}:`, error);
+      throw error;
+    }
   }
 
   /**

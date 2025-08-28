@@ -533,6 +533,93 @@ export class TrackstarClient {
     throw new Error('Shipments endpoint not available - shipments are embedded within orders');
   }
 
+  async getInboundShipments(accessToken: string, filters: TrackstarFilters = {}): Promise<TrackstarListResponse<any>> {
+    return this.circuitBreaker.execute(async () => {
+      try {
+        logger.info('Getting inbound shipments from WMS with filters:', filters);
+        
+        await this.rateLimiter.waitForSlot(accessToken);
+        
+        const response = await this.instance.get('/wms/inbound-shipments', {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          params: filters,
+        });
+
+        logger.info(`Successfully fetched ${response.data.data?.length || 0} inbound shipments`);
+        return response.data;
+      } catch (error) {
+        logger.error('Failed to get inbound shipments:', error);
+        throw error;
+      }
+    });
+  }
+
+  async getInboundShipmentById(accessToken: string, shipmentId: string): Promise<any> {
+    try {
+      logger.info(`Getting inbound shipment by ID ${shipmentId} from WMS`);
+      
+      await this.rateLimiter.waitForSlot(accessToken);
+      
+      const response = await this.instance.get(`/wms/inbound-shipments/${shipmentId}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      logger.info(`Successfully fetched inbound shipment ${shipmentId}`);
+      return response.data;
+    } catch (error) {
+      logger.error(`Failed to get inbound shipment ${shipmentId}:`, error);
+      throw error;
+    }
+  }
+
+  async createInboundShipment(accessToken: string, shipmentData: any): Promise<any> {
+    try {
+      logger.info('Creating inbound shipment in WMS:', { trackingNumber: shipmentData.tracking_number });
+      
+      await this.rateLimiter.waitForSlot(accessToken);
+      
+      const response = await this.instance.post('/wms/inbound-shipments', shipmentData, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      logger.info(`Successfully created inbound shipment ${response.data.id}`);
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to create inbound shipment:', error);
+      throw error;
+    }
+  }
+
+  async updateInboundShipment(accessToken: string, shipmentId: string, shipmentData: any): Promise<any> {
+    try {
+      logger.info(`Updating inbound shipment ${shipmentId} in WMS`);
+      
+      await this.rateLimiter.waitForSlot(accessToken);
+      
+      const response = await this.instance.put(`/wms/inbound-shipments/${shipmentId}`, shipmentData, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      logger.info(`Successfully updated inbound shipment ${shipmentId}`);
+      return response.data;
+    } catch (error) {
+      logger.error(`Failed to update inbound shipment ${shipmentId}:`, error);
+      throw error;
+    }
+  }
+
   /**
    * Get ship methods from WMS
    */

@@ -72,11 +72,17 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
       });
     }
 
-    // Find the primary 3PL membership (for 3PL users)
+    // Debug logging
+    logger.info(`Auth middleware - User: ${user.email}, Memberships: ${JSON.stringify(user.memberships)}`);
+
+    // Find the primary 3PL membership (for 3PL users) - 3PL only, no brand
     const primaryMembership = user.memberships.find(m => m.threeplId && !m.brandId);
     
-    // Find the primary brand membership (for brand users)
-    const primaryBrandMembership = user.memberships.find(m => m.brandId && !m.threeplId);
+    // Find the primary brand membership (for brand users) - has brand (may also have 3PL)
+    const primaryBrandMembership = user.memberships.find(m => m.brandId);
+    
+    logger.info(`Auth middleware - Primary 3PL membership: ${JSON.stringify(primaryMembership)}`);
+    logger.info(`Auth middleware - Primary brand membership: ${JSON.stringify(primaryBrandMembership)}`);
     
     // Determine primary role and IDs
     let primaryRole = 'USER';
@@ -87,6 +93,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
       // User has 3PL access
       primaryRole = primaryMembership.role;
       primaryThreeplId = primaryMembership.threeplId;
+      logger.info(`Auth middleware - Using 3PL membership: Role=${primaryRole}, ThreePL=${primaryThreeplId}`);
     } else if (primaryBrandMembership) {
       // User is brand-only
       primaryRole = primaryBrandMembership.role;
@@ -98,6 +105,9 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
         select: { threeplId: true }
       });
       primaryThreeplId = brand?.threeplId;
+      logger.info(`Auth middleware - Using brand membership: Role=${primaryRole}, Brand=${primaryBrandId}, ThreePL=${primaryThreeplId}`);
+    } else {
+      logger.warn(`Auth middleware - No valid membership found for user ${user.email}`);
     }
     
     // Attach user data to request

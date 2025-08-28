@@ -45,10 +45,14 @@ router.get('/', authenticateToken, async (req, res) => {
       active: true, // Only show active (non-hidden) items
     };
 
+    // Debug logging
+    logger.info(`Inventory request - Role: ${user.role}, ThreePL ID: ${user.threeplId}, Brand ID: ${user.brandId}`);
+
     // RBAC: Brand users can only see their brand's inventory
     if (user.role === 'BRAND_ADMIN' || user.role === 'BRAND_USER') {
       if (!user.brandId) {
         // Brand user without brandId - no access
+        logger.warn(`Brand user without brandId - Role: ${user.role}`);
         return res.status(403).json({
           error: 'Access denied',
           message: 'Brand users must have a valid brand assignment'
@@ -56,6 +60,7 @@ router.get('/', authenticateToken, async (req, res) => {
       }
       // Restrict to brand's inventory only
       whereClause.brandId = user.brandId;
+      logger.info(`Brand user inventory where clause: ${JSON.stringify(whereClause)}`);
     } else if (user.role.includes('THREEPL')) {
       // 3PL users can see all brands under their 3PL
       // brandId filter will be applied below if specified
@@ -150,8 +155,20 @@ router.get('/', authenticateToken, async (req, res) => {
             slug: true,
           },
         },
+        warehouse: {
+          select: {
+            id: true,
+            name: true,
+            externalId: true,
+            city: true,
+            state: true,
+          },
+        },
       },
-      orderBy: { id: 'asc' },
+      orderBy: [
+        { sku: 'asc' },
+        { warehouse: { name: 'asc' } },
+      ],
       take: params.limit + 1, // +1 to check if there are more results
     });
 
