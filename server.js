@@ -20,7 +20,8 @@ async function startServer() {
   const possiblePaths = [
     './apps/api/dist/index.js',
     './apps/api/src/index.js',
-    './apps/api/dist/src/index.js'
+    './apps/api/dist/src/index.js',
+    './apps/api/dist/apps/api/src/index.js'
   ];
   
   for (const path of possiblePaths) {
