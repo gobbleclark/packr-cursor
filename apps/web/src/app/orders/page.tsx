@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authService } from '../../lib/auth';
 import { Package, Search, Filter, Eye, Calendar, Building2, Download } from 'lucide-react';
@@ -11,9 +11,7 @@ interface Order {
   id: string;
   orderNumber: string;
   brandId: string;
-  brand: {
-    name: string;
-  };
+  brandName: string;
   status: string;
   totalAmount: number;
   requiredShipDate: string;
@@ -22,10 +20,11 @@ interface Order {
     id: string;
     status: string;
     trackingNumber?: string;
+    shippedAt?: string;
   }>;
 }
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
@@ -44,7 +43,7 @@ export default function OrdersPage() {
   const fetchBrands = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch('/api/brands', {
+      const response = await fetch('http://localhost:4000/api/brands', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -73,7 +72,7 @@ export default function OrdersPage() {
       params.append('page', currentPage.toString());
       params.append('limit', '20');
 
-      const response = await fetch(`/api/orders?${params.toString()}`, {
+      const response = await fetch(`http://localhost:4000/api/orders?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -174,11 +173,39 @@ export default function OrdersPage() {
 
     // Create CSV rows
     const rows = orders.map(order => [
-      order.orderNumber,
-      order.brand.name,
+      `#${order.orderNumber}`,
+      order.brandName || 'Unknown Brand',
       order.status,
       `$${order.totalAmount.toFixed(2)}`,
-      new Date(order.requiredShipDate).toLocaleDateString(),
+      (() => {
+        // Check if order status indicates it's shipped (CSV export)
+        const orderIsShipped = ['SHIPPED', 'DELIVERED'].includes(order.status?.toUpperCase());
+        
+        if (!orderIsShipped) {
+          return '-';
+        }
+        
+        // Order is shipped, now find shipment with date
+        const shipmentsWithDate = order.shipments.filter(s => s.shippedAt);
+        
+        if (shipmentsWithDate.length === 0) {
+          return '-';
+        }
+        
+        // Get the most recent ship date
+        const latestShipment = shipmentsWithDate.reduce((latest, current) => {
+          const currentDate = new Date(current.shippedAt!);
+          const latestDate = new Date(latest.shippedAt!);
+          return currentDate > latestDate ? current : latest;
+        });
+        
+        try {
+          const date = new Date(latestShipment.shippedAt!);
+          return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+        } catch {
+          return '-';
+        }
+      })(),
       new Date(order.createdAt).toLocaleDateString(),
       isOrderLate(order) ? 'Yes' : 'No',
       order.shipments.map(s => s.trackingNumber).filter(Boolean).join('; ') || 'N/A'
@@ -355,12 +382,12 @@ export default function OrdersPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {order.orderNumber}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                ID: {order.id.slice(0, 8)}...
-                              </div>
+                              <button
+                                onClick={() => router.push(`/orders/${order.id}`)}
+                                className="text-sm font-medium text-blue-600 hover:text-blue-900 hover:underline"
+                              >
+                                #{order.orderNumber}
+                              </button>
                             </div>
                             {isOrderLate(order) && (
                               <div className="ml-2 flex-shrink-0">
@@ -374,7 +401,7 @@ export default function OrdersPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <Building2 className="h-4 w-4 text-gray-400 mr-2" />
-                            <span className="text-sm text-gray-900">{order.brand.name}</span>
+                            <span className="text-sm text-gray-900">{order.brandName || 'Unknown Brand'}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -386,19 +413,45 @@ export default function OrdersPage() {
                           ${order.totalAmount?.toFixed(2) || '0.00'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(order.requiredShipDate).toLocaleDateString()}
+                          {(() => {
+                            // Check if order status indicates it's shipped
+                            const orderIsShipped = ['SHIPPED', 'DELIVERED'].includes(order.status?.toUpperCase());
+                            
+                            if (!orderIsShipped) {
+                              return '-';
+                            }
+                            
+                            // Order is shipped, now find shipment with date
+                            const shipmentsWithDate = order.shipments.filter(s => s.shippedAt);
+                            
+                            if (shipmentsWithDate.length === 0) {
+                              // Order is marked as shipped but no shipment date available
+                              return '-';
+                            }
+                            
+                            // Get the most recent ship date
+                            const latestShipment = shipmentsWithDate.reduce((latest, current) => {
+                              const currentDate = new Date(current.shippedAt!);
+                              const latestDate = new Date(latest.shippedAt!);
+                              return currentDate > latestDate ? current : latest;
+                            });
+                            
+                            // Format the ship date
+                            try {
+                              const date = new Date(latestShipment.shippedAt!);
+                              return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+                            } catch {
+                              return '-';
+                            }
+                          })()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(order.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => router.push(`/orders/${order.id}`)}
-                            className="text-blue-600 hover:text-blue-900 flex items-center space-x-1"
-                          >
-                            <Eye className="h-4 w-4" />
-                            <span>View</span>
-                          </button>
+                          <div className="flex items-center space-x-2">
+                            {/* Additional actions can be added here if needed */}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -458,5 +511,20 @@ export default function OrdersPage() {
         </div>
       </div>
     </AuthenticatedLayout>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading orders...</p>
+        </div>
+      </div>
+    }>
+      <OrdersPageContent />
+    </Suspense>
   );
 }

@@ -1,11 +1,50 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import { prisma } from '@packr/database';
 import { authenticateToken } from '../middleware/auth';
 import { requireRole } from '../middleware/auth';
 import { logger } from '../utils/logger';
 
 const router = Router();
+
+// Configure multer for file uploads
+const uploadDir = path.join(process.cwd(), 'uploads', 'messages');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 10 // Max 10 files
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow common file types
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx|txt|csv/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
+});
 
 // Validation schemas
 const createMessageSchema = z.object({
@@ -427,6 +466,195 @@ router.get('/stats/dashboard', authenticateToken, async (req, res) => {
   } catch (error) {
     logger.error('Failed to fetch message stats:', error);
     res.status(500).json({ error: 'Failed to fetch message stats' });
+  }
+});
+
+// Upload attachments for a message
+router.post('/:messageId/attachments', authenticateToken, upload.array('files', 10), async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const files = req.files as Express.Multer.File[];
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    // Verify message exists and user has access
+    const message = await prisma.message.findFirst({
+      where: {
+        id: messageId,
+        threeplId: req.user.threeplId,
+      }
+    });
+
+    if (!message) {
+      // Clean up uploaded files if message not found
+      files.forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) logger.error('Failed to delete file:', err);
+        });
+      });
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // Create attachment records
+    const attachments = await Promise.all(
+      files.map(file => 
+        prisma.messageAttachment.create({
+          data: {
+            messageId,
+            filename: file.originalname,
+            url: `/uploads/messages/${file.filename}`,
+            size: file.size,
+            mimeType: file.mimetype,
+          }
+        })
+      )
+    );
+
+    res.status(201).json({ success: true, attachments });
+  } catch (error) {
+    logger.error('Failed to upload attachments:', error);
+    
+    // Clean up uploaded files on error
+    if (req.files) {
+      (req.files as Express.Multer.File[]).forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) logger.error('Failed to delete file:', err);
+        });
+      });
+    }
+    
+    res.status(500).json({ error: 'Failed to upload attachments' });
+  }
+});
+
+// Delete an attachment
+router.delete('/attachments/:attachmentId', authenticateToken, async (req, res) => {
+  try {
+    const { attachmentId } = req.params;
+
+    const attachment = await prisma.messageAttachment.findFirst({
+      where: {
+        id: attachmentId,
+      },
+      include: {
+        message: true
+      }
+    });
+
+    if (!attachment) {
+      return res.status(404).json({ error: 'Attachment not found' });
+    }
+
+    // Verify user has access to the message
+    if (attachment.message.threeplId !== req.user.threeplId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Delete file from filesystem
+    const filePath = path.join(process.cwd(), attachment.url);
+    fs.unlink(filePath, (err) => {
+      if (err) logger.error('Failed to delete file:', err);
+    });
+
+    // Delete attachment record
+    await prisma.messageAttachment.delete({
+      where: { id: attachmentId }
+    });
+
+    res.json({ success: true, message: 'Attachment deleted successfully' });
+  } catch (error) {
+    logger.error('Failed to delete attachment:', error);
+    res.status(500).json({ error: 'Failed to delete attachment' });
+  }
+});
+
+// Serve uploaded files
+router.get('/attachments/:filename', (req, res) => {
+  const { filename } = req.params;
+  const filePath = path.join(uploadDir, filename);
+  
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+  
+  res.sendFile(filePath);
+});
+
+// Get users for mentions (filtered by 3PL and brand access)
+router.get('/users/search', authenticateToken, async (req, res) => {
+  try {
+    const { q = '', brandId } = req.query;
+    const searchTerm = q as string;
+
+    let where: any = {
+      memberships: {
+        some: {
+          threeplId: req.user.threeplId,
+        }
+      },
+      isActive: true,
+    };
+
+    // If brandId is provided, also include brand users
+    if (brandId) {
+      where = {
+        OR: [
+          where,
+          {
+            memberships: {
+              some: {
+                brandId: brandId as string,
+              }
+            },
+            isActive: true,
+          }
+        ]
+      };
+    }
+
+    // Add search filter
+    if (searchTerm) {
+      where.OR = [
+        { firstName: { contains: searchTerm, mode: 'insensitive' } },
+        { lastName: { contains: searchTerm, mode: 'insensitive' } },
+        { email: { contains: searchTerm, mode: 'insensitive' } },
+      ];
+    }
+
+    const users = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        memberships: {
+          select: {
+            role: true,
+          }
+        }
+      },
+      take: 20,
+      orderBy: [
+        { firstName: 'asc' },
+        { lastName: 'asc' }
+      ]
+    });
+
+    const formattedUsers = users.map(user => ({
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.memberships[0]?.role || 'USER'
+    }));
+
+    res.json({ success: true, users: formattedUsers });
+  } catch (error) {
+    logger.error('Failed to search users:', error);
+    res.status(500).json({ error: 'Failed to search users' });
   }
 });
 

@@ -6,6 +6,7 @@ config({ path: path.resolve(__dirname, '../../../.env') });
 
 // Now import everything else
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -13,15 +14,25 @@ import rateLimit from 'express-rate-limit';
 import pino from 'pino';
 import pinoPretty from 'pino-pretty';
 
+// Import Socket.io service
+import { SocketService } from './lib/socket';
+
 // Import routes
 import authRoutes from './routes/auth';
 import brandRoutes from './routes/brands';
 import trackstarRoutes from './routes/trackstar';
 import dashboardRoutes from './routes/dashboard';
 import messageRoutes from './routes/messages';
+import chatRoutes from './routes/chat';
+import chatFileRoutes from './routes/chat-files';
 import userRoutes from './routes/users';
 import settingsRoutes from './routes/settings';
 import orderRoutes from './routes/orders';
+import orderStatusRoutes from './routes/order-status';
+import trackstarOrderRoutes from './routes/trackstar-orders';
+import inventoryRoutes from './routes/inventory';
+import inventoryWebhookRoutes from './routes/webhooks/inventory';
+import notificationRoutes from './routes/notifications';
 
 // Import services
 import { periodicSyncService } from './services/periodicSync';
@@ -35,7 +46,11 @@ const logger = pino(
 );
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 4000;
+
+// Initialize Socket.io service
+let socketService: SocketService;
 
 // Security middleware
 app.use(helmet());
@@ -71,9 +86,16 @@ app.use('/api/auth', authRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/chat', chatFileRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/orders', orderStatusRoutes);
+app.use('/api/trackstar/orders', trackstarOrderRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/webhooks', inventoryWebhookRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api', trackstarRoutes);
 
 // API root endpoint
@@ -86,12 +108,15 @@ app.get('/api', (req, res) => {
             auth: '/api/auth',
             brands: '/api/brands',
             messages: '/api/messages',
+            chat: '/api/chat',
             users: '/api/users',
             settings: '/api/settings',
             orders: '/api/orders',
+            inventory: '/api/inventory',
             dashboard: '/api/dashboard',
             trackstar: '/api/brands/:brandId/integrations/trackstar',
             webhooks: '/api/webhooks/trackstar',
+            inventoryWebhooks: '/api/webhooks/trackstar/inventory',
             health: '/health',
           },
   });
@@ -114,11 +139,15 @@ app.use('*', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-          logger.info(`🚀 Packr API server running on port ${PORT}`);
+httpServer.listen(PORT, () => {
+  logger.info(`🚀 Packr API server running on port ${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`Health check: http://localhost:${PORT}/health`);
   logger.info(`API docs: http://localhost:${PORT}/api`);
+  
+  // Initialize Socket.io service
+  socketService = new SocketService(httpServer);
+  logger.info('💬 Socket.io chat service initialized');
   
   // Start periodic sync service
   if (process.env.NODE_ENV !== 'test') {

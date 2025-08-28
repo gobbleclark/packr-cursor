@@ -226,21 +226,29 @@ router.get('/stats', authenticateToken, async (req, res) => {
     }
     
     // Add brand/3PL filtering
-    if (threeplIds.length > 0) {
-      lateOrdersQuery += ` AND (o."brandId" IN (SELECT id FROM brands WHERE "threeplId" = ANY($${paramIndex}))`;
-      queryParams.push(threeplIds);
+    if (brandId && brandId !== 'all') {
+      // Filter by specific selected brand
+      lateOrdersQuery += ` AND o."brandId" = $${paramIndex}`;
+      queryParams.push(brandId);
       paramIndex++;
-      
-      if (brandIds.length > 0) {
-        lateOrdersQuery += ` OR o."brandId" = ANY($${paramIndex})`;
+    } else {
+      // Filter by accessible brands
+      if (threeplIds.length > 0) {
+        lateOrdersQuery += ` AND (o."brandId" IN (SELECT id FROM brands WHERE "threeplId" = ANY($${paramIndex}))`;
+        queryParams.push(threeplIds);
+        paramIndex++;
+        
+        if (brandIds.length > 0) {
+          lateOrdersQuery += ` OR o."brandId" = ANY($${paramIndex})`;
+          queryParams.push(brandIds);
+          paramIndex++;
+        }
+        lateOrdersQuery += ')';
+      } else if (brandIds.length > 0) {
+        lateOrdersQuery += ` AND o."brandId" = ANY($${paramIndex})`;
         queryParams.push(brandIds);
         paramIndex++;
       }
-      lateOrdersQuery += ')';
-    } else if (brandIds.length > 0) {
-      lateOrdersQuery += ` AND o."brandId" = ANY($${paramIndex})`;
-      queryParams.push(brandIds);
-      paramIndex++;
     }
     
     logger.info(`Late orders query: ${lateOrdersQuery}`);

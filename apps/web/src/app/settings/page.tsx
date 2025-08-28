@@ -24,6 +24,7 @@ import {
 import { Button } from '../../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { NotificationSettings } from '../../components/settings/NotificationSettings';
 
 interface MessageStatus {
   id: string;
@@ -72,7 +73,8 @@ export default function SettingsPage() {
         const authResponse = await authService.verifyToken();
         if (authResponse) {
           setUser(authResponse.user);
-          if (authResponse.user.role !== 'THREEPL_ADMIN') {
+          // Allow both 3PL and Brand users to access settings
+          if (!['THREEPL_ADMIN', 'THREEPL_USER', 'BRAND_ADMIN', 'BRAND_USER'].includes(authResponse.user.role)) {
             router.push('/dashboard');
             return;
           }
@@ -258,12 +260,17 @@ export default function SettingsPage() {
     router.push('/');
   };
 
-  const tabs = [
-    { id: 'general', name: 'General', icon: Building2 },
-    { id: 'messaging', name: 'Messaging', icon: MessageSquare },
-    { id: 'notifications', name: 'Notifications', icon: Bell },
-    { id: 'system', name: 'System Info', icon: Info },
+  // Filter tabs based on user role
+  const allTabs = [
+    { id: 'general', name: 'General', icon: Building2, roles: ['SUPER_ADMIN', 'THREEPL_ADMIN', 'THREEPL_USER', 'BRAND_ADMIN', 'BRAND_USER'] },
+    { id: 'messaging', name: 'Messaging', icon: MessageSquare, roles: ['SUPER_ADMIN', 'THREEPL_ADMIN', 'THREEPL_USER'] },
+    { id: 'notifications', name: 'Notifications', icon: Bell, roles: ['SUPER_ADMIN', 'THREEPL_ADMIN', 'THREEPL_USER', 'BRAND_ADMIN', 'BRAND_USER'] },
+    { id: 'system', name: 'System Info', icon: Info, roles: ['SUPER_ADMIN', 'THREEPL_ADMIN', 'THREEPL_USER'] },
   ];
+
+  const tabs = allTabs.filter(tab => 
+    user?.role ? tab.roles.includes(user.role) : false
+  );
 
   if (loading) {
     return (
@@ -287,7 +294,12 @@ export default function SettingsPage() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-            <p className="text-gray-600">Manage your 3PL configuration and preferences</p>
+            <p className="text-gray-600">
+              {user?.role?.includes('BRAND') 
+                ? 'Manage your profile and notification preferences' 
+                : 'Manage your 3PL configuration and preferences'
+              }
+            </p>
           </div>
         </div>
 
@@ -321,39 +333,91 @@ export default function SettingsPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Building2 className="h-5 w-5 mr-2" />
-                    General Settings
+                    {user?.role?.includes('BRAND') ? 'Profile Information' : 'General Settings'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
-                    <input
-                      type="text"
-                      value={settings.general.name}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      readOnly
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Contact support to change your company name</p>
-                  </div>
+                  {user?.role?.includes('BRAND') ? (
+                    // Brand user profile view
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                        <input
+                          type="text"
+                          value={`${user?.firstName || ''} ${user?.lastName || ''}`.trim()}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                          readOnly
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Contact your 3PL administrator to update your profile</p>
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Company Slug</label>
-                    <input
-                      type="text"
-                      value={settings.general.slug}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
-                      readOnly
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Used in URLs and API endpoints</p>
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input
+                          type="email"
+                          value={user?.email || ''}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                          readOnly
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Your login email address</p>
+                      </div>
 
-                  <div className="pt-4">
-                    <Button disabled>
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Changes
-                    </Button>
-                    <p className="text-xs text-gray-500 mt-2">General settings are managed by system administrators</p>
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                        <input
+                          type="text"
+                          value={user?.role?.replace('_', ' ').toLowerCase() || ''}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                          readOnly
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Your access level in the system</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Company</label>
+                        <input
+                          type="text"
+                          value={user?.companyName || settings.general.name}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                          readOnly
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Your brand organization</p>
+                      </div>
+                    </>
+                  ) : (
+                    // 3PL user general settings view
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
+                        <input
+                          type="text"
+                          value={settings.general.name}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          readOnly
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Contact support to change your company name</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Company Slug</label>
+                        <input
+                          type="text"
+                          value={settings.general.slug}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                          readOnly
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Used in URLs and API endpoints</p>
+                      </div>
+
+                      <div className="pt-4">
+                        <Button disabled>
+                          <Save className="h-4 w-4 mr-2" />
+                          Save Changes
+                        </Button>
+                        <p className="text-xs text-gray-500 mt-2">General settings are managed by system administrators</p>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -434,21 +498,9 @@ export default function SettingsPage() {
             )}
 
             {activeTab === 'notifications' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Bell className="h-5 w-5 mr-2" />
-                    Notification Settings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12">
-                    <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Coming Soon</h3>
-                    <p className="text-gray-600">Notification preferences will be available in a future update.</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-6">
+                <NotificationSettings />
+              </div>
             )}
 
             {activeTab === 'system' && (

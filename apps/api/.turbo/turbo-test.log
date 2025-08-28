@@ -1,0 +1,1753 @@
+
+> @packr/api@0.1.0 test
+> jest --coverage
+
+[1G[0K[1m[2mDetermining test suites to run...[22m[22m🧪 Global test setup completed
+[999D[K
+[K[1A[999D[K
+[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A[0m[7m[1m[31m FAIL [39m[22m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A[1m[31m  [1m● [22m[1mTrackstarIntegrationService › createLinkToken › should create link token for valid brand[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › createLinkToken › should create link token for valid brand[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › createLinkToken › should throw error for non-existent brand[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › createLinkToken › should throw error for non-existent brand[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › exchangeAuthCode › should exchange auth code and create integration[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › exchangeAuthCode › should exchange auth code and create integration[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › exchangeAuthCode › should update existing integration[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › exchangeAuthCode › should update existing integration[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › syncProducts › should sync products from Trackstar[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › syncProducts › should sync products from Trackstar[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › syncProducts › should update existing products[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › syncProducts › should update existing products[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › syncOrders › should sync orders with line items and shipments[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › syncOrders › should sync orders with line items and shipments[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › syncOrders › should handle incremental sync with lookback[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › syncOrders › should handle incremental sync with lookback[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › syncInventory › should sync inventory items[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › syncInventory › should sync inventory items[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › syncInventory › should create warehouses from inventory locations[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › syncInventory › should create warehouses from inventory locations[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › webhook processing › should process order webhook[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › webhook processing › should process order webhook[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › webhook processing › should process inventory webhook[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › webhook processing › should process inventory webhook[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › error handling › should handle Trackstar API errors gracefully[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › error handling › should handle Trackstar API errors gracefully[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › error handling › should handle database constraint errors[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › error handling › should handle database constraint errors[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › multitenancy isolation › should not sync data across different tenants[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:18:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarIntegrationService › multitenancy isolation › should not sync data across different tenants[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/service.test.ts[39m[0m[2m:28:5)[22m[2m[22m
+
+
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mservice.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A[0m[7m[1m[31m FAIL [39m[22m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should process valid inventory webhook successfully[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:19:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should process valid inventory webhook successfully[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:29:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should handle idempotency - return success for duplicate events[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:19:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should handle idempotency - return success for duplicate events[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:29:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should retry failed events[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:19:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should retry failed events[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:29:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should return 404 for unknown connection_id[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:19:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should return 404 for unknown connection_id[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:29:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should validate webhook payload schema[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:19:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should validate webhook payload schema[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:29:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should handle missing SKU gracefully[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:19:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should handle missing SKU gracefully[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:29:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should update existing inventory item[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:19:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should update existing inventory item[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:29:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should handle multi-warehouse inventory correctly[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:19:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should handle multi-warehouse inventory correctly[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:29:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should handle database errors gracefully[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:19:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should handle database errors gracefully[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:29:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should record webhook processing metrics[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:19:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › POST /api/webhooks/trackstar/inventory › should record webhook processing metrics[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:29:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › webhook signature validation › should skip signature validation in development[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:19:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › webhook signature validation › should skip signature validation in development[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:29:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › webhook signature validation › should skip signature validation when flag is set[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:19:5)[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstar Inventory Webhook › webhook signature validation › should skip signature validation when flag is set[39m[22m
+
+    PrismaClientInitializationError: 
+    Invalid `prisma.orderItem.deleteMany()` invocation in
+    /Users/gavinclark/Desktop/Packr/apps/api/src/__tests__/factories/index.ts:159:28
+
+      156 
+      157 // Clean up all test data
+      158 static async cleanup() {
+    → 159   await prisma.orderItem.deleteMany(
+    User `test` was denied access on the database `packr_test.public`
+[2m[22m
+[2m    [0m [90m 157 |[39m   [90m// Clean up all test data[39m[22m
+[2m     [90m 158 |[39m   [36mstatic[39m [36masync[39m cleanup() {[22m
+[2m    [31m[1m>[22m[2m[39m[90m 159 |[39m     [36mawait[39m prisma[33m.[39morderItem[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m     |[39m     [31m[1m^[22m[2m[39m[22m
+[2m     [90m 160 |[39m     [36mawait[39m prisma[33m.[39morderNote[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 161 |[39m     [36mawait[39m prisma[33m.[39mshipment[33m.[39mdeleteMany()[33m;[39m[22m
+[2m     [90m 162 |[39m     [36mawait[39m prisma[33m.[39morder[33m.[39mdeleteMany()[33m;[39m[0m[22m
+[2m[22m
+[2m      [2mat $n.handleRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:7615)[22m[2m[22m
+[2m      [2mat $n.handleAndLogRequestError ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6623)[22m[2m[22m
+[2m      [2mat $n.request ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:121:6307)[22m[2m[22m
+[2m      [2mat l ([22m[2m../../node_modules/@prisma/client/runtime/library.js[2m:130:9633)[22m[2m[22m
+[2m      [2mat Function.cleanup ([22m[2msrc/__tests__/factories/index.ts[2m:159:5)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/routes/webhooks/inventory.test.ts[39m[0m[2m:29:5)[22m[2m[22m
+
+
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/routes/webhooks/[22m[1minventory.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A[0m[7m[1m[31m FAIL [39m[22m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m ([0m[1m[41m6.342 s[49m[22m[0m)
+
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A[1m[31m  [1m● [22m[1mTrackstarClient › getOrders › should handle filters correctly[39m[22m
+
+    Nock: No match for request {
+      "method": "GET",
+      "url": "https://production.trackstarhq.com/wms/orders?order_number=ORD-001&limit=1000",
+      "headers": {
+        "accept": "application/json, text/plain, */*",
+        "content-type": "application/json",
+        "x-trackstar-api-key": "f9bc96aa7e0145b899b713d83a61ad3d",
+        "x-trackstar-access-token": "test-access-token",
+        "user-agent": "axios/1.11.0",
+        "accept-encoding": "gzip, compress, deflate, br"
+      }
+    }
+[2m[22m
+[2m    [0m [90m 156 |[39m           })[33m;[39m[22m
+[2m     [90m 157 |[39m[22m
+[2m    [31m[1m>[22m[2m[39m[90m 158 |[39m           [36mconst[39m response [33m=[39m [36mawait[39m [36mthis[39m[33m.[39maxiosInstance[33m.[39m[36mget[39m[33m<[39m[33mTrackstarListResponse[39m[33m<[39m[33mT[39m[33m>>[39m(endpoint[33m,[39m {[22m
+[2m     [90m     |[39m                            [31m[1m^[22m[2m[39m[22m
+[2m     [90m 159 |[39m             headers[33m:[39m {[22m
+[2m     [90m 160 |[39m               [32m'x-trackstar-access-token'[39m[33m:[39m accessToken[22m
+[2m     [90m 161 |[39m             }[33m,[39m[0m[22m
+[2m[22m
+[2m      [2mat Function.Object.<anonymous>.AxiosError.from ([22m[2m../../node_modules/axios/lib/core/AxiosError.js[2m:92:14)[22m[2m[22m
+[2m      [2mat RedirectableRequest.handleRequestError ([22m[2m../../node_modules/axios/lib/adapters/http.js[2m:620:25)[22m[2m[22m
+[2m      [2mat OverriddenClientRequest.eventHandlers.<computed> ([22m[2m../../node_modules/follow-redirects/index.js[2m:49:24)[22m[2m[22m
+[2m      [2mat Socket.<anonymous> ([22m[2m../../node_modules/propagate/index.js[2m:64:17)[22m[2m[22m
+[2m      [2mat [22m[2m../../node_modules/nock/lib/socket.js[2m:101:14[22m[2m[22m
+[2m      [2mat Axios.request ([22m[2m../../node_modules/axios/lib/core/Axios.js[2m:45:41)[22m[2m[22m
+[2m      [2mat TrackstarClient.fetchAllPages ([22m[2msrc/integrations/trackstar/client.ts[2m:158:28)[22m[2m[22m
+[2m      [2mat TrackstarClient.getOrders ([22m[2msrc/integrations/trackstar/client.ts[2m:441:25)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/client.test.ts[39m[0m[2m:119:7)[22m[2m[22m
+
+    Cause:
+    Nock: No match for request {
+      "method": "GET",
+      "url": "https://production.trackstarhq.com/wms/orders?order_number=ORD-001&limit=1000",
+      "headers": {
+        "accept": "application/json, text/plain, */*",
+        "content-type": "application/json",
+        "x-trackstar-api-key": "f9bc96aa7e0145b899b713d83a61ad3d",
+        "x-trackstar-access-token": "test-access-token",
+        "user-agent": "axios/1.11.0",
+        "accept-encoding": "gzip, compress, deflate, br"
+      }
+    }
+[2m[22m
+[2m      [2mat InterceptedRequestRouter.startPlayback ([22m[2m../../node_modules/nock/lib/intercepted_request_router.js[2m:346:21)[22m[2m[22m
+[2m      [2mat InterceptedRequestRouter.maybeStartPlayback ([22m[2m../../node_modules/nock/lib/intercepted_request_router.js[2m:268:12)[22m[2m[22m
+[2m      [2mat InterceptedRequestRouter.connectSocket ([22m[2m../../node_modules/nock/lib/intercepted_request_router.js[2m:140:12)[22m[2m[22m
+[2m      [2mat [22m[2m../../node_modules/nock/lib/intercepted_request_router.js[2m:78:33[22m[2m[22m
+
+[1m[31m  [1m● [22m[1mTrackstarClient › error handling › should handle network errors[39m[22m
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mrejects[2m.[22mtoThrow[2m([22m[32mexpected[39m[2m)[22m
+
+    Expected substring: [32m"Network error"[39m
+    Received message:   [31m"Nock: No match for request {[39m
+    [31m  \"method\": \"GET\",[39m
+    [31m  \"url\": \"https://production.trackstarhq.com/wms/orders?limit=1000\",[39m
+    [31m  \"headers\": {[39m
+    [31m    \"accept\": \"application/json, text/plain, */*\",[39m
+    [31m    \"content-type\": \"application/json\",[39m
+    [31m    \"x-trackstar-api-key\": \"f9bc96aa7e0145b899b713d83a61ad3d\",[39m
+    [31m    \"x-trackstar-access-token\": \"test-access-token\",[39m
+    [31m    \"user-agent\": \"axios/1.11.0\",[39m
+    [31m    \"accept-encoding\": \"gzip, compress, deflate, br\"[39m
+    [31m  }[39m
+    [31m}"[39m
+
+        [0m [90m 156 |[39m           })[33m;[39m
+         [90m 157 |[39m
+        [31m[1m>[22m[39m[90m 158 |[39m           [36mconst[39m response [33m=[39m [36mawait[39m [36mthis[39m[33m.[39maxiosInstance[33m.[39m[36mget[39m[33m<[39m[33mTrackstarListResponse[39m[33m<[39m[33mT[39m[33m>>[39m(endpoint[33m,[39m {
+         [90m     |[39m                            [31m[1m^[22m[39m
+         [90m 159 |[39m             headers[33m:[39m {
+         [90m 160 |[39m               [32m'x-trackstar-access-token'[39m[33m:[39m accessToken
+         [90m 161 |[39m             }[33m,[39m[0m
+
+          [2mat Function.Object.<anonymous>.AxiosError.from ([22m../../node_modules/axios/lib/core/AxiosError.js[2m:92:14)[22m
+          [2mat RedirectableRequest.handleRequestError ([22m../../node_modules/axios/lib/adapters/http.js[2m:620:25)[22m
+          [2mat OverriddenClientRequest.eventHandlers.<computed> ([22m../../node_modules/follow-redirects/index.js[2m:49:24)[22m
+          [2mat Socket.<anonymous> ([22m../../node_modules/propagate/index.js[2m:64:17)[22m
+          [2mat [22m../../node_modules/nock/lib/socket.js[2m:101:14[22m
+          [2mat Axios.request ([22m../../node_modules/axios/lib/core/Axios.js[2m:45:41)[22m
+          [2mat TrackstarClient.fetchAllPages ([22msrc/integrations/trackstar/client.ts[2m:158:28)[22m
+          [2mat TrackstarClient.getOrders ([22msrc/integrations/trackstar/client.ts[2m:441:25)[22m
+          [2mat Object.<anonymous> ([22msrc/__tests__/integrations/trackstar/client.test.ts[2m:310:7)[22m
+[2m[22m
+[2m    [0m [90m 308 |[39m         [33m.[39mreplyWithError([32m'Network error'[39m)[33m;[39m[22m
+[2m     [90m 309 |[39m[22m
+[2m    [31m[1m>[22m[2m[39m[90m 310 |[39m       [36mawait[39m expect(client[33m.[39mgetOrders(accessToken))[33m.[39mrejects[33m.[39mtoThrow([32m'Network error'[39m)[33m;[39m[22m
+[2m     [90m     |[39m                                                           [31m[1m^[22m[2m[39m[22m
+[2m     [90m 311 |[39m     })[33m;[39m[22m
+[2m     [90m 312 |[39m[22m
+[2m     [90m 313 |[39m     it([32m'should handle invalid JSON responses'[39m[33m,[39m [36masync[39m () [33m=>[39m {[0m[22m
+[2m[22m
+[2m      [2mat Object.toThrow ([22m[2m../../node_modules/expect/build/index.js[2m:218:22)[22m[2m[22m
+[2m      [2mat Object.<anonymous> ([22m[2m[0m[36msrc/__tests__/integrations/trackstar/client.test.ts[39m[0m[2m:310:59)[22m[2m[22m
+
+
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/integrations/trackstar/[22m[1mclient.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/utils/[22m[1mlogger.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/utils/[22m[1mlogger.test.ts[22m
+[K[1A[K[1A
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/utils/[22m[1mlogger.test.ts[22m
+[K[1A[K[1A[0m[7m[1m[32m PASS [39m[22m[27m[0m [2msrc/__tests__/utils/[22m[1mlogger.test.ts[22m
+
+[0m[7m[33m[1m RUNS [22m[39m[27m[0m [2msrc/__tests__/utils/[22m[1mlogger.test.ts[22m
+[K[1A[K[1A[999D[K[1m[2mRunning coverage on untested files...[22m[22m[999D[K------------------------|---------|----------|---------|---------|------------------------------------------
+File                    | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                        
+------------------------|---------|----------|---------|---------|------------------------------------------
+[31;1mAll files              [0m | [31;1m   4.41[0m | [31;1m    1.46[0m | [31;1m   6.08[0m | [31;1m   4.43[0m | [31;1m                                        [0m 
+[31;1m integrations/trackstar[0m | [31;1m  20.26[0m | [31;1m     4.3[0m | [31;1m     25[0m | [31;1m  20.48[0m | [31;1m                                        [0m 
+[33;1m  client.ts            [0m | [33;1m  51.65[0m | [31;1m   45.94[0m | [33;1m  51.61[0m | [33;1m  51.69[0m | [31;1m...8-516,538-643,666-671,695-700,710-719[0m 
+[31;1m  service.ts           [0m | [31;1m    3.1[0m | [31;1m       0[0m | [31;1m   4.87[0m | [31;1m    3.2[0m | [31;1m21,26-1602                              [0m 
+[31;1m lib                   [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m                                        [0m 
+[31;1m  redis.ts             [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-38                                    [0m 
+[31;1m  s3.ts                [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-233                                   [0m 
+[31;1m  socket.ts            [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-450                                   [0m 
+[31;1m  svix.ts              [0m | [31;1m      0[0m | [31;1m       0[0m | [32;1m    100[0m | [31;1m      0[0m | [31;1m1-5                                     [0m 
+[31;1m middleware            [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m                                        [0m 
+[31;1m  auth.ts              [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m2-191                                   [0m 
+[31;1m routes                [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m                                        [0m 
+[31;1m  auth.ts              [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-584                                   [0m 
+[31;1m  brands.ts            [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-775                                   [0m 
+[31;1m  chat-files.ts        [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-390                                   [0m 
+[31;1m  chat.ts              [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-437                                   [0m 
+[31;1m  dashboard.ts         [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-425                                   [0m 
+[31;1m  inventory.ts         [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-463                                   [0m 
+[31;1m  messages.ts          [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-661                                   [0m 
+[31;1m  notifications.ts     [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-66                                    [0m 
+[31;1m  orders.ts            [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-1616                                  [0m 
+[31;1m  settings.ts          [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-346                                   [0m 
+[31;1m  trackstar.ts         [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-365                                   [0m 
+[31;1m  users.ts             [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-532                                   [0m 
+[31;1m routes/webhooks       [0m | [31;1m  18.18[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m  18.18[0m | [31;1m                                        [0m 
+[31;1m  inventory.ts         [0m | [31;1m  18.18[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m  18.18[0m | [31;1m70-258                                  [0m 
+[31;1m services              [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m                                        [0m 
+[31;1m  emailService.ts      [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-481                                   [0m 
+[31;1m  inventoryMigration.ts[0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-145                                   [0m 
+[31;1m  periodicSync.ts      [0m | [31;1m      0[0m | [31;1m       0[0m | [31;1m      0[0m | [31;1m      0[0m | [31;1m1-168                                   [0m 
+[31;1m utils                 [0m | [31;1m      0[0m | [31;1m       0[0m | [32;1m    100[0m | [31;1m      0[0m | [31;1m                                        [0m 
+[31;1m  logger.ts            [0m | [31;1m      0[0m | [31;1m       0[0m | [32;1m    100[0m | [31;1m      0[0m | [31;1m1-3                                     [0m 
+------------------------|---------|----------|---------|---------|------------------------------------------
+[1m[31mJest: "global" coverage threshold for statements (80%) not met: 4.41%[39m[22m
+[1m[31mJest: "global" coverage threshold for branches (80%) not met: 1.46%[39m[22m
+[1m[31mJest: "global" coverage threshold for lines (80%) not met: 4.43%[39m[22m
+[1m[31mJest: "global" coverage threshold for functions (80%) not met: 6.08%[39m[22m
+
+[1mTest Suites: [22m[1m[31m3 failed[39m[22m, [1m[32m1 passed[39m[22m, 4 total
+[1mTests:       [22m[1m[31m29 failed[39m[22m, [1m[32m15 passed[39m[22m, 44 total
+[1mSnapshots:   [22m0 total
+[1mTime:[22m        [1m[33m8.898 s[39m[22m
+[2mRan all test suites[22m[2m.[22m
+🧪 Global test teardown completed
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m Lifecycle script `test` failed with error:
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mcode[39m [33m1[39m
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mpath[39m /Users/gavinclark/Desktop/Packr/apps/api
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mworkspace[39m @packr/api@0.1.0
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mlocation[39m /Users/gavinclark/Desktop/Packr/apps/api
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m command failed
+[1G[0K⠙[1G[0K[1mnpm[22m [31merror[39m [94mcommand[39m sh -c jest --coverage
+[1G[0K⠙[1G[0K

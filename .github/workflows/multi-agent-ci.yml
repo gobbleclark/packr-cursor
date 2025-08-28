@@ -1,0 +1,423 @@
+name: Multi-Agent CI Pipeline
+
+on:
+  push:
+    branches: 
+      - develop
+      - main
+      - 'feature/**'
+      - 'automation/**'
+      - 'bugfix/**'
+  pull_request:
+    branches:
+      - develop
+      - main
+
+env:
+  NODE_VERSION: '18'
+  POSTGRES_DB: packr_test
+  POSTGRES_USER: packr
+  POSTGRES_PASSWORD: packr_test_password
+  DATABASE_URL: postgresql://packr:packr_test_password@localhost:5432/packr_test
+  REDIS_URL: redis://localhost:6379
+
+jobs:
+  # Agent identification and coordination
+  agent-coordination:
+    runs-on: ubuntu-latest
+    outputs:
+      agent-type: ${{ steps.identify.outputs.agent-type }}
+      test-scope: ${{ steps.identify.outputs.test-scope }}
+      affected-areas: ${{ steps.identify.outputs.affected-areas }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Identify Agent Type
+        id: identify
+        run: |
+          # Determine agent type from branch name and changed files
+          BRANCH_NAME="${{ github.head_ref || github.ref_name }}"
+          
+          if [[ "$BRANCH_NAME" == automation/* ]]; then
+            echo "agent-type=background" >> $GITHUB_OUTPUT
+            echo "test-scope=all" >> $GITHUB_OUTPUT
+          elif [[ "$BRANCH_NAME" == feature/orders* ]]; then
+            echo "agent-type=orders" >> $GITHUB_OUTPUT
+            echo "test-scope=orders" >> $GITHUB_OUTPUT
+          elif [[ "$BRANCH_NAME" == feature/chat* ]]; then
+            echo "agent-type=chat" >> $GITHUB_OUTPUT
+            echo "test-scope=chat" >> $GITHUB_OUTPUT
+          elif [[ "$BRANCH_NAME" == feature/inventory* ]]; then
+            echo "agent-type=inventory" >> $GITHUB_OUTPUT
+            echo "test-scope=inventory" >> $GITHUB_OUTPUT
+          else
+            echo "agent-type=general" >> $GITHUB_OUTPUT
+            echo "test-scope=all" >> $GITHUB_OUTPUT
+          fi
+          
+          # Detect affected areas from changed files
+          git diff --name-only origin/develop...HEAD > changed_files.txt
+          
+          AFFECTED=""
+          if grep -q "apps/api" changed_files.txt; then
+            AFFECTED="$AFFECTED api"
+          fi
+          if grep -q "apps/web" changed_files.txt; then
+            AFFECTED="$AFFECTED web"
+          fi
+          if grep -q "packages/database" changed_files.txt; then
+            AFFECTED="$AFFECTED database"
+          fi
+          if grep -q "integrations/trackstar" changed_files.txt; then
+            AFFECTED="$AFFECTED trackstar"
+          fi
+          
+          echo "affected-areas=$AFFECTED" >> $GITHUB_OUTPUT
+
+  # Security and dependency checks
+  security-audit:
+    runs-on: ubuntu-latest
+    needs: agent-coordination
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: |
+          npm ci --workspace=apps/api --workspace=apps/web --workspace=packages/database
+          
+      - name: Security Audit
+        run: |
+          npm audit --audit-level=high --workspaces
+          
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+
+  # TypeScript and linting
+  code-quality:
+    runs-on: ubuntu-latest
+    needs: agent-coordination
+    strategy:
+      matrix:
+        workspace: [apps/api, apps/web, packages/database]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci --workspace=${{ matrix.workspace }}
+        
+      - name: TypeScript Check
+        run: npm run type-check --workspace=${{ matrix.workspace }}
+        
+      - name: Lint
+        run: npm run lint --workspace=${{ matrix.workspace }}
+        
+      - name: Format Check
+        run: npm run format:check --workspace=${{ matrix.workspace }}
+
+  # API Tests with PostgreSQL
+  api-tests:
+    runs-on: ubuntu-latest
+    needs: [agent-coordination, security-audit]
+    if: contains(needs.agent-coordination.outputs.affected-areas, 'api') || needs.agent-coordination.outputs.test-scope == 'all'
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: |
+          npm ci --workspace=apps/api --workspace=packages/database
+          
+      - name: Setup Database
+        run: |
+          cd packages/database
+          npx prisma generate
+          npx prisma db push --force-reset
+          npm run seed:test
+          
+      - name: Run API Unit Tests
+        run: |
+          cd apps/api
+          npm test -- --testPathPattern="\.test\." --testPathIgnorePatterns="integration" --coverage
+          
+      - name: Run API Integration Tests  
+        run: |
+          cd apps/api
+          npm test -- --testPathPattern="integration" --coverage
+          
+      - name: Run Multitenancy Tests
+        run: |
+          cd apps/api
+          npm test -- --testPathPattern="multitenancy|tenant" --coverage
+          
+      - name: Run Trackstar Integration Tests
+        if: contains(needs.agent-coordination.outputs.affected-areas, 'trackstar')
+        run: |
+          cd apps/api
+          npm test -- --testPathPattern="trackstar" --coverage
+          
+      - name: Upload API Coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: apps/api/coverage/lcov.info
+          flags: api
+          name: API Coverage
+
+  # Frontend Tests
+  web-tests:
+    runs-on: ubuntu-latest
+    needs: [agent-coordination, security-audit]
+    if: contains(needs.agent-coordination.outputs.affected-areas, 'web') || needs.agent-coordination.outputs.test-scope == 'all'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci --workspace=apps/web
+        
+      - name: Run Frontend Unit Tests
+        run: |
+          cd apps/web
+          npm test -- --run --coverage --testPathIgnorePatterns="integration"
+          
+      - name: Run Frontend Integration Tests
+        run: |
+          cd apps/web  
+          npm test -- --run --coverage --testPathPattern="integration"
+          
+      - name: Build Application
+        run: |
+          cd apps/web
+          npm run build
+          
+      - name: Bundle Size Check
+        run: |
+          cd apps/web
+          npm run analyze:bundle
+          
+      - name: Upload Web Coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: apps/web/coverage/lcov.info
+          flags: web
+          name: Web Coverage
+
+  # Webhook and Contract Tests
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: [agent-coordination, security-audit]
+    if: contains(needs.agent-coordination.outputs.affected-areas, 'trackstar') || needs.agent-coordination.outputs.agent-type == 'background'
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci --workspace=apps/api --workspace=packages/database
+        
+      - name: Setup Database
+        run: |
+          cd packages/database
+          npx prisma generate
+          npx prisma db push --force-reset
+          
+      - name: Run Webhook Tests
+        run: |
+          cd apps/api
+          npm test -- --testPathPattern="webhook" --coverage
+          
+      - name: Run Contract Tests
+        run: |
+          cd apps/api
+          npm test -- --testPathPattern="contract|client\.test" --coverage
+          
+      - name: Test Idempotency
+        run: |
+          cd apps/api  
+          npm test -- --testPathPattern="idempotency" --coverage
+
+  # Performance and Load Testing
+  performance-tests:
+    runs-on: ubuntu-latest
+    needs: [agent-coordination, api-tests]
+    if: needs.agent-coordination.outputs.agent-type == 'background' || github.ref == 'refs/heads/develop'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run Performance Tests
+        run: |
+          # Add performance test suite here
+          echo "Performance tests would run here"
+          
+      - name: Bundle Analysis
+        if: contains(needs.agent-coordination.outputs.affected-areas, 'web')
+        run: |
+          cd apps/web
+          npm run build
+          npx webpack-bundle-analyzer .next/static/chunks/*.js --no-open --report bundle-report.html
+
+  # Agent-specific quality checks
+  agent-quality-check:
+    runs-on: ubuntu-latest
+    needs: [agent-coordination, api-tests, web-tests]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Agent Quality Report
+        run: |
+          AGENT_TYPE="${{ needs.agent-coordination.outputs.agent-type }}"
+          
+          echo "## Agent Quality Report - $AGENT_TYPE" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Agent Type | $AGENT_TYPE |" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Scope | ${{ needs.agent-coordination.outputs.test-scope }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Affected Areas | ${{ needs.agent-coordination.outputs.affected-areas }} |" >> $GITHUB_STEP_SUMMARY
+          
+          # Add more metrics based on test results
+          if [[ "${{ needs.api-tests.result }}" == "success" ]]; then
+            echo "| API Tests | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| API Tests | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ needs.web-tests.result }}" == "success" ]]; then
+            echo "| Web Tests | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Web Tests | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Coverage consolidation and reporting
+  coverage-report:
+    runs-on: ubuntu-latest
+    needs: [api-tests, web-tests]
+    if: always()
+    steps:
+      - name: Generate Combined Coverage Report
+        run: |
+          echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Package | Coverage | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          
+          # This would be enhanced with actual coverage data
+          echo "| API | TBD | ${{ needs.api-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Web | TBD | ${{ needs.web-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+
+  # Deployment readiness check
+  deployment-readiness:
+    runs-on: ubuntu-latest
+    needs: [security-audit, code-quality, api-tests, web-tests, integration-tests]
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Deployment Readiness Check
+        run: |
+          echo "## Deployment Readiness" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Audit | ${{ needs.security-audit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Code Quality | ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| API Tests | ${{ needs.api-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Web Tests | ${{ needs.web-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests | ${{ needs.integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if all critical tests passed
+          if [[ "${{ needs.security-audit.result }}" == "success" && 
+                "${{ needs.code-quality.result }}" == "success" && 
+                "${{ needs.api-tests.result }}" == "success" && 
+                "${{ needs.web-tests.result }}" == "success" ]]; then
+            echo "✅ **Ready for deployment**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Not ready for deployment**" >> $GITHUB_STEP_SUMMARY
+          fi

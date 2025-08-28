@@ -3,6 +3,7 @@ import { trackstarClient, TrackstarFilters } from './client';
 import { logger } from '../../utils/logger';
 import { Queue, Worker, Job } from 'bullmq';
 import { redis } from '../../lib/redis';
+import { normalizeOrderNumber } from '../../utils/order-utils';
 
 export class TrackstarIntegrationService {
   private syncQueue: Queue;
@@ -199,28 +200,28 @@ export class TrackstarIntegrationService {
         await this.processNightlyReconciliation();
       } else {
         // Legacy sync job handling
-        switch (func) {
-          case 'get_products':
-            await this.syncProducts(brandId, accessToken, type === 'initial');
-            break;
-          case 'get_inventory':
-            await this.syncInventory(brandId, accessToken, type === 'initial');
-            break;
-          case 'get_orders':
+      switch (func) {
+        case 'get_products':
+          await this.syncProducts(brandId, accessToken, type === 'initial');
+          break;
+        case 'get_inventory':
+          await this.syncInventory(brandId, accessToken, type === 'initial');
+          break;
+        case 'get_orders':
             await this.syncOrders(brandId, accessToken, type === 'initial', lookbackHours);
-            break;
-          case 'get_shipments':
-            await this.syncShipments(brandId, accessToken, type === 'initial');
-            break;
-          default:
-            logger.warn(`Unknown sync function: ${func}`);
-        }
+          break;
+        case 'get_shipments':
+          await this.syncShipments(brandId, accessToken, type === 'initial');
+          break;
+        default:
+          logger.warn(`Unknown sync function: ${func}`);
+      }
 
         // Update last synced timestamp for legacy jobs
-        await prisma.brandIntegration.update({
-          where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } },
-          data: { lastSyncedAt: new Date() }
-        });
+      await prisma.brandIntegration.update({
+        where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } },
+        data: { lastSyncedAt: new Date() }
+      });
       }
 
       logger.info(`Sync job completed for brand ${brandId}, function: ${func}`);
@@ -594,35 +595,108 @@ export class TrackstarIntegrationService {
       const inventoryItems = response.data || [];
       
       for (const item of inventoryItems) {
-        // Skip items without product_id
-        if (!item.product_id) {
-          logger.warn(`Skipping inventory item without product_id:`, item);
+        // Skip items without SKU (Trackstar inventory uses SKU as the primary identifier)
+        if (!item.sku) {
+          logger.warn(`Skipping inventory item without SKU:`, item);
           continue;
         }
 
-        // Find or create product first
-        const product = await prisma.product.findUnique({
+        // Find product by SKU (since Trackstar inventory doesn't have product_id)
+        const product = await prisma.product.findFirst({
           where: {
-            brandId_externalId: {
               brandId,
-              externalId: String(item.product_id)
+            sku: item.sku
+          }
+        });
+
+        // Handle warehouse creation/lookup
+        let warehouseId = null;
+        if (item.locations?.[0]?.location_id) {
+          const locationId = item.locations[0].location_id;
+          
+          // Find or create warehouse
+          let warehouse = await prisma.warehouse.findUnique({
+            where: {
+              tenantId_externalId: {
+                tenantId: brand.threeplId,
+                externalId: locationId
             }
           }
         });
 
-        if (product) {
-          await prisma.inventorySnapshot.create({
+          if (!warehouse) {
+            warehouse = await prisma.warehouse.create({
             data: {
-              threeplId: brand.threeplId,
-              brandId,
-              productId: product.id,
-              quantityFulfillable: item.quantity_fulfillable || 0,
-              quantityOnHand: item.quantity_on_hand || 0,
-              location: item.location,
-              rawData: item
-            }
-          });
+                tenantId: brand.threeplId,
+                externalId: locationId,
+                name: item.locations[0].name || `Warehouse ${locationId}`,
+                address: item.locations[0].address || null,
+                city: item.locations[0].city || null,
+                state: item.locations[0].state || null,
+                zipCode: item.locations[0].zip_code || null,
+                country: item.locations[0].country || null,
+                active: true,
+                metadata: {
+                  trackstarData: item.locations[0],
+                  createdFrom: 'inventory_sync'
+                }
+              }
+            });
+            logger.info(`Created new warehouse: ${warehouse.name} (${warehouse.externalId})`);
+          }
+
+          warehouseId = warehouse.id;
         }
+
+        // Create or update inventory item
+        await prisma.inventoryItem.upsert({
+          where: {
+            tenantId_brandId_warehouseId_sku: {
+              tenantId: brand.threeplId,
+              brandId,
+              warehouseId: warehouseId || '',
+              sku: item.sku
+            }
+          },
+          create: {
+            tenantId: brand.threeplId,
+            brandId,
+            warehouseId,
+            sku: item.sku,
+            productName: product?.name || `Product ${item.sku}`,
+            trackstarProductId: item.product_id,
+            trackstarVariantId: item.variant_id,
+            onHand: item.onhand || 0,
+            available: item.fulfillable || 0,
+            incoming: item.incoming || 0,
+            committed: item.committed || 0,
+            unfulfillable: item.unfulfillable || 0,
+            unsellable: item.unsellable || 0,
+            sellable: item.sellable || 0,
+            awaiting: item.awaiting || 0,
+            unitCost: item.unit_cost || null,
+            lastTrackstarUpdateAt: new Date(),
+            rawData: item,
+          },
+          update: {
+            productName: product?.name || `Product ${item.sku}`,
+            trackstarProductId: item.product_id,
+            trackstarVariantId: item.variant_id,
+            onHand: item.onhand || 0,
+            available: item.fulfillable || 0,
+            incoming: item.incoming || 0,
+            committed: item.committed || 0,
+            unfulfillable: item.unfulfillable || 0,
+            unsellable: item.unsellable || 0,
+            sellable: item.sellable || 0,
+            awaiting: item.awaiting || 0,
+            unitCost: item.unit_cost || null,
+            lastTrackstarUpdateAt: new Date(),
+            rawData: item,
+          }
+        });
+        
+        logger.info(`Synced inventory for SKU: ${item.sku}, Warehouse: ${warehouseId || 'none'}, On Hand: ${item.onhand}, Available: ${item.fulfillable}`);
       }
       
       logger.info(`Synced ${inventoryItems.length} inventory items for brand ${brandId}`);
@@ -654,14 +728,14 @@ export class TrackstarIntegrationService {
         logger.info(`Syncing orders with ${lookbackHours}h lookback from ${lookbackTime.toISOString()}`);
       } else {
         // Use last sync time with 2-minute overlap (legacy behavior)
-        const integration = await prisma.brandIntegration.findUnique({
-          where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } }
-        });
-        
-        if (integration?.lastSyncedAt) {
-          filters.updated_date = {
-            gte: new Date(integration.lastSyncedAt.getTime() - 2 * 60 * 1000).toISOString()
-          };
+      const integration = await prisma.brandIntegration.findUnique({
+        where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } }
+      });
+      
+      if (integration?.lastSyncedAt) {
+        filters.updated_date = {
+          gte: new Date(integration.lastSyncedAt.getTime() - 2 * 60 * 1000).toISOString()
+        };
         }
       }
     }
@@ -676,7 +750,7 @@ export class TrackstarIntegrationService {
 
         // Map comprehensive order data from Trackstar API response
         const orderData = {
-          orderNumber: order.order_number || order.reference_id || order.id,
+          orderNumber: normalizeOrderNumber(order.order_number || order.reference_id || order.id),
           customerId: order.warehouse_customer_id || 'unknown',
           customerEmail: order.ship_to_address?.email_address,
           customerName: order.ship_to_address?.full_name || order.ship_to_address?.company,
@@ -833,14 +907,14 @@ export class TrackstarIntegrationService {
   private async syncOrderShipments(brandId: string, orderExternalId: string, shipments: any[]): Promise<void> {
     try {
       // Get the order from our database
-      const order = await prisma.order.findUnique({
-        where: {
-          brandId_externalId: {
-            brandId,
+        const order = await prisma.order.findUnique({
+          where: {
+            brandId_externalId: {
+              brandId,
             externalId: orderExternalId
+            }
           }
-        }
-      });
+        });
 
       if (!order) {
         logger.warn(`Order not found for shipments sync: ${orderExternalId}`);
@@ -961,7 +1035,7 @@ export class TrackstarIntegrationService {
         const backorderInfo = await this.checkBackorderStatus(brandId, order.line_items || []);
 
         const orderData = {
-          orderNumber: order.order_number,
+          orderNumber: normalizeOrderNumber(order.order_number),
           customerEmail: order.ship_to_address?.email_address,
           customerName: order.ship_to_address?.full_name || order.ship_to_address?.company,
           status: this.mapOrderStatus(order.status, order.raw_status),
@@ -1191,7 +1265,7 @@ export class TrackstarIntegrationService {
         }
       },
       update: {
-        orderNumber: data.order_number || data.id,
+        orderNumber: normalizeOrderNumber(data.order_number || data.id),
         customerId: data.customer_id || 'unknown',
         customerEmail: data.customer_email,
         customerName: data.customer_name,
@@ -1208,7 +1282,7 @@ export class TrackstarIntegrationService {
         threeplId: brand.threeplId,
         brandId,
         externalId: data.id,
-        orderNumber: data.order_number || data.id,
+        orderNumber: normalizeOrderNumber(data.order_number || data.id),
         customerId: data.customer_id || 'unknown',
         customerEmail: data.customer_email,
         customerName: data.customer_name,
@@ -1345,18 +1419,88 @@ export class TrackstarIntegrationService {
       }
     });
 
-    if (product) {
-      await prisma.inventorySnapshot.create({
-        data: {
-          threeplId: brand.threeplId,
-          brandId,
-          productId: product.id,
-          quantityFulfillable: data.quantity_fulfillable || 0,
-          quantityOnHand: data.quantity_on_hand || 0,
-          location: data.location,
-          rawData: data
+    // Handle warehouse creation/lookup if location is provided
+    let warehouseId = null;
+    if (data.location_id) {
+      let warehouse = await prisma.warehouse.findUnique({
+        where: {
+          tenantId_externalId: {
+            tenantId: brand.threeplId,
+            externalId: data.location_id
+          }
         }
       });
+
+      if (!warehouse) {
+        warehouse = await prisma.warehouse.create({
+        data: {
+            tenantId: brand.threeplId,
+            externalId: data.location_id,
+            name: data.location_name || `Warehouse ${data.location_id}`,
+            active: true,
+            metadata: {
+              createdFrom: 'inventory_webhook'
+            }
+          }
+        });
+        logger.info(`Created new warehouse from webhook: ${warehouse.name} (${warehouse.externalId})`);
+      }
+
+      warehouseId = warehouse.id;
+    }
+
+    if (product) {
+      // Update or create inventory item using new inventory_items table
+      await prisma.inventoryItem.upsert({
+        where: {
+          tenantId_brandId_warehouseId_sku: {
+            tenantId: brand.threeplId,
+          brandId,
+            warehouseId: warehouseId || '',
+            sku: product.sku
+          }
+        },
+        create: {
+          tenantId: brand.threeplId,
+          brandId,
+          warehouseId,
+          sku: product.sku,
+          productName: product.name,
+          trackstarProductId: data.product_id,
+          trackstarVariantId: data.variant_id,
+          onHand: data.onhand || data.quantity_on_hand || 0,
+          available: data.fulfillable || data.quantity_fulfillable || 0,
+          incoming: data.incoming || 0,
+          committed: data.committed || 0,
+          unfulfillable: data.unfulfillable || 0,
+          unsellable: data.unsellable || 0,
+          sellable: data.sellable || 0,
+          awaiting: data.awaiting || 0,
+          unitCost: data.unit_cost || null,
+          lastTrackstarUpdateAt: new Date(),
+          rawData: data,
+        },
+        update: {
+          productName: product.name,
+          trackstarProductId: data.product_id,
+          trackstarVariantId: data.variant_id,
+          onHand: data.onhand || data.quantity_on_hand || 0,
+          available: data.fulfillable || data.quantity_fulfillable || 0,
+          incoming: data.incoming || 0,
+          committed: data.committed || 0,
+          unfulfillable: data.unfulfillable || 0,
+          unsellable: data.unsellable || 0,
+          sellable: data.sellable || 0,
+          awaiting: data.awaiting || 0,
+          unitCost: data.unit_cost || null,
+          lastTrackstarUpdateAt: new Date(),
+          rawData: data,
+        }
+      });
+      
+      logger.info(`Updated inventory via webhook for SKU: ${product.sku}, Warehouse: ${warehouseId || 'none'}, Available: ${data.fulfillable || data.quantity_fulfillable || 0}`);
+    } else {
+      logger.warn(`Product not found for inventory webhook: Product ID ${data.product_id}`);
     }
   }
 

@@ -13,6 +13,7 @@ declare global {
         firstName: string;
         lastName: string;
         threeplId?: string;
+        brandId?: string;
         role: string;
         memberships: Array<{
           threeplId?: string;
@@ -74,14 +75,40 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     // Find the primary 3PL membership (for 3PL users)
     const primaryMembership = user.memberships.find(m => m.threeplId && !m.brandId);
     
+    // Find the primary brand membership (for brand users)
+    const primaryBrandMembership = user.memberships.find(m => m.brandId && !m.threeplId);
+    
+    // Determine primary role and IDs
+    let primaryRole = 'USER';
+    let primaryThreeplId: string | undefined;
+    let primaryBrandId: string | undefined;
+    
+    if (primaryMembership) {
+      // User has 3PL access
+      primaryRole = primaryMembership.role;
+      primaryThreeplId = primaryMembership.threeplId;
+    } else if (primaryBrandMembership) {
+      // User is brand-only
+      primaryRole = primaryBrandMembership.role;
+      primaryBrandId = primaryBrandMembership.brandId;
+      
+      // Get the 3PL ID from the brand
+      const brand = await prisma.brand.findUnique({
+        where: { id: primaryBrandMembership.brandId },
+        select: { threeplId: true }
+      });
+      primaryThreeplId = brand?.threeplId;
+    }
+    
     // Attach user data to request
     req.user = {
       id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      threeplId: primaryMembership?.threeplId || undefined,
-      role: primaryMembership?.role || 'USER',
+      threeplId: primaryThreeplId,
+      brandId: primaryBrandId,
+      role: primaryRole,
       memberships: user.memberships.map(m => ({
         threeplId: m.threeplId || undefined,
         brandId: m.brandId || undefined,

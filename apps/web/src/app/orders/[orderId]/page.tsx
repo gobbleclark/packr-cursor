@@ -26,6 +26,11 @@ import { Input } from '../../../components/ui/input';
 import { Select } from '../../../components/ui/select';
 import { AuthenticatedLayout } from '../../../components/layout/AuthenticatedLayout';
 import { authService } from '../../../lib/auth';
+import { EditItemsModal } from '../../../components/orders/EditItemsModal';
+import { CancelOrderModal } from '../../../components/orders/CancelOrderModal';
+import { EditAddressModal } from '../../../components/orders/EditAddressModal';
+import { EditShippingModal } from '../../../components/orders/EditShippingModal';
+import { AddNoteModal } from '../../../components/orders/AddNoteModal';
 
 interface OrderItem {
   id: string;
@@ -52,7 +57,8 @@ interface ShippingAddress {
   address2?: string;
   city: string;
   state: string;
-  zipCode: string;
+  postalCode: string;
+  zipCode?: string; // Keep for backward compatibility
   country: string;
   phone?: string;
   email?: string;
@@ -118,6 +124,13 @@ export default function OrderDetailPage() {
   const [editingStatus, setEditingStatus] = useState(false);
   const [editingShipping, setEditingShipping] = useState(false);
   
+  // Modal states
+  const [showEditItemsModal, setShowEditItemsModal] = useState(false);
+  const [showCancelOrderModal, setShowCancelOrderModal] = useState(false);
+  const [showEditAddressModal, setShowEditAddressModal] = useState(false);
+  const [showEditShippingModal, setShowEditShippingModal] = useState(false);
+  const [showAddNoteModal, setShowAddNoteModal] = useState(false);
+  
   // Form states
   const [addressForm, setAddressForm] = useState<ShippingAddress | null>(null);
   const [statusForm, setStatusForm] = useState('');
@@ -155,7 +168,7 @@ export default function OrderDetailPage() {
 
   const fetchOrder = async () => {
     try {
-      const response = await fetch(`/api/orders/${orderId}`, {
+      const response = await fetch(`http://localhost:4000/api/orders/${orderId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -199,7 +212,8 @@ export default function OrderDetailPage() {
       address2: shipTo.address2 || '',
       city: shipTo.city || '',
       state: shipTo.state || shipTo.province || '',
-      zipCode: shipTo.zip_code || shipTo.postal_code || '',
+      postalCode: shipTo.zip_code || shipTo.postal_code || '',
+      zipCode: shipTo.zip_code || shipTo.postal_code || '', // Keep for backward compatibility
       country: shipTo.country || 'US',
       phone: shipTo.phone || '',
       email: shipTo.email || rawData?.customer_email || ''
@@ -210,8 +224,8 @@ export default function OrderDetailPage() {
     if (!addressForm) return;
     
     try {
-      const response = await fetch(`/api/orders/${orderId}/shipping-address`, {
-        method: 'PUT',
+      const response = await fetch(`http://localhost:4000/api/orders/${orderId}/address`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -233,8 +247,8 @@ export default function OrderDetailPage() {
 
   const handleSaveStatus = async () => {
     try {
-      const response = await fetch(`/api/orders/${orderId}/status`, {
-        method: 'PUT',
+      const response = await fetch(`http://localhost:4000/api/orders/${orderId}/status`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -258,8 +272,8 @@ export default function OrderDetailPage() {
     try {
       console.log('Saving shipping form:', shippingForm);
       
-      const response = await fetch(`/api/orders/${orderId}/shipping`, {
-        method: 'PUT',
+      const response = await fetch(`http://localhost:4000/api/orders/${orderId}/shipping`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -296,7 +310,7 @@ export default function OrderDetailPage() {
     
     setLoadingShipMethods(true);
     try {
-      const response = await fetch(`/api/orders/${orderId}/ship-methods`, {
+      const response = await fetch(`http://localhost:4000/api/orders/${orderId}/ship-methods`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -331,7 +345,7 @@ export default function OrderDetailPage() {
     if (!newNote.trim()) return;
     
     try {
-      const response = await fetch(`/api/orders/${orderId}/notes`, {
+      const response = await fetch(`http://localhost:4000/api/orders/${orderId}/notes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -350,6 +364,136 @@ export default function OrderDetailPage() {
         setAddingNote(false);
       } else {
         alert('Failed to add note');
+      }
+    } catch (error) {
+      console.error('Failed to add note:', error);
+      alert('Failed to add note');
+    }
+  };
+
+  // Modal handlers
+  const handleEditItems = async (items: any[]) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/orders/${orderId}/items`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ items })
+      });
+
+      if (response.ok) {
+        await fetchOrder(); // Refresh order data
+        setShowEditItemsModal(false);
+        alert('Order items updated successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to update items: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to update items:', error);
+      alert('Failed to update order items');
+    }
+  };
+
+  const handleCancelOrder = async (reason: string) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/orders/${orderId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ reason })
+      });
+
+      if (response.ok) {
+        await fetchOrder(); // Refresh order data
+        setShowCancelOrderModal(false);
+        alert('Order cancelled successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to cancel order: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to cancel order:', error);
+      alert('Failed to cancel order');
+    }
+  };
+
+  const handleEditAddressModal = async (address: any) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/orders/${orderId}/address`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(address)
+      });
+
+      if (response.ok) {
+        await fetchOrder(); // Refresh order data
+        setShowEditAddressModal(false);
+        alert('Shipping address updated successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to update address: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to update address:', error);
+      alert('Failed to update shipping address');
+    }
+  };
+
+  const handleEditShippingModal = async (shipping: any) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/orders/${orderId}/shipping`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(shipping)
+      });
+
+      if (response.ok) {
+        await fetchOrder(); // Refresh order data
+        setShowEditShippingModal(false);
+        alert('Shipping method updated successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to update shipping: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to update shipping:', error);
+      alert('Failed to update shipping method');
+    }
+  };
+
+  const handleAddNoteModal = async (content: string, isInternal: boolean = true) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/orders/${orderId}/notes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ content, isInternal })
+      });
+
+      if (response.ok) {
+        const noteData = await response.json();
+        setOrder(prev => prev ? { 
+          ...prev, 
+          notes: [...prev.notes, noteData.note] 
+        } : null);
+        setShowAddNoteModal(false);
+        alert('Note added successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to add note: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Failed to add note:', error);
@@ -485,6 +629,17 @@ export default function OrderDetailPage() {
                   </Button>
                 </div>
               )}
+              
+              {/* Cancel Order Button */}
+              {order.status !== 'CANCELLED' && order.status !== 'SHIPPED' && order.status !== 'DELIVERED' && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setShowCancelOrderModal(true)}
+                >
+                  Cancel Order
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -502,145 +657,41 @@ export default function OrderDetailPage() {
                     <MapPin className="h-5 w-5 mr-2" />
                     Ship To Address
                   </CardTitle>
-                  {!editingAddress && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setEditingAddress(true)}
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowEditAddressModal(true)}
+                  >
+                    <Edit3 className="h-4 w-4" />
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                {editingAddress && addressForm ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Full Name
-                        </label>
-                        <Input
-                          value={addressForm.fullName}
-                          onChange={(e) => setAddressForm({...addressForm, fullName: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Company
-                        </label>
-                        <Input
-                          value={addressForm.company || ''}
-                          onChange={(e) => setAddressForm({...addressForm, company: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Address Line 1
-                      </label>
-                      <Input
-                        value={addressForm.address1}
-                        onChange={(e) => setAddressForm({...addressForm, address1: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Address Line 2
-                      </label>
-                      <Input
-                        value={addressForm.address2 || ''}
-                        onChange={(e) => setAddressForm({...addressForm, address2: e.target.value})}
-                      />
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          City
-                        </label>
-                        <Input
-                          value={addressForm.city}
-                          onChange={(e) => setAddressForm({...addressForm, city: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          State
-                        </label>
-                        <Input
-                          value={addressForm.state}
-                          onChange={(e) => setAddressForm({...addressForm, state: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          ZIP Code
-                        </label>
-                        <Input
-                          value={addressForm.zipCode}
-                          onChange={(e) => setAddressForm({...addressForm, zipCode: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Phone
-                        </label>
-                        <Input
-                          value={addressForm.phone || ''}
-                          onChange={(e) => setAddressForm({...addressForm, phone: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Email
-                        </label>
-                        <Input
-                          value={addressForm.email || ''}
-                          onChange={(e) => setAddressForm({...addressForm, email: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button onClick={handleSaveAddress}>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Changes
-                      </Button>
-                      <Button variant="ghost" onClick={() => setEditingAddress(false)}>
-                        <X className="h-4 w-4 mr-2" />
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="font-medium">{order.shippingAddress.fullName}</p>
-                    {order.shippingAddress.company && (
-                      <p className="text-gray-600">{order.shippingAddress.company}</p>
-                    )}
-                    <p className="text-gray-600">{order.shippingAddress.address1}</p>
-                    {order.shippingAddress.address2 && (
-                      <p className="text-gray-600">{order.shippingAddress.address2}</p>
-                    )}
-                    <p className="text-gray-600">
-                      {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}
+                <div className="space-y-2">
+                  <p className="font-medium">{order.shippingAddress.fullName}</p>
+                  {order.shippingAddress.company && (
+                    <p className="text-gray-600">{order.shippingAddress.company}</p>
+                  )}
+                  <p className="text-gray-600">{order.shippingAddress.address1}</p>
+                  {order.shippingAddress.address2 && (
+                    <p className="text-gray-600">{order.shippingAddress.address2}</p>
+                  )}
+                  <p className="text-gray-600">
+                    {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode || order.shippingAddress.zipCode}
+                  </p>
+                  {order.shippingAddress.phone && (
+                    <p className="text-gray-600 flex items-center">
+                      <Phone className="h-4 w-4 mr-2" />
+                      {order.shippingAddress.phone}
                     </p>
-                    {order.shippingAddress.phone && (
-                      <p className="text-gray-600 flex items-center">
-                        <Phone className="h-4 w-4 mr-2" />
-                        {order.shippingAddress.phone}
-                      </p>
-                    )}
-                    {order.shippingAddress.email && (
-                      <p className="text-gray-600 flex items-center">
-                        <Mail className="h-4 w-4 mr-2" />
-                        {order.shippingAddress.email}
-                      </p>
-                    )}
-                  </div>
-                )}
+                  )}
+                  {order.shippingAddress.email && (
+                    <p className="text-gray-600 flex items-center">
+                      <Mail className="h-4 w-4 mr-2" />
+                      {order.shippingAddress.email}
+                    </p>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -652,7 +703,7 @@ export default function OrderDetailPage() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => setEditingItems(!editingItems)}
+                    onClick={() => setShowEditItemsModal(true)}
                   >
                     <Edit3 className="h-4 w-4" />
                   </Button>
@@ -673,13 +724,6 @@ export default function OrderDetailPage() {
                             {formatCurrency(item.total)}
                           </p>
                         </div>
-                        {editingItems && (
-                          <div className="ml-4">
-                            <Button size="sm" variant="ghost">
-                              <Edit3 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -810,7 +854,7 @@ export default function OrderDetailPage() {
                   </CardTitle>
                   <Button
                     size="sm"
-                    onClick={() => setAddingNote(true)}
+                    onClick={() => setShowAddNoteModal(true)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Note
@@ -818,31 +862,6 @@ export default function OrderDetailPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                {addingNote && (
-                  <div className="mb-4 p-4 border rounded-lg bg-gray-50">
-                    <textarea
-                      className="w-full p-3 border rounded-lg resize-none"
-                      rows={3}
-                      placeholder="Add a note about this order..."
-                      value={newNote}
-                      onChange={(e) => setNewNote(e.target.value)}
-                    />
-                    <div className="flex space-x-2 mt-3">
-                      <Button size="sm" onClick={handleAddNote}>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Note
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => {
-                        setAddingNote(false);
-                        setNewNote('');
-                      }}>
-                        <X className="h-4 w-4 mr-2" />
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                
                 {order.notes && order.notes.length > 0 ? (
                   <div className="space-y-4">
                     {order.notes.map((note) => (
@@ -1074,6 +1093,48 @@ export default function OrderDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      {order && (
+        <>
+          <EditItemsModal
+            isOpen={showEditItemsModal}
+            onClose={() => setShowEditItemsModal(false)}
+            items={order.orderItems || []}
+            onSave={handleEditItems}
+          />
+          
+          <CancelOrderModal
+            isOpen={showCancelOrderModal}
+            onClose={() => setShowCancelOrderModal(false)}
+            onConfirm={handleCancelOrder}
+            orderNumber={order.orderNumber || order.id}
+          />
+          
+          <EditAddressModal
+            isOpen={showEditAddressModal}
+            onClose={() => setShowEditAddressModal(false)}
+            address={order.shippingAddress}
+            onSave={handleEditAddressModal}
+          />
+          
+          <EditShippingModal
+            isOpen={showEditShippingModal}
+            onClose={() => setShowEditShippingModal(false)}
+            shipping={{
+              carrier: order.rawData?.shipping_method?.carrier || '',
+              service: order.rawData?.shipping_method?.service || ''
+            }}
+            onSave={handleEditShippingModal}
+          />
+          
+          <AddNoteModal
+            isOpen={showAddNoteModal}
+            onClose={() => setShowAddNoteModal(false)}
+            onSave={handleAddNoteModal}
+          />
+        </>
+      )}
     </AuthenticatedLayout>
   );
 }
