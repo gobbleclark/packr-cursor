@@ -11,9 +11,7 @@ interface Order {
   id: string;
   orderNumber: string;
   brandId: string;
-  brand: {
-    name: string;
-  };
+  brandName: string;
   status: string;
   totalAmount: number;
   requiredShipDate: string;
@@ -174,11 +172,20 @@ function OrdersPageContent() {
 
     // Create CSV rows
     const rows = orders.map(order => [
-      order.orderNumber,
-      order.brand?.name || 'Unknown Brand',
+      `#${order.orderNumber}`,
+      order.brandName || 'Unknown Brand',
       order.status,
       `$${order.totalAmount.toFixed(2)}`,
-      new Date(order.requiredShipDate).toLocaleDateString(),
+      (() => {
+        const hasShipped = order.shipments.some(s => ['shipped', 'delivered'].includes(s.status?.toLowerCase()));
+        if (!hasShipped) return '-';
+        try {
+          const date = new Date(order.requiredShipDate);
+          return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+        } catch {
+          return '-';
+        }
+      })(),
       new Date(order.createdAt).toLocaleDateString(),
       isOrderLate(order) ? 'Yes' : 'No',
       order.shipments.map(s => s.trackingNumber).filter(Boolean).join('; ') || 'N/A'
@@ -355,12 +362,12 @@ function OrdersPageContent() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {order.orderNumber}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                ID: {order.id.slice(0, 8)}...
-                              </div>
+                              <button
+                                onClick={() => router.push(`/orders/${order.id}`)}
+                                className="text-sm font-medium text-blue-600 hover:text-blue-900 hover:underline"
+                              >
+                                #{order.orderNumber}
+                              </button>
                             </div>
                             {isOrderLate(order) && (
                               <div className="ml-2 flex-shrink-0">
@@ -374,7 +381,7 @@ function OrdersPageContent() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <Building2 className="h-4 w-4 text-gray-400 mr-2" />
-                            <span className="text-sm text-gray-900">{order.brand?.name || 'Unknown Brand'}</span>
+                            <span className="text-sm text-gray-900">{order.brandName || 'Unknown Brand'}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -386,19 +393,28 @@ function OrdersPageContent() {
                           ${order.totalAmount?.toFixed(2) || '0.00'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(order.requiredShipDate).toLocaleDateString()}
+                          {(() => {
+                            // Check if order has been shipped
+                            const hasShipped = order.shipments.some(s => ['shipped', 'delivered'].includes(s.status?.toLowerCase()));
+                            if (!hasShipped) {
+                              return '-';
+                            }
+                            // Try to parse the date, fallback to '-' if invalid
+                            try {
+                              const date = new Date(order.requiredShipDate);
+                              return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+                            } catch {
+                              return '-';
+                            }
+                          })()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(order.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => router.push(`/orders/${order.id}`)}
-                            className="text-blue-600 hover:text-blue-900 flex items-center space-x-1"
-                          >
-                            <Eye className="h-4 w-4" />
-                            <span>View</span>
-                          </button>
+                          <div className="flex items-center space-x-2">
+                            {/* Additional actions can be added here if needed */}
+                          </div>
                         </td>
                       </tr>
                     ))}
