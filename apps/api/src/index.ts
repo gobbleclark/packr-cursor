@@ -32,6 +32,8 @@ import orderStatusRoutes from './routes/order-status';
 import trackstarOrderRoutes from './routes/trackstar-orders';
 import inventoryRoutes from './routes/inventory';
 import inventoryWebhookRoutes from './routes/webhooks/inventory';
+import inboundShipmentWebhookRoutes from './routes/webhooks/inbound-shipments';
+import inboundShipmentRoutes from './routes/inbound-shipments';
 import notificationRoutes from './routes/notifications';
 
 // Import services
@@ -94,7 +96,9 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/orders', orderStatusRoutes);
 app.use('/api/trackstar/orders', trackstarOrderRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/inbound-shipments', inboundShipmentRoutes);
 app.use('/api/webhooks', inventoryWebhookRoutes);
+app.use('/api/webhooks', inboundShipmentWebhookRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api', trackstarRoutes);
 
@@ -113,10 +117,13 @@ app.get('/api', (req, res) => {
             settings: '/api/settings',
             orders: '/api/orders',
             inventory: '/api/inventory',
+            inboundShipments: '/api/inbound-shipments',
             dashboard: '/api/dashboard',
             trackstar: '/api/brands/:brandId/integrations/trackstar',
             webhooks: '/api/webhooks/trackstar',
             inventoryWebhooks: '/api/webhooks/trackstar/inventory',
+            inboundShipmentWebhooks: '/api/webhooks/trackstar/inbound-shipments',
+            inboundShipmentReceiptWebhooks: '/api/webhooks/trackstar/inbound-shipment-receipts',
             health: '/health',
           },
   });

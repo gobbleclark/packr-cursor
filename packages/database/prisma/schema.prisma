@@ -64,6 +64,7 @@ model ThreePL {
   inventorySnapshots InventorySnapshot[]
   inventoryItems   InventoryItem[]
   warehouses       Warehouse[]
+  inboundShipments InboundShipment[]
   webhookEvents    WebhookEvent[]
   webhookEventsV2  WebhookEventV2[]
   jobRuns          JobRun[]
@@ -96,6 +97,7 @@ model Brand {
   shipments Shipment[]
   inventorySnapshots InventorySnapshot[]
   inventoryItems InventoryItem[]
+  inboundShipments InboundShipment[]
   webhookEventsV2 WebhookEventV2[]
   messages  Message[]
   invitations BrandInvitation[]
@@ -333,6 +335,7 @@ model Warehouse {
   // Relationships
   threepl       ThreePL @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   inventoryItems InventoryItem[]
+  inboundShipments InboundShipment[]
 
   @@unique([tenantId, externalId])
   @@map("warehouses")
@@ -705,6 +708,97 @@ enum MessagePriority {
 }
 
 // ============================================================================
+// INBOUND SHIPMENTS
+// ============================================================================
+
+model InboundShipment {
+  id              String                @id @default(cuid())
+  threeplId       String
+  brandId         String?
+  externalId      String?               // Trackstar inbound shipment ID
+  trackingNumber  String?
+  referenceNumber String?
+  status          InboundShipmentStatus @default(PENDING)
+  
+  // Shipment details
+  expectedDate    DateTime?
+  receivedDate    DateTime?
+  carrierName     String?
+  trackingUrl     String?
+  
+  // Location information
+  warehouseId     String?
+  destinationAddress Json?              // Warehouse/destination address
+  
+  // Items and quantities
+  totalItems      Int?                  // Total number of items expected
+  receivedItems   Int?                  // Total number of items received
+  
+  // Metadata and tracking
+  metadata        Json                  @default("{}")
+  rawData         Json?                 // Full Trackstar response
+  updatedAtRemote DateTime?             // Trackstar updated_at
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  
+  // Relationships
+  threepl         ThreePL               @relation(fields: [threeplId], references: [id], onDelete: Cascade)
+  brand           Brand?                @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  warehouse       Warehouse?            @relation(fields: [warehouseId], references: [id])
+  items           InboundShipmentItem[]
+  receipts        InboundShipmentReceipt[]
+  
+  @@unique([threeplId, externalId])
+  @@unique([threeplId, trackingNumber])
+  @@index([status])
+  @@index([expectedDate])
+  @@index([brandId, status])
+  @@map("inbound_shipments")
+}
+
+model InboundShipmentItem {
+  id                  String          @id @default(cuid())
+  inboundShipmentId   String
+  sku                 String
+  productName         String?
+  expectedQuantity    Int
+  receivedQuantity    Int             @default(0)
+  unitCost            Float?
+  totalCost           Float?
+  metadata            Json            @default("{}")
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  
+  // Relationships
+  inboundShipment     InboundShipment @relation(fields: [inboundShipmentId], references: [id], onDelete: Cascade)
+  
+  @@unique([inboundShipmentId, sku])
+  @@index([inboundShipmentId])
+  @@index([sku])
+  @@map("inbound_shipment_items")
+}
+
+model InboundShipmentReceipt {
+  id                  String          @id @default(cuid())
+  inboundShipmentId   String
+  externalId          String?         // Trackstar receipt ID
+  receivedDate        DateTime
+  receivedBy          String?         // User who received the shipment
+  notes               String?
+  metadata            Json            @default("{}")
+  rawData             Json?           // Full Trackstar receipt response
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  
+  // Relationships
+  inboundShipment     InboundShipment @relation(fields: [inboundShipmentId], references: [id], onDelete: Cascade)
+  
+  @@unique([inboundShipmentId, externalId])
+  @@index([receivedDate])
+  @@map("inbound_shipment_receipts")
+}
+
+// ============================================================================
 // CHAT & TASK SYSTEM MODELS
 // ============================================================================
 
@@ -899,4 +993,12 @@ enum TaskPriority {
   NORMAL
   HIGH
   URGENT
+}
+
+enum InboundShipmentStatus {
+  PENDING       // Shipment created but not yet in transit
+  IN_TRANSIT    // Shipment is on its way
+  RECEIVED      // Shipment has been received
+  CANCELLED     // Shipment was cancelled
+  PARTIAL       // Partially received
 }

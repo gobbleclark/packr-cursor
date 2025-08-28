@@ -28,6 +28,9 @@ router.get('/', authenticateToken, async (req, res) => {
     const userThreeplId = req.user.threeplId;
     const userBrandId = req.user.brandId;
 
+    // Debug logging
+    logger.info(`Orders request - Role: ${userRole}, ThreePL ID: ${userThreeplId}, Brand ID: ${userBrandId}`);
+
     // Build where clause based on user role
     let whereClause: any = {};
 
@@ -37,11 +40,14 @@ router.get('/', authenticateToken, async (req, res) => {
       if (brandId && brandId !== 'all') {
         whereClause.brandId = brandId;
       }
+      logger.info(`3PL user where clause: ${JSON.stringify(whereClause)}`);
     } else if (userBrandId) {
       // Brand users can only see their own orders
       whereClause.brandId = userBrandId;
+      logger.info(`Brand user where clause: ${JSON.stringify(whereClause)}`);
     } else {
       // No brand access - return empty results
+      logger.warn(`No brand access for user - Role: ${userRole}, Brand ID: ${userBrandId}`);
       return res.json({
         orders: [],
         pagination: {

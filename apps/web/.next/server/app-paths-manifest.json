@@ -1,4 +1,7 @@
 {
+  "/dashboard/page": "app/dashboard/page.js",
+  "/brands/page": "app/brands/page.js",
+  "/inbound-shipments/page": "app/inbound-shipments/page.js",
   "/chat/page": "app/chat/page.js",
-  "/dashboard/page": "app/dashboard/page.js"
+  "/orders/[orderId]/page": "app/orders/[orderId]/page.js"
 }

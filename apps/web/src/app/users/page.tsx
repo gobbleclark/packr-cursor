@@ -80,7 +80,8 @@ export default function UsersPage() {
         const authResponse = await authService.verifyToken();
         if (authResponse) {
           setUser(authResponse.user);
-          if (authResponse.user.role !== 'THREEPL_ADMIN') {
+          // Allow both 3PL and Brand users to access user management
+          if (!['THREEPL_ADMIN', 'THREEPL_USER', 'BRAND_ADMIN', 'BRAND_USER'].includes(authResponse.user.role)) {
             router.push('/dashboard');
             return;
           }
