@@ -90,7 +90,7 @@ export default function InboundShipmentsPage() {
     if (user) {
       fetchInboundShipments();
       fetchBrands();
-      fetchWarehouses();
+      // fetchWarehouses(); // TODO: Implement warehouses endpoint
     }
   }, [user, filters]);
 
@@ -133,7 +133,7 @@ export default function InboundShipmentsPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setBrands(data.data || []);
+        setBrands(data.brands || []);
       }
     } catch (error) {
       console.error('Failed to fetch brands:', error);
