@@ -11,7 +11,6 @@ import { Select } from '../ui/select';
 import { RichTextEditor } from './RichTextEditor';
 import { FileUpload } from './FileUpload';
 import { TrackstarOrderSearch } from './TrackstarOrderSearch';
-import { buildApiUrl } from '../../lib/api-config';
 
 interface User {
   id: string;
