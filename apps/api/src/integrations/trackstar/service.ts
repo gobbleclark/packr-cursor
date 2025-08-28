@@ -253,8 +253,9 @@ export class TrackstarIntegrationService {
 
       logger.info(`Starting incremental sync for brand ${brandId} with ${lookbackHours}h lookback`);
 
-      // Only sync orders for incremental updates (most critical for real-time)
+      // Sync orders and inventory for incremental updates (both critical for real-time)
       await this.syncOrders(brandId, integration.accessToken, false, lookbackHours);
+      await this.syncInventory(brandId, integration.accessToken, false);
       
       // Update last sync time
       await prisma.brandIntegration.update({
@@ -578,17 +579,11 @@ export class TrackstarIntegrationService {
       limit: 1000
     };
 
-    if (!isInitial) {
-      const integration = await prisma.brandIntegration.findUnique({
-        where: { brandId_provider: { brandId, provider: 'TRACKSTAR' } }
-      });
-      
-      if (integration?.lastSyncedAt) {
-        filters.updated_date = {
-          gte: new Date(integration.lastSyncedAt.getTime() - 2 * 60 * 1000).toISOString()
-        };
-      }
-    }
+    // Note: We don't apply date filters for inventory sync because:
+    // 1. Inventory changes less frequently than orders
+    // 2. Trackstar's inventory API may not reliably support updated_date filtering
+    // 3. Full inventory sync is relatively lightweight compared to orders
+    // For incremental syncs, we still get the full inventory to ensure accuracy
 
     try {
       const response = await trackstarClient.instance.getInventory(accessToken, filters);
@@ -620,13 +615,13 @@ export class TrackstarIntegrationService {
               tenantId_externalId: {
                 tenantId: brand.threeplId,
                 externalId: locationId
+              }
             }
-          }
-        });
+          });
 
           if (!warehouse) {
             warehouse = await prisma.warehouse.create({
-            data: {
+              data: {
                 tenantId: brand.threeplId,
                 externalId: locationId,
                 name: item.locations[0].name || `Warehouse ${locationId}`,
