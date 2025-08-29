@@ -187,7 +187,10 @@ export default function TrackstarIntegration({ brandId, onIntegrationUpdate }: T
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          functionsToSync: ['get_orders', 'get_products', 'get_inventory', 'get_shipments', 'get_inbound_shipments']
+        })
       });
 
       if (!response.ok) {
