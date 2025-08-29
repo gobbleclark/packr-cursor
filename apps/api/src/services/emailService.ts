@@ -395,46 +395,9 @@ class EmailService {
     });
   }
 
-  // Test method - DISABLED IN PRODUCTION
-  // async testConnection(): Promise<boolean> {
-    try {
-      this.initializeTransporter();
-      await this.transporter!.verify();
-      logger.info('Email service connection verified');
-      return true;
-    } catch (error) {
-      logger.error('Email service connection failed:', error);
-      return false;
-    }
-  }
+  // Test methods removed for production security
 
-  // Test method - DISABLED IN PRODUCTION  
-  // async sendTestEmail(to: string): Promise<boolean> {
-    try {
-      const testResult = await this.sendEmail({
-        to,
-        subject: 'Test Email from Packr',
-        html: `
-          <h1>Test Email</h1>
-          <p>This is a test email to verify your email configuration.</p>
-          <p>If you receive this, your email service is working correctly!</p>
-        `,
-        text: 'This is a test email to verify your email configuration.',
-        emailType: 'general',
-      });
-      
-      if (testResult) {
-        logger.info(`Test email sent successfully to ${to}`);
-      } else {
-        logger.error('Test email failed to send');
-      }
-      
-      return testResult;
-    } catch (error) {
-      logger.error('Test email error:', error);
-      return false;
-    }
-  }
+
 
   // Batch send emails for better Postmark performance
   async sendBatchEmails(emails: EmailOptions[]): Promise<{ success: number; failed: number; errors: string[] }> {

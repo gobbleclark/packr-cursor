@@ -31,19 +31,7 @@ const webhookSchema = z.object({
 });
 
 // Debug endpoint to test Trackstar client directly
-// Debug endpoint - DISABLED IN PRODUCTION
-// router.post('/debug/trackstar/test', async (req, res) => {
-  try {
-    logger.info('Testing Trackstar client directly...');
-    const { trackstarClient } = require('../integrations/trackstar/client');
-    const result = await trackstarClient.instance.createLinkToken();
-    logger.info('Direct Trackstar test successful:', result);
-    res.json({ success: true, result });
-  } catch (error) {
-    logger.error('Direct Trackstar test failed:', error);
-    res.status(500).json({ error: 'Direct test failed', details: error.message });
-  }
-});
+// Debug endpoint removed for production security
 
 // Create link token for Trackstar Link
 router.post('/brands/:brandId/integrations/trackstar/link-token', 
