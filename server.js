@@ -73,6 +73,16 @@ async function startServer() {
       '^/api': '/api'
     }
   }));
+
+  // Proxy Socket.IO requests to the API server
+  server.use('/socket.io', createProxyMiddleware({
+    target: 'http://localhost:4000',
+    changeOrigin: true,
+    ws: true, // Enable WebSocket proxying
+    pathRewrite: {
+      '^/socket.io': '/socket.io'
+    }
+  }));
   
   // Handle all other requests with Next.js
   server.all('*', (req, res) => {
