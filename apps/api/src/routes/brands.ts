@@ -108,6 +108,16 @@ router.post('/', authenticateToken, requireThreePL, requireRole('THREEPL_ADMIN')
         }
       });
 
+      // Auto-create chat room for the new brand
+      await tx.chatRoom.create({
+        data: {
+          threeplId,
+          brandId: brand.id
+        }
+      });
+
+      logger.info(`Auto-created chat room for brand ${brand.name} (${brand.id})`);
+
       // Create invitations for each user (if any)
       const invitations = [];
       if (data.invitedUsers && data.invitedUsers.length > 0) {
