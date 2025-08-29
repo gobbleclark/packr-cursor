@@ -395,8 +395,8 @@ class EmailService {
     });
   }
 
-  // Test method for development
-  async testConnection(): Promise<boolean> {
+  // Test method - DISABLED IN PRODUCTION
+  // async testConnection(): Promise<boolean> {
     try {
       this.initializeTransporter();
       await this.transporter!.verify();
@@ -408,8 +408,8 @@ class EmailService {
     }
   }
 
-  // Test method for development - sends a test email
-  async sendTestEmail(to: string): Promise<boolean> {
+  // Test method - DISABLED IN PRODUCTION  
+  // async sendTestEmail(to: string): Promise<boolean> {
     try {
       const testResult = await this.sendEmail({
         to,

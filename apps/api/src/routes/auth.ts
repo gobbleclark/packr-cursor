@@ -439,8 +439,8 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-// Test email service configuration endpoint
-router.get('/test-email-config', async (req, res) => {
+// Test email service configuration endpoint - DISABLED IN PRODUCTION
+// router.get('/test-email-config', async (req, res) => {
   try {
     // Check environment variables
     const config = {
@@ -475,8 +475,8 @@ router.get('/test-email-config', async (req, res) => {
   }
 });
 
-// Test email sending endpoint
-router.post('/test-email-send', async (req, res) => {
+// Test email sending endpoint - DISABLED IN PRODUCTION  
+// router.post('/test-email-send', async (req, res) => {
   try {
     const { email } = req.body;
     

@@ -8,40 +8,10 @@ import crypto from 'crypto';
 
 const router = Router();
 
-// Test email endpoint for development
-router.post('/test-email', async (req, res) => {
-  try {
-    const { email } = req.body;
-    
-    if (!email) {
-      return res.status(400).json({
-        error: 'Email required',
-        message: 'Please provide an email address to test'
-      });
-    }
 
-    const result = await emailService.sendTestEmail(email);
-    
-    if (result) {
-      res.json({
-        success: true,
-        message: 'Test email sent successfully',
-        note: 'Check your email inbox and the server logs for details'
-      });
-    } else {
-      res.status(500).json({
-        error: 'Failed to send test email',
-        message: 'Check server logs for details'
-      });
-    }
-  } catch (error) {
-    logger.error('Test email endpoint error:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      message: 'Failed to send test email'
-    });
-  }
-});
+
+// Test email endpoint - DISABLED IN PRODUCTION
+// router.post('/test-email', async (req, res) => { ... });
 
 // Validation schemas
 const createBrandSchema = z.object({

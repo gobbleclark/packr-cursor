@@ -347,13 +347,7 @@ export default function AuthPage() {
           </div>
 
           {/* Demo Info */}
-          {isLogin && (
-            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                <strong>Demo Mode:</strong> Use any email with password <code className="bg-yellow-100 px-1 rounded">demo123</code>
-              </p>
-            </div>
-          )}
+
 
           {/* Additional Info */}
           <div className="mt-6 text-center text-sm text-gray-600">

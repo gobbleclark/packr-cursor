@@ -31,7 +31,8 @@ const webhookSchema = z.object({
 });
 
 // Debug endpoint to test Trackstar client directly
-router.post('/debug/trackstar/test', async (req, res) => {
+// Debug endpoint - DISABLED IN PRODUCTION
+// router.post('/debug/trackstar/test', async (req, res) => {
   try {
     logger.info('Testing Trackstar client directly...');
     const { trackstarClient } = require('../integrations/trackstar/client');

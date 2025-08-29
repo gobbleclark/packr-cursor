@@ -9,7 +9,8 @@ const router = express.Router();
  * Test endpoint to verify API is working
  * GET /api/dashboard/test
  */
-router.get('/test', (req, res) => {
+// Test endpoint - DISABLED IN PRODUCTION
+// router.get('/test', (req, res) => {
   res.json({ 
     message: 'Dashboard API is working',
     timestamp: new Date().toISOString()
