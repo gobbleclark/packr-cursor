@@ -164,7 +164,7 @@ export function MessageForm({ messageId, onSuccess, onCancel }: MessageFormProps
     
     try {
       const token = authService.getToken();
-      const response = await fetch(buildApiUrl('messages/${messageId}'), {
+      const response = await fetch(buildApiUrl(`messages/${messageId}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -203,7 +203,7 @@ export function MessageForm({ messageId, onSuccess, onCancel }: MessageFormProps
 
     if (formData.has('files')) {
       const token = authService.getToken();
-      const response = await fetch(buildApiUrl('messages/${messageId}/attachments'), {
+      const response = await fetch(buildApiUrl(`messages/${messageId}/attachments`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -241,7 +241,7 @@ export function MessageForm({ messageId, onSuccess, onCancel }: MessageFormProps
       };
 
       const url = messageId 
-        ? buildApiUrl('messages/${messageId}')
+        ? buildApiUrl(`messages/${messageId}`)
         : buildApiUrl('messages');
       
       const method = messageId ? 'PUT' : 'POST';

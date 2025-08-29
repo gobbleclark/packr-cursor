@@ -169,7 +169,7 @@ export default function OrderDetailPage() {
 
   const fetchOrder = async () => {
     try {
-      const response = await fetch(buildApiUrl('orders/${orderId}'), {
+      const response = await fetch(buildApiUrl(`orders/${orderId}`), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -225,7 +225,7 @@ export default function OrderDetailPage() {
     if (!addressForm) return;
     
     try {
-      const response = await fetch(buildApiUrl('orders/${orderId}/address'), {
+      const response = await fetch(buildApiUrl(`orders/${orderId}/address`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -248,7 +248,7 @@ export default function OrderDetailPage() {
 
   const handleSaveStatus = async () => {
     try {
-      const response = await fetch(buildApiUrl('orders/${orderId}/status'), {
+      const response = await fetch(buildApiUrl(`orders/${orderId}/status`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -273,7 +273,7 @@ export default function OrderDetailPage() {
     try {
       console.log('Saving shipping form:', shippingForm);
       
-      const response = await fetch(buildApiUrl('orders/${orderId}/shipping'), {
+      const response = await fetch(buildApiUrl(`orders/${orderId}/shipping`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -311,7 +311,7 @@ export default function OrderDetailPage() {
     
     setLoadingShipMethods(true);
     try {
-      const response = await fetch(buildApiUrl('orders/${orderId}/ship-methods'), {
+      const response = await fetch(buildApiUrl(`orders/${orderId}/ship-methods`), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -346,7 +346,7 @@ export default function OrderDetailPage() {
     if (!newNote.trim()) return;
     
     try {
-      const response = await fetch(buildApiUrl('orders/${orderId}/notes'), {
+      const response = await fetch(buildApiUrl(`orders/${orderId}/notes`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -375,7 +375,7 @@ export default function OrderDetailPage() {
   // Modal handlers
   const handleEditItems = async (items: any[]) => {
     try {
-      const response = await fetch(buildApiUrl('orders/${orderId}/items'), {
+      const response = await fetch(buildApiUrl(`orders/${orderId}/items`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -400,7 +400,7 @@ export default function OrderDetailPage() {
 
   const handleCancelOrder = async (reason: string) => {
     try {
-      const response = await fetch(buildApiUrl('orders/${orderId}/cancel'), {
+      const response = await fetch(buildApiUrl(`orders/${orderId}/cancel`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -425,7 +425,7 @@ export default function OrderDetailPage() {
 
   const handleEditAddressModal = async (address: any) => {
     try {
-      const response = await fetch(buildApiUrl('orders/${orderId}/address'), {
+      const response = await fetch(buildApiUrl(`orders/${orderId}/address`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -450,7 +450,7 @@ export default function OrderDetailPage() {
 
   const handleEditShippingModal = async (shipping: any) => {
     try {
-      const response = await fetch(buildApiUrl('orders/${orderId}/shipping'), {
+      const response = await fetch(buildApiUrl(`orders/${orderId}/shipping`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -475,7 +475,7 @@ export default function OrderDetailPage() {
 
   const handleAddNoteModal = async (content: string, isInternal: boolean = true) => {
     try {
-      const response = await fetch(buildApiUrl('orders/${orderId}/notes'), {
+      const response = await fetch(buildApiUrl(`orders/${orderId}/notes`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

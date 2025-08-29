@@ -112,7 +112,7 @@ export default function MessagesPage() {
         ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))
       });
 
-      const response = await fetch(buildApiUrl('messages?${params}'), {
+      const response = await fetch(buildApiUrl(`messages?${params}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

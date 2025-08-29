@@ -49,7 +49,7 @@ export default function EditBrandPage() {
         return;
       }
 
-      const response = await fetch(buildApiUrl('brands/${brandId}'), {
+      const response = await fetch(buildApiUrl(`brands/${brandId}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -103,7 +103,7 @@ export default function EditBrandPage() {
         return;
       }
 
-      const response = await fetch(buildApiUrl('brands/${brandId}'), {
+      const response = await fetch(buildApiUrl(`brands/${brandId}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

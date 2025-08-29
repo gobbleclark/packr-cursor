@@ -73,7 +73,7 @@ function OrdersPageContent() {
       params.append('page', currentPage.toString());
       params.append('limit', '20');
 
-      const response = await fetch(buildApiUrl('orders?${params.toString()}'), {
+      const response = await fetch(buildApiUrl(`orders?${params.toString()}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

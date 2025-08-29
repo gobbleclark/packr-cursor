@@ -62,7 +62,7 @@ export function TrackstarOrderSearch({
         params.append('brandId', brandId);
       }
 
-      const response = await fetch(buildApiUrl('orders?${params}'), {
+      const response = await fetch(buildApiUrl(`orders?${params}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

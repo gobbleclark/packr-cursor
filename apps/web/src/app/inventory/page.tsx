@@ -150,7 +150,7 @@ export default function InventoryPage() {
       params.append('limit', '50');
 
       const token = localStorage.getItem('token');
-      const response = await fetch(buildApiUrl('inventory?${params}'), {
+      const response = await fetch(buildApiUrl(`inventory?${params}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',

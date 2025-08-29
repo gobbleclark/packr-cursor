@@ -107,7 +107,7 @@ export default function InboundShipmentsPage() {
       if (filters.warehouseId) queryParams.append('warehouseId', filters.warehouseId);
       if (filters.status) queryParams.append('status', filters.status);
 
-      const response = await fetch(buildApiUrl('inbound-shipments?${queryParams}'), {
+      const response = await fetch(buildApiUrl(`inbound-shipments?${queryParams}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

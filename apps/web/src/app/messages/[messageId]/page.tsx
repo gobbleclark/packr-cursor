@@ -134,7 +134,7 @@ export default function MessageDetailPage() {
   const fetchMessage = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch(buildApiUrl('messages/${messageId}'), {
+      const response = await fetch(buildApiUrl(`messages/${messageId}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -200,7 +200,7 @@ export default function MessageDetailPage() {
     
     try {
       const token = authService.getToken();
-      const response = await fetch(buildApiUrl('messages/${messageId}/comments'), {
+      const response = await fetch(buildApiUrl(`messages/${messageId}/comments`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -229,7 +229,7 @@ export default function MessageDetailPage() {
   const handleStatusUpdate = async (statusId: string) => {
     try {
       const token = authService.getToken();
-      const response = await fetch(buildApiUrl('messages/${messageId}'), {
+      const response = await fetch(buildApiUrl(`messages/${messageId}`), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -249,7 +249,7 @@ export default function MessageDetailPage() {
   const handleAssignmentUpdate = async (assignedTo: string) => {
     try {
       const token = authService.getToken();
-      const response = await fetch(buildApiUrl('messages/${messageId}'), {
+      const response = await fetch(buildApiUrl(`messages/${messageId}`), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -269,7 +269,7 @@ export default function MessageDetailPage() {
   const handleComplete = async () => {
     try {
       const token = authService.getToken();
-      const response = await fetch(buildApiUrl('messages/${messageId}'), {
+      const response = await fetch(buildApiUrl(`messages/${messageId}`), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -305,7 +305,7 @@ export default function MessageDetailPage() {
     setDeleting(true);
     try {
       const token = authService.getToken();
-      const response = await fetch(buildApiUrl('messages/${messageId}'), {
+      const response = await fetch(buildApiUrl(`messages/${messageId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

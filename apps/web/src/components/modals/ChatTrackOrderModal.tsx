@@ -45,7 +45,7 @@ export function ChatTrackOrderModal() {
     setError(null);
 
     try {
-      const response = await fetch(buildApiUrl('orders/${modalData.orderNumber}'), {
+      const response = await fetch(buildApiUrl(`orders/${modalData.orderNumber}`), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'

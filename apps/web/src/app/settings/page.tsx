@@ -168,7 +168,7 @@ export default function SettingsPage() {
 
     try {
       const token = authService.getToken();
-      const response = await fetch(buildApiUrl('settings/message-statuses/${editingStatus.id}'), {
+      const response = await fetch(buildApiUrl(`settings/message-statuses/${editingStatus.id}`), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -197,7 +197,7 @@ export default function SettingsPage() {
 
     try {
       const token = authService.getToken();
-      const response = await fetch(buildApiUrl('settings/message-statuses/${statusId}'), {
+      const response = await fetch(buildApiUrl(`settings/message-statuses/${statusId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

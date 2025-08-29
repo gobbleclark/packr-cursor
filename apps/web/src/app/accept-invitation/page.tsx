@@ -35,7 +35,7 @@ function AcceptInvitationContent() {
 
   const verifyInvitation = async () => {
     try {
-      const response = await fetch(buildApiUrl('brands/verify-invitation?token=${token}'));
+      const response = await fetch(buildApiUrl(`brands/verify-invitation?token=${token}`));
       if (response.ok) {
         const data = await response.json();
         setInvitationData(data.invitation);

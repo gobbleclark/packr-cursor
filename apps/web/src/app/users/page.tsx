@@ -112,7 +112,7 @@ export default function UsersPage() {
         ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))
       });
 
-      const response = await fetch(buildApiUrl('users?${params}'), {
+      const response = await fetch(buildApiUrl(`users?${params}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -204,7 +204,7 @@ export default function UsersPage() {
 
     try {
       const token = authService.getToken();
-      const response = await fetch(buildApiUrl('users/${userId}'), {
+      const response = await fetch(buildApiUrl(`users/${userId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -227,7 +227,7 @@ export default function UsersPage() {
   const handleResendInvitation = async (invitationId: string) => {
     try {
       const token = authService.getToken();
-      const response = await fetch(buildApiUrl('users/invitations/${invitationId}/resend'), {
+      const response = await fetch(buildApiUrl(`users/invitations/${invitationId}/resend`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
