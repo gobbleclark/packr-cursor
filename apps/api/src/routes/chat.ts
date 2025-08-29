@@ -329,7 +329,7 @@ router.get('/rooms/:roomId/users', authenticateToken, async (req, res) => {
               {
                 threeplId: room.threeplId,
                 role: {
-                  in: ['THREEPL_SUPER_ADMIN', 'THREEPL_USER']
+                  in: ['THREEPL_ADMIN', 'THREEPL_USER']
                 }
               },
               // Brand users (can only access their specific brand's room)
