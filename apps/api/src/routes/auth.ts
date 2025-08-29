@@ -66,10 +66,9 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Verify password (for now, we'll use a simple check since we haven't set up Clerk yet)
-    // In production, this will be handled by Clerk
-    // Accept both demo123 and the password used during signup
-    if (password !== 'demo123' && password !== 'demo12345') {
+    // Verify password using bcrypt
+    const isValidPassword = await compare(password, user.password);
+    if (!isValidPassword) {
       return res.status(401).json({
         error: 'Invalid credentials',
         message: 'Email or password is incorrect',
